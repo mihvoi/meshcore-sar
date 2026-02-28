@@ -19,6 +19,7 @@ import '../../utils/sar_message_parser.dart';
 import '../../utils/key_comparison.dart';
 import '../../l10n/app_localizations.dart';
 import '../../utils/message_extensions.dart';
+import 'voice_message_bubble.dart';
 
 /// Reusable message bubble widget that displays messages with various types:
 /// - Regular text messages (channel or direct)
@@ -634,6 +635,7 @@ class _MessageBubbleState extends State<MessageBubble> {
     final displayName = isOwnMessage
         ? AppLocalizations.of(context)!.you
         : message.getRichDisplayName(senderContact);
+    final l10n = AppLocalizations.of(context)!;
 
     // For sent direct/channel messages, look up destination display label
     dynamic recipientContact;
@@ -667,16 +669,21 @@ class _MessageBubbleState extends State<MessageBubble> {
       }
     } else if (isOwnMessage && message.isChannelMessage) {
       if (message.channelIdx == 0) {
-        recipientDisplayName = AppLocalizations.of(context)!.publicChannel;
+        recipientDisplayName = l10n.publicChannel;
       } else {
         final channelContact = contactsProvider.channels.where((c) {
           return c.publicKey.length > 1 && c.publicKey[1] == message.channelIdx;
         }).firstOrNull;
         recipientDisplayName =
             channelContact?.getLocalizedDisplayName(context) ??
-            '${AppLocalizations.of(context)!.channel} ${message.channelIdx}';
+            '${l10n.channel} ${message.channelIdx}';
       }
     }
+
+    final recipientSubtitle =
+        isOwnMessage && message.isChannelMessage && recipientDisplayName != null
+        ? '${l10n.channel}: $recipientDisplayName'
+        : recipientDisplayName;
 
     return GestureDetector(
       onTap: widget.onTap,
@@ -860,47 +867,63 @@ class _MessageBubbleState extends State<MessageBubble> {
                   const Icon(Icons.person, size: 16),
                 const SizedBox(width: 4),
                 Expanded(
-                  child: Text(
-                    displayName,
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: isOwnMessage
-                          ? Theme.of(context).colorScheme.primary
-                          : null,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayName,
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: isOwnMessage
+                                  ? Theme.of(context).colorScheme.primary
+                                  : null,
+                            ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      // Show destination for sent direct/channel messages on a separate line
+                      if (isOwnMessage &&
+                          recipientSubtitle != null &&
+                          !widget.isCompact) ...[
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.arrow_forward,
+                              size: 12,
+                              color: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.color
+                                  ?.withValues(alpha: 0.7),
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                recipientSubtitle,
+                                style: Theme.of(context).textTheme.labelSmall
+                                    ?.copyWith(
+                                      color: Theme.of(context)
+                                          .textTheme
+                                          .labelSmall
+                                          ?.color
+                                          ?.withValues(alpha: 0.75),
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-                // Show destination for sent direct/channel messages
-                if (isOwnMessage &&
-                    recipientDisplayName != null &&
-                    !widget.isCompact) ...[
-                  const SizedBox(width: 4),
-                  Icon(
-                    Icons.arrow_forward,
-                    size: 14,
-                    color: Theme.of(
-                      context,
-                    ).textTheme.labelSmall?.color?.withValues(alpha: 0.6),
-                  ),
-                  const SizedBox(width: 4),
-                  Flexible(
-                    child: Text(
-                      recipientDisplayName,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: Theme.of(
-                          context,
-                        ).textTheme.labelSmall?.color?.withValues(alpha: 0.7),
-                        fontStyle: FontStyle.italic,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
                 // Time for regular messages (not shown for SAR/drawing as it's already above)
                 if (!isSarMarker && !message.isDrawing) ...[
+                  const SizedBox(width: 8),
                   // Hop count indicator for received messages
                   if (!isOwnMessage && message.pathLen < 255) ...[
                     const SizedBox(width: 4),
@@ -1055,6 +1078,11 @@ class _MessageBubbleState extends State<MessageBubble> {
                   );
                 },
               )
+            // Voice message content
+            else if (message.isVoice &&
+                message.voiceId != null &&
+                !widget.isCompact)
+              VoiceMessageBubble(message: message, isSentByMe: isOwnMessage)
             // Regular message content
             else if (!message.isDrawing || widget.isCompact)
               Text(message.text, style: Theme.of(context).textTheme.bodyMedium),

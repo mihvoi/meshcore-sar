@@ -44,7 +44,18 @@ dependencies:
   meshcore_client:
     git:
       url: https://github.com/dz0ny/meshcore_client.git
-      ref: main
+
+  # Codec2 ultra-low-bitrate speech codec (FFI plugin)
+  codec2_flutter:
+    git:
+      url: https://github.com/dz0ny/codec2_flutter.git
+  ffi: ^2.1.0
+
+  # Voice recording (raw PCM stream at 8000 Hz)
+  record: ^6.0.0
+
+  # Voice playback (plays WAV from file)
+  audioplayers: ^6.0.0
 
   # BLE connectivity
   flutter_blue_plus: ^2.0.0

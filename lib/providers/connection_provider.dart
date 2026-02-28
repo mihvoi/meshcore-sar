@@ -167,6 +167,7 @@ class ConnectionProvider with ChangeNotifier {
   Function(String messageId, int echoCount, int snrRaw, int rssiDbm)?
   onMessageEchoDetected;
   Function(Uint8List publicKeyPrefix, Uint8List statusData)? onStatusResponse;
+  Function(Uint8List payload, int snrRaw, int rssiDbm)? onRawDataReceived;
 
   // Track pending send operations for auto-recovery
   final Map<String, _PendingSendOperation> _pendingSendOperations = {};
@@ -496,6 +497,10 @@ class ConnectionProvider with ChangeNotifier {
       debugPrint('  Status data: ${statusData.length} bytes');
       // Forward the callback to whoever needs it (e.g., ContactsProvider)
       onStatusResponse?.call(publicKeyPrefix, statusData);
+    };
+
+    _bleService.onRawDataReceived = (payload, snrRaw, rssiDbm) {
+      onRawDataReceived?.call(payload, snrRaw, rssiDbm);
     };
 
     _bleService.onDeviceInfoReceived = (deviceInfo) {
@@ -1316,6 +1321,21 @@ class ConnectionProvider with ChangeNotifier {
       _error = 'Failed to send channel message: $e';
       notifyListeners();
     }
+  }
+
+  /// Send a raw binary voice packet directly to a contact (cmdSendRawData, code 25).
+  /// Only works for contacts with a known direct route (outPathLen >= 0).
+  Future<void> sendRawVoicePacket({
+    required Uint8List contactPath,
+    required int contactPathLen,
+    required Uint8List payload,
+  }) async {
+    if (!_bleService.isConnected) return;
+    await _bleService.sendRawVoicePacket(
+      contactPathLen: contactPathLen,
+      contactPath: contactPath,
+      payload: payload,
+    );
   }
 
   /// Request telemetry from contact

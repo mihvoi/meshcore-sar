@@ -6,11 +6,13 @@ import 'contacts_provider.dart';
 import 'messages_provider.dart';
 import 'drawing_provider.dart';
 import 'channels_provider.dart';
+import 'voice_provider.dart';
 import '../services/tile_cache_service.dart';
 import '../services/location_tracking_service.dart';
 import '../models/contact.dart';
 import '../models/message.dart';
 import '../utils/drawing_message_parser.dart';
+import '../utils/voice_message_parser.dart';
 
 /// Main App Provider - coordinates all other providers
 class AppProvider with ChangeNotifier {
@@ -19,6 +21,7 @@ class AppProvider with ChangeNotifier {
   final MessagesProvider messagesProvider;
   final DrawingProvider drawingProvider;
   final ChannelsProvider channelsProvider;
+  final VoiceProvider voiceProvider;
   final TileCacheService tileCacheService;
   final LocationTrackingService locationTrackingService =
       LocationTrackingService();
@@ -38,6 +41,7 @@ class AppProvider with ChangeNotifier {
     required this.messagesProvider,
     required this.drawingProvider,
     required this.channelsProvider,
+    required this.voiceProvider,
     required this.tileCacheService,
   }) {
     _setupCallbacks();
@@ -335,6 +339,19 @@ class AppProvider with ChangeNotifier {
         return;
       }
 
+      // If it's a text-format voice packet, feed it to VoiceProvider
+      if (VoicePacket.isVoiceText(enrichedMessage.text)) {
+        final pkt = VoicePacket.tryParseText(enrichedMessage.text);
+        if (pkt != null) {
+          voiceProvider.addPacket(pkt);
+          // Mark the message with voice metadata before adding to chat
+          enrichedMessage = enrichedMessage.copyWith(
+            isVoice: true,
+            voiceId: pkt.sessionId,
+          );
+        }
+      }
+
       // Pass contact lookup function to link channel messages with contacts
       messagesProvider.addMessage(
         enrichedMessage,
@@ -378,6 +395,18 @@ class AppProvider with ChangeNotifier {
       // Binary response tag 0 = telemetry data (Cayenne LPP format)
       // Other tags may be used for different data types in the future
       contactsProvider.updateTelemetry(publicKeyPrefix, responseData);
+    };
+
+    // When raw binary data is received (PUSH_CODE_RAW_DATA 0x84)
+    // Used for direct binary voice packets (VoicePacket binary format, magic 0x56 'V')
+    connectionProvider.onRawDataReceived = (payload, snrRaw, rssiDbm) {
+      if (!VoicePacket.isVoiceBinary(payload)) return;
+      final pkt = VoicePacket.tryParseBinary(payload);
+      if (pkt == null) return;
+      debugPrint('🎙️ [AppProvider] Binary voice packet received: $pkt');
+      final justComplete = voiceProvider.addPacket(pkt);
+      // Insert or update the placeholder message in the chat list
+      _handleIncomingVoicePacket(pkt, justComplete: justComplete);
     };
 
     // When a contact's routing path is updated in the mesh network
@@ -691,6 +720,41 @@ class AppProvider with ChangeNotifier {
         '❌ [AppProvider] Error during auto-login to ${room.advName}: $e',
       );
     }
+  }
+
+  /// Insert or update a voice placeholder message for binary raw-data packets.
+  ///
+  /// Binary voice packets arrive without a chat message, so we synthesise one
+  /// to give the user a playable bubble in the message list.
+  void _handleIncomingVoicePacket(VoicePacket pkt, {required bool justComplete}) {
+    final sessionId = pkt.sessionId;
+
+    // Check if a placeholder for this session already exists
+    final existing = messagesProvider.messages.where(
+      (m) => m.isVoice && m.voiceId == sessionId,
+    ).firstOrNull;
+
+    if (existing != null) {
+      // Already have a placeholder — no need to add another
+      return;
+    }
+
+    // First packet of a new session: insert placeholder message
+    final msgId = 'voice_$sessionId';
+    final placeholder = Message(
+      id: msgId,
+      messageType: MessageType.contact, // direct contact (binary only)
+      senderPublicKeyPrefix: null,
+      pathLen: 0,
+      textType: MessageTextType.plain,
+      senderTimestamp: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      text: '', // no text — displayed as VoiceMessageBubble
+      receivedAt: DateTime.now(),
+      deliveryStatus: MessageDeliveryStatus.received,
+      isVoice: true,
+      voiceId: sessionId,
+    );
+    messagesProvider.addMessage(placeholder, contactLookup: (_) => '');
   }
 
   // Removed _syncMessages() - messages are automatically synced via PUSH_CODE_MSG_WAITING events

@@ -13,10 +13,10 @@ Flutter app for Search and Rescue operations over a [MeshCore](https://github.co
 
 ## BLE Protocol
 
-The BLE communication layer lives in a separate reusable package:
+MeshCore SAR is powered by the `meshcore_client` package:
 **[github.com/dz0ny/meshcore_client](https://github.com/dz0ny/meshcore_client)**
 
-It handles connection management, command queueing, and binary frame parsing/building.
+The client handles BLE connection management, command queueing, and binary frame parsing/building, and is extracted so you can build custom tools, integrations, and apps on top of MeshCore.
 
 ## Requirements
 

@@ -9,6 +9,20 @@ export 'package:meshcore_client/meshcore_client.dart'
 import 'package:flutter/foundation.dart';
 import 'package:meshcore_client/meshcore_client.dart';
 import 'sar_marker.dart';
+import '../utils/voice_message_parser.dart';
+
+extension MessageVoiceExtension on Message {
+  /// True when this message is a voice recording (`V:` text or binary voice).
+  bool get isVoiceMessage => isVoice;
+
+  /// Parses the voice packet mode from the stored [voiceId] session info.
+  /// Returns null for non-voice messages.
+  VoicePacketMode? get voicePacketMode {
+    if (!isVoice || text.isEmpty) return null;
+    final pkt = VoicePacket.tryParseText(text);
+    return pkt?.mode;
+  }
+}
 
 extension MessageSarExtension on Message {
   /// Infer the [SarMarkerType] from stored SAR fields.

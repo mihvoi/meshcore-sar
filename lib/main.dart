@@ -11,7 +11,10 @@ import 'providers/messages_provider.dart';
 import 'providers/map_provider.dart';
 import 'providers/drawing_provider.dart';
 import 'providers/channels_provider.dart';
+import 'providers/voice_provider.dart';
 import 'providers/app_provider.dart';
+import 'services/voice_codec_service.dart';
+import 'services/voice_player_service.dart';
 import 'services/tile_cache_service.dart';
 import 'services/notification_service.dart';
 import 'services/locale_preferences.dart';
@@ -231,10 +234,19 @@ class _MeshCoreSarAppState extends State<MeshCoreSarApp> {
         ),
         ChangeNotifierProvider(create: (_) => ChannelsProvider()),
 
+        // Voice provider (packet reassembly + playback)
+        ChangeNotifierProvider(
+          create: (_) => VoiceProvider(
+            codec: VoiceCodecService(),
+            player: VoicePlayerService(),
+          ),
+        ),
+
         // Tile cache service
         Provider(create: (_) => TileCacheService()),
 
         // App provider that coordinates everything
+        // VoiceProvider is read via context.read inside create since it's already registered above
         ChangeNotifierProxyProvider6<
           ConnectionProvider,
           ContactsProvider,
@@ -250,6 +262,7 @@ class _MeshCoreSarAppState extends State<MeshCoreSarApp> {
             messagesProvider: context.read<MessagesProvider>(),
             drawingProvider: context.read<DrawingProvider>(),
             channelsProvider: context.read<ChannelsProvider>(),
+            voiceProvider: context.read<VoiceProvider>(),
             tileCacheService: context.read<TileCacheService>(),
           ),
           update:
@@ -270,6 +283,7 @@ class _MeshCoreSarAppState extends State<MeshCoreSarApp> {
                     messagesProvider: messages,
                     drawingProvider: drawings,
                     channelsProvider: channels,
+                    voiceProvider: context.read<VoiceProvider>(),
                     tileCacheService: tileCache,
                   ),
         ),

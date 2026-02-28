@@ -8,6 +8,7 @@ import '../services/message_storage_service.dart';
 import '../services/notification_service.dart';
 import '../utils/sar_message_parser.dart';
 import '../utils/drawing_message_parser.dart';
+import '../utils/voice_message_parser.dart';
 import '../l10n/app_localizations.dart';
 import 'helpers/message_retry_manager.dart';
 
@@ -275,6 +276,17 @@ class MessagesProvider with ChangeNotifier {
         isDrawing: true,
         drawingId: drawing?.id,
       );
+    }
+
+    // Check if it's a voice message (V:...) and not already marked
+    if (VoicePacket.isVoiceText(enhancedMessage.text) && !enhancedMessage.isVoice) {
+      final pkt = VoicePacket.tryParseText(enhancedMessage.text);
+      if (pkt != null) {
+        enhancedMessage = enhancedMessage.copyWith(
+          isVoice: true,
+          voiceId: pkt.sessionId,
+        );
+      }
     }
 
     // For channel messages with sender name, try to link with contact

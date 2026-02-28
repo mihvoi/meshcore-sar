@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'dart:io' show Platform;
+import 'dart:math' as math;
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +11,7 @@ import '../providers/contacts_provider.dart';
 import '../providers/map_provider.dart';
 import '../providers/connection_provider.dart';
 import '../providers/drawing_provider.dart';
+import '../providers/voice_provider.dart';
 import '../providers/app_provider.dart';
 import '../models/message.dart';
 import '../models/contact.dart';
@@ -15,8 +19,11 @@ import '../widgets/messages/sar_update_sheet.dart';
 import '../widgets/messages/recipient_selector_sheet.dart';
 import '../widgets/messages/message_bubble.dart';
 import '../services/message_destination_preferences.dart';
+import '../services/voice_recorder_service.dart';
+import '../services/voice_codec_service.dart';
 import '../utils/toast_logger.dart';
 import '../utils/key_comparison.dart';
+import '../utils/voice_message_parser.dart';
 import '../l10n/app_localizations.dart';
 
 class MessagesTab extends StatefulWidget {
@@ -41,6 +48,17 @@ class _MessagesTabState extends State<MessagesTab> {
   String _destinationType =
       MessageDestinationPreferences.destinationTypeChannel;
   Contact? _selectedRecipient;
+
+  // Voice recording state
+  final VoiceRecorderService _voiceRecorder = VoiceRecorderService();
+  bool _isRecording = false;
+  bool _isSendingVoice = false;
+  static const int _maxVoicePackets = 10;
+  bool get _voiceSupported => Platform.isIOS || Platform.isMacOS;
+  StreamSubscription<Int16List>? _voiceStreamSub;
+  String? _currentVoiceSessionId;
+  final List<Int16List> _recordedChunks = [];
+  VoicePacketMode? _activeVoiceMode;
 
   @override
   void initState() {
@@ -68,6 +86,8 @@ class _MessagesTabState extends State<MessagesTab> {
   @override
   void dispose() {
     _highlightTimer?.cancel();
+    _voiceStreamSub?.cancel();
+    _voiceRecorder.dispose();
     _textController.dispose();
     _focusNode.dispose();
     _scrollController.dispose();
@@ -231,7 +251,8 @@ class _MessagesTabState extends State<MessagesTab> {
   /// Get tooltip for destination button
   String _getDestinationTooltip() {
     if (_destinationType ==
-        MessageDestinationPreferences.destinationTypeChannel && _selectedRecipient != null) {
+            MessageDestinationPreferences.destinationTypeChannel &&
+        _selectedRecipient != null) {
       final channelName = _selectedRecipient!.getLocalizedDisplayName(context);
       return '$channelName (tap to change)';
     } else if (_selectedRecipient != null) {
@@ -260,8 +281,15 @@ class _MessagesTabState extends State<MessagesTab> {
       if (_destinationType ==
           MessageDestinationPreferences.destinationTypeChannel) {
         // Send to selected channel (or public channel if none selected)
-        final channelIdx = _selectedRecipient?.publicKey[1] ?? 0; // Extract channel index from pseudo public key
-        await _sendToChannel(text, connectionProvider, messagesProvider, channelIdx);
+        final channelIdx =
+            _selectedRecipient?.publicKey[1] ??
+            0; // Extract channel index from pseudo public key
+        await _sendToChannel(
+          text,
+          connectionProvider,
+          messagesProvider,
+          channelIdx,
+        );
       } else if (_selectedRecipient != null) {
         // Send to contact or room
         await _sendToRecipient(
@@ -376,6 +404,218 @@ class _MessagesTabState extends State<MessagesTab> {
     }
   }
 
+  // ── Voice recording ────────────────────────────────────────────────────────
+
+  Future<void> _startVoiceRecording() async {
+    if (_isSendingVoice || _isRecording) return;
+    debugPrint('🎙️ [Voice] _startVoiceRecording called');
+    final hasPermission = await _voiceRecorder.requestPermission();
+    debugPrint('🎙️ [Voice] hasPermission=$hasPermission');
+    if (!hasPermission) {
+      if (!mounted) return;
+      ToastLogger.error(context, 'Microphone permission required for voice');
+      return;
+    }
+
+    if (!mounted) return;
+    final connectionProvider = context.read<ConnectionProvider>();
+    debugPrint(
+      '🎙️ [Voice] isConnected=${connectionProvider.deviceInfo.isConnected}',
+    );
+    if (!connectionProvider.deviceInfo.isConnected) {
+      ToastLogger.error(context, 'Not connected to device');
+      return;
+    }
+
+    // Generate a new session ID (4 random bytes → 8 hex chars)
+    final rng = math.Random.secure();
+    _currentVoiceSessionId = List.generate(
+      4,
+      (_) => rng.nextInt(256),
+    ).map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+
+    final radioBwKhz = connectionProvider.deviceInfo.radioBw ?? 125;
+    _activeVoiceMode = voiceModeForBandwidth(radioBwKhz * 1000);
+    final packetDuration = Duration(
+      milliseconds: codec2ModeFor(_activeVoiceMode!).packetDurationMs,
+    );
+
+    debugPrint(
+      '🎙️ [Voice] session=$_currentVoiceSessionId mode=$_activeVoiceMode chunkDuration=${packetDuration.inMilliseconds}ms',
+    );
+
+    _recordedChunks.clear();
+    setState(() => _isRecording = true);
+
+    try {
+      final stream = _voiceRecorder.startCapture(chunkDuration: packetDuration);
+      debugPrint('🎙️ [Voice] capture started, listening for chunks...');
+      _voiceStreamSub = stream.listen(
+        (pcmChunk) {
+          if (!_isRecording) return;
+          _recordedChunks.add(pcmChunk);
+          debugPrint(
+            '🎙️ [Voice] chunk #${_recordedChunks.length} received: ${pcmChunk.length} samples',
+          );
+          setState(() {});
+          if (_recordedChunks.length >= _maxVoicePackets) {
+            debugPrint('🎙️ [Voice] max packets reached, stopping');
+            _stopAndSendVoice();
+          }
+        },
+        onError: (e) {
+          debugPrint('❌ [Voice] stream error: $e');
+          _stopAndSendVoice();
+        },
+        onDone: () => debugPrint('🎙️ [Voice] stream done'),
+      );
+    } catch (e) {
+      debugPrint('❌ [Voice] startCapture threw: $e');
+      if (mounted) setState(() => _isRecording = false);
+    }
+  }
+
+  Future<void> _stopAndSendVoice() async {
+    if (!_isRecording) return;
+    debugPrint(
+      '🎙️ [Voice] _stopAndSendVoice: ${_recordedChunks.length} chunks buffered',
+    );
+
+    await _voiceStreamSub?.cancel();
+    _voiceStreamSub = null;
+    await _voiceRecorder.stopCapture();
+
+    final chunks = List<Int16List>.from(_recordedChunks);
+    final sessionId = _currentVoiceSessionId;
+    final mode = _activeVoiceMode;
+    _recordedChunks.clear();
+
+    if (mounted) {
+      setState(() {
+        _isRecording = false;
+        _isSendingVoice = chunks.isNotEmpty && sessionId != null;
+      });
+    }
+
+    if (chunks.isEmpty || sessionId == null || mode == null || !mounted) {
+      if (mounted) setState(() { _isSendingVoice = false; _currentVoiceSessionId = null; });
+      return;
+    }
+
+    try {
+      await _encodeAndSendAllPackets(
+        chunks: chunks,
+        sessionId: sessionId,
+        mode: mode,
+      );
+    } catch (e, st) {
+      debugPrint('❌ [Voice] _encodeAndSendAllPackets threw: $e\n$st');
+    } finally {
+      debugPrint('🎙️ [Voice] _stopAndSendVoice finally: resetting _isSendingVoice');
+      if (mounted) {
+        setState(() {
+          _isSendingVoice = false;
+          _currentVoiceSessionId = null;
+        });
+      }
+    }
+  }
+
+  Future<void> _encodeAndSendAllPackets({
+    required List<Int16List> chunks,
+    required String sessionId,
+    required VoicePacketMode mode,
+  }) async {
+    final total = chunks.length;
+    final codec = VoiceCodecService();
+    final connectionProvider = context.read<ConnectionProvider>();
+    final messagesProvider = context.read<MessagesProvider>();
+    final voiceProvider = context.read<VoiceProvider>();
+
+    // Insert the chat placeholder before sending (so it appears immediately)
+    final msgId = 'voice_${sessionId}_sent';
+    final devicePublicKey = connectionProvider.deviceInfo.publicKey;
+    final senderPublicKeyPrefix = devicePublicKey?.sublist(0, 6);
+    final isChannel =
+        _destinationType ==
+        MessageDestinationPreferences.destinationTypeChannel;
+    final sentMsg = Message(
+      id: msgId,
+      messageType: (!isChannel && _selectedRecipient != null)
+          ? MessageType.contact
+          : MessageType.channel,
+      senderPublicKeyPrefix: senderPublicKeyPrefix,
+      pathLen: 0,
+      textType: MessageTextType.plain,
+      senderTimestamp: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      text: '',
+      receivedAt: DateTime.now(),
+      deliveryStatus: MessageDeliveryStatus.sent,
+      isVoice: true,
+      voiceId: sessionId,
+      channelIdx: isChannel ? (_selectedRecipient?.publicKey[1] ?? 0) : null,
+      recipientPublicKey: _selectedRecipient?.publicKey,
+    );
+    messagesProvider.addSentMessage(sentMsg);
+
+    debugPrint(
+      '🎙️ [Voice] encoding+sending $total packets, mode=${mode.label}, session=$sessionId',
+    );
+    for (var i = 0; i < total; i++) {
+      if (!mounted) return;
+      try {
+        final codec2Data = await codec.encode(chunks[i], mode);
+        debugPrint(
+          '🎙️ [Voice] packet $i/$total encoded: ${codec2Data.length} bytes',
+        );
+        final packet = VoicePacket(
+          sessionId: sessionId,
+          mode: mode,
+          index: i,
+          total: total,
+          codec2Data: codec2Data,
+        );
+
+        voiceProvider.addPacket(packet);
+
+        if (!isChannel &&
+            _selectedRecipient != null &&
+            _selectedRecipient!.outPathLen >= 0) {
+          debugPrint(
+            '🎙️ [Voice] packet $i → binary (raw data), pathLen=${_selectedRecipient!.outPathLen}',
+          );
+          await connectionProvider.sendRawVoicePacket(
+            contactPath: _selectedRecipient!.outPath,
+            contactPathLen: _selectedRecipient!.outPathLen,
+            payload: packet.encodeBinary(),
+          );
+        } else {
+          final channelIdx = isChannel
+              ? (_selectedRecipient?.publicKey[1] ?? 0)
+              : 0;
+          final text = packet.encodeText();
+          debugPrint(
+            '🎙️ [Voice] packet $i → text ch=$channelIdx len=${text.length}: $text',
+          );
+          await connectionProvider.sendChannelMessage(
+            channelIdx: channelIdx,
+            text: text,
+          );
+        }
+        debugPrint('🎙️ [Voice] packet $i sent ok');
+      } catch (e, st) {
+        debugPrint('❌ [Voice] packet $i send error: $e\n$st');
+      }
+    }
+    debugPrint('🎙️ [Voice] all packets sent for session $sessionId');
+    // Mark the placeholder message as "sent" (ackTag=0, timeout=0 = no ACK tracking).
+    // addSentMessage() forces deliveryStatus.sending; we upgrade it here so the
+    // bubble shows "Sent" instead of "Sending" once all packets are on the wire.
+    messagesProvider.markMessageSent(msgId, 0, 0);
+  }
+
+  // ── SAR dialog ─────────────────────────────────────────────────────────────
+
   void _showSarDialog() {
     showModalBottomSheet(
       context: context,
@@ -406,6 +646,45 @@ class _MessagesTabState extends State<MessagesTab> {
     );
   }
 
+  void _showComposerActions() {
+    showModalBottomSheet(
+      context: context,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.add_location_alt),
+                title: Text(AppLocalizations.of(context)!.sendSarMarker),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _showSarDialog();
+                },
+              ),
+              if (_voiceSupported)
+                ListTile(
+                  enabled: !_isSendingVoice,
+                  leading: Icon(_isRecording ? Icons.stop : Icons.mic),
+                  title: Text(_isRecording ? 'Stop recording' : 'Record voice'),
+                  onTap: _isSendingVoice
+                      ? null
+                      : () {
+                          Navigator.pop(sheetContext);
+                          if (_isRecording) {
+                            _stopAndSendVoice();
+                          } else {
+                            _startVoiceRecording();
+                          }
+                        },
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _sendSarMessage(
     String emoji,
     String name,
@@ -426,7 +705,10 @@ class _MessagesTabState extends State<MessagesTab> {
 
     if (!sendToChannel && !sendToAllContacts && roomPublicKey == null) {
       if (!mounted) return;
-      ToastLogger.error(context, 'Please select a destination to send SAR marker');
+      ToastLogger.error(
+        context,
+        'Please select a destination to send SAR marker',
+      );
       return;
     }
 
@@ -443,7 +725,10 @@ class _MessagesTabState extends State<MessagesTab> {
 
         if (chatContacts.isEmpty) {
           if (!mounted) return;
-          ToastLogger.error(context, AppLocalizations.of(context)!.noContactsAvailable);
+          ToastLogger.error(
+            context,
+            AppLocalizations.of(context)!.noContactsAvailable,
+          );
           return;
         }
 
@@ -788,9 +1073,12 @@ class _MessagesTabState extends State<MessagesTab> {
                                     widget.onNavigateToMap?.call();
                                   }
                                 : widget.onNavigateToMap != null &&
-                                    message.isDrawing && message.drawingId != null
+                                      message.isDrawing &&
+                                      message.drawingId != null
                                 ? () {
-                                    debugPrint('🗺️ [MessagesTab] Drawing tapped! ID: ${message.drawingId}');
+                                    debugPrint(
+                                      '🗺️ [MessagesTab] Drawing tapped! ID: ${message.drawingId}',
+                                    );
                                     final mapProvider = context
                                         .read<MapProvider>();
                                     final drawingProvider = context
@@ -823,18 +1111,20 @@ class _MessagesTabState extends State<MessagesTab> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  // SAR quick action button
+                  // Quick actions (+) button
                   IconButton(
-                    icon: const Icon(Icons.add_location_alt),
-                    tooltip: AppLocalizations.of(context)!.sendSarMarker,
-                    onPressed: _showSarDialog,
+                    icon: Icon(_isRecording ? Icons.stop : Icons.add),
+                    tooltip: _isRecording ? 'Stop recording' : 'More actions',
+                    onPressed: _isRecording
+                        ? _stopAndSendVoice
+                        : _showComposerActions,
                     style: IconButton.styleFrom(
                       backgroundColor: Theme.of(
                         context,
                       ).colorScheme.primaryContainer,
-                      foregroundColor: Theme.of(
-                        context,
-                      ).colorScheme.onPrimaryContainer,
+                      foregroundColor: _isRecording
+                          ? Colors.red
+                          : Theme.of(context).colorScheme.onPrimaryContainer,
                     ),
                   ),
                   const SizedBox(width: 4),
@@ -890,18 +1180,52 @@ class _MessagesTabState extends State<MessagesTab> {
                               ? Colors.orange
                               : Theme.of(context).textTheme.bodySmall?.color,
                         ),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            Icons.send_rounded,
-                            size: 22,
-                            color: _textController.text.trim().isEmpty
-                                ? Theme.of(context).disabledColor
-                                : Theme.of(context).colorScheme.primary,
+                        suffixIcon: GestureDetector(
+                          onLongPressStart: (_voiceSupported && !_isSendingVoice)
+                              ? (_) => _startVoiceRecording()
+                              : null,
+                          onLongPressEnd: (_voiceSupported && _isRecording)
+                              ? (_) => _stopAndSendVoice()
+                              : null,
+                          onLongPressCancel: (_voiceSupported && _isRecording)
+                              ? () => _stopAndSendVoice()
+                              : null,
+                          child: IconButton(
+                            icon: _isSendingVoice
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : Icon(
+                                    _isRecording
+                                        ? Icons.mic
+                                        : Icons.send_rounded,
+                                    size: 22,
+                                    color: _isRecording
+                                        ? Colors.red
+                                        : (_textController.text.trim().isEmpty
+                                              ? Theme.of(context).disabledColor
+                                              : Theme.of(
+                                                  context,
+                                                ).colorScheme.primary),
+                                  ),
+                            onPressed:
+                                _isRecording ||
+                                    _isSendingVoice ||
+                                    _textController.text.trim().isEmpty
+                                ? null
+                                : _sendMessage,
+                            tooltip: _isRecording
+                                ? 'Recording... release to send voice'
+                                : (_isSendingVoice
+                                      ? 'Sending voice...'
+                                      : _voiceSupported
+                                          ? 'Send (long press to record voice)'
+                                          : 'Send'),
                           ),
-                          onPressed: _textController.text.trim().isEmpty
-                              ? null
-                              : _sendMessage,
-                          tooltip: 'Send',
                         ),
                       ),
                       textInputAction: TextInputAction.send,
@@ -917,4 +1241,3 @@ class _MessagesTabState extends State<MessagesTab> {
     );
   }
 }
-
