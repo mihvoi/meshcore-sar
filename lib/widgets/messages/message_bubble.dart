@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:provider/provider.dart';
+import '../../models/contact.dart';
 import '../../models/message.dart';
 import '../../models/sar_marker.dart';
 import '../../models/sar_template.dart';
@@ -30,6 +31,7 @@ class MessageBubble extends StatefulWidget {
   final VoidCallback? onTap;
   final bool isHighlighted;
   final VoidCallback? onNavigateToMap;
+
   /// Compact mode for fullscreen map overlay (simplified styling)
   final bool isCompact;
 
@@ -147,7 +149,8 @@ class _MessageBubbleState extends State<MessageBubble> {
     final connectionProvider = context.read<ConnectionProvider>();
     final selfPublicKey = connectionProvider.deviceInfo.publicKey;
     final isOwnMessage =
-        widget.message.isSentMessage || widget.message.isFromSelf(selfPublicKey);
+        widget.message.isSentMessage ||
+        widget.message.isFromSelf(selfPublicKey);
 
     // Check if we can reply to this message (must be contact message from someone else)
     final canReply =
@@ -201,8 +204,9 @@ class _MessageBubbleState extends State<MessageBubble> {
 
                   // Check if template with this emoji already exists
                   final sarTemplateService = SarTemplateService();
-                  final templateExists = sarTemplateService.templates
-                      .any((t) => t.emoji == sarInfo.emoji);
+                  final templateExists = sarTemplateService.templates.any(
+                    (t) => t.emoji == sarInfo.emoji,
+                  );
 
                   if (templateExists) {
                     return const SizedBox.shrink();
@@ -219,7 +223,8 @@ class _MessageBubbleState extends State<MessageBubble> {
                 },
               ),
             // Share location option (only for SAR markers with GPS coordinates)
-            if (widget.message.isSarMarker && widget.message.sarGpsCoordinates != null)
+            if (widget.message.isSarMarker &&
+                widget.message.sarGpsCoordinates != null)
               ListTile(
                 leading: const Icon(Icons.share_location),
                 title: Text(AppLocalizations.of(context)!.shareLocation),
@@ -310,9 +315,7 @@ class _MessageBubbleState extends State<MessageBubble> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => DirectMessageSheet(
-        contact: senderContact,
-      ),
+      builder: (context) => DirectMessageSheet(contact: senderContact),
     );
   }
 
@@ -334,7 +337,8 @@ class _MessageBubbleState extends State<MessageBubble> {
               messagesProvider.deleteMessage(widget.message.id);
 
               // Also delete the drawing if this is a drawing message
-              if (widget.message.isDrawing && widget.message.drawingId != null) {
+              if (widget.message.isDrawing &&
+                  widget.message.drawingId != null) {
                 final drawingProvider = context.read<DrawingProvider>();
                 drawingProvider.removeDrawing(widget.message.drawingId!);
               }
@@ -362,12 +366,14 @@ class _MessageBubbleState extends State<MessageBubble> {
     String markerInfo = '';
     if (widget.message.sarMarkerType != null) {
       markerInfo = widget.message.sarMarkerType!.emoji;
-      if (widget.message.sarNotes != null && widget.message.sarNotes!.isNotEmpty) {
+      if (widget.message.sarNotes != null &&
+          widget.message.sarNotes!.isNotEmpty) {
         markerInfo += ' ${widget.message.sarNotes}';
       }
     } else if (widget.message.sarCustomEmoji != null) {
       markerInfo = widget.message.sarCustomEmoji!;
-      if (widget.message.sarNotes != null && widget.message.sarNotes!.isNotEmpty) {
+      if (widget.message.sarNotes != null &&
+          widget.message.sarNotes!.isNotEmpty) {
         markerInfo += ' ${widget.message.sarNotes}';
       }
     }
@@ -421,10 +427,7 @@ class _MessageBubbleState extends State<MessageBubble> {
       await sarTemplateService.addTemplate(template);
 
       if (!context.mounted) return;
-      ToastLogger.success(
-        context,
-        AppLocalizations.of(context)!.templateSaved,
-      );
+      ToastLogger.success(context, AppLocalizations.of(context)!.templateSaved);
     } catch (e) {
       debugPrint('Error saving template: $e');
       if (!context.mounted) return;
@@ -453,12 +456,16 @@ class _MessageBubbleState extends State<MessageBubble> {
     if (drawing is LineDrawing) {
       coordinatesText = drawing.points
           .map(
-            (p) => '${p.latitude.toStringAsFixed(5)}, ${p.longitude.toStringAsFixed(5)}',
+            (p) =>
+                '${p.latitude.toStringAsFixed(5)}, ${p.longitude.toStringAsFixed(5)}',
           )
           .join('\n');
     } else if (drawing is RectangleDrawing) {
       coordinatesText = drawing.corners
-          .map((p) => '${p.latitude.toStringAsFixed(5)}, ${p.longitude.toStringAsFixed(5)}')
+          .map(
+            (p) =>
+                '${p.latitude.toStringAsFixed(5)}, ${p.longitude.toStringAsFixed(5)}',
+          )
           .join('\n');
     } else {
       ToastLogger.error(context, 'Unknown drawing type');
@@ -479,12 +486,12 @@ class _MessageBubbleState extends State<MessageBubble> {
     final messagesProvider = context.read<MessagesProvider>();
 
     // Remove the drawing from map and delete the message
-    drawingProvider.removeDrawingAndMessage(widget.message.drawingId!, messagesProvider);
-
-    ToastLogger.success(
-      context,
-      'Drawing removed from map',
+    drawingProvider.removeDrawingAndMessage(
+      widget.message.drawingId!,
+      messagesProvider,
     );
+
+    ToastLogger.success(context, 'Drawing removed from map');
   }
 
   Color _getMessageBubbleColor(
@@ -495,8 +502,12 @@ class _MessageBubbleState extends State<MessageBubble> {
     if (isOwnMessage) {
       // Own messages: slightly highlighted with primary color tint
       return isDarkMode
-          ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3)
-          : Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.15);
+          ? Theme.of(
+              context,
+            ).colorScheme.primaryContainer.withValues(alpha: 0.3)
+          : Theme.of(
+              context,
+            ).colorScheme.primaryContainer.withValues(alpha: 0.15);
     } else {
       // Others' messages: default surface color
       return Theme.of(context).colorScheme.surfaceContainerHighest;
@@ -624,7 +635,7 @@ class _MessageBubbleState extends State<MessageBubble> {
         ? AppLocalizations.of(context)!.you
         : message.getRichDisplayName(senderContact);
 
-    // For sent direct messages, look up recipient contact
+    // For sent direct/channel messages, look up destination display label
     dynamic recipientContact;
     String? recipientDisplayName;
     if (isOwnMessage &&
@@ -654,6 +665,17 @@ class _MessageBubbleState extends State<MessageBubble> {
               recipientContact.displayName ?? recipientContact.advName;
         }
       }
+    } else if (isOwnMessage && message.isChannelMessage) {
+      if (message.channelIdx == 0) {
+        recipientDisplayName = AppLocalizations.of(context)!.publicChannel;
+      } else {
+        final channelContact = contactsProvider.channels.where((c) {
+          return c.publicKey.length > 1 && c.publicKey[1] == message.channelIdx;
+        }).firstOrNull;
+        recipientDisplayName =
+            channelContact?.getLocalizedDisplayName(context) ??
+            '${AppLocalizations.of(context)!.channel} ${message.channelIdx}';
+      }
     }
 
     return GestureDetector(
@@ -669,8 +691,12 @@ class _MessageBubbleState extends State<MessageBubble> {
               ? _getSarMarkerColor(context, isDarkMode)
               : message.isDrawing
               ? (isDarkMode
-                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)
-                  : Theme.of(context).colorScheme.primary.withValues(alpha: 0.08))
+                    ? Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.15)
+                    : Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.08))
               : _getMessageBubbleColor(context, isOwnMessage, isDarkMode),
           borderRadius: BorderRadius.circular(12),
           border: widget.isHighlighted
@@ -685,12 +711,16 @@ class _MessageBubbleState extends State<MessageBubble> {
                 )
               : message.isDrawing
               ? Border.all(
-                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.4),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.4),
                   width: 2,
                 )
               : isOwnMessage
               ? Border.all(
-                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.3),
                   width: 1.5,
                 )
               : !message.isRead &&
@@ -701,7 +731,9 @@ class _MessageBubbleState extends State<MessageBubble> {
           boxShadow: widget.isHighlighted
               ? [
                   BoxShadow(
-                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: 0.5),
                     blurRadius: 12,
                     spreadRadius: 2,
                     offset: const Offset(0, 2),
@@ -710,10 +742,11 @@ class _MessageBubbleState extends State<MessageBubble> {
               : isSarMarker || message.isDrawing
               ? [
                   BoxShadow(
-                    color: (isSarMarker
-                        ? _getSarMarkerBorderColor(context, isDarkMode)
-                        : Theme.of(context).colorScheme.primary
-                    ).withValues(alpha: 0.3),
+                    color:
+                        (isSarMarker
+                                ? _getSarMarkerBorderColor(context, isDarkMode)
+                                : Theme.of(context).colorScheme.primary)
+                            .withValues(alpha: 0.3),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -771,11 +804,7 @@ class _MessageBubbleState extends State<MessageBubble> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(
-                            Icons.draw,
-                            size: 16,
-                            color: Colors.white,
-                          ),
+                          const Icon(Icons.draw, size: 16, color: Colors.white),
                           const SizedBox(width: 4),
                           Text(
                             AppLocalizations.of(context)!.mapDrawing,
@@ -843,23 +872,26 @@ class _MessageBubbleState extends State<MessageBubble> {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                // Show recipient for sent direct messages
+                // Show destination for sent direct/channel messages
                 if (isOwnMessage &&
-                    message.isContactMessage &&
                     recipientDisplayName != null &&
                     !widget.isCompact) ...[
                   const SizedBox(width: 4),
                   Icon(
                     Icons.arrow_forward,
                     size: 14,
-                    color: Theme.of(context).textTheme.labelSmall?.color?.withValues(alpha: 0.6),
+                    color: Theme.of(
+                      context,
+                    ).textTheme.labelSmall?.color?.withValues(alpha: 0.6),
                   ),
                   const SizedBox(width: 4),
                   Flexible(
                     child: Text(
                       recipientDisplayName,
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: Theme.of(context).textTheme.labelSmall?.color?.withValues(alpha: 0.7),
+                        color: Theme.of(
+                          context,
+                        ).textTheme.labelSmall?.color?.withValues(alpha: 0.7),
                         fontStyle: FontStyle.italic,
                       ),
                       maxLines: 1,
@@ -875,13 +907,17 @@ class _MessageBubbleState extends State<MessageBubble> {
                     Icon(
                       Icons.alt_route,
                       size: 11,
-                      color: Theme.of(context).textTheme.labelSmall?.color?.withValues(alpha: 0.6),
+                      color: Theme.of(
+                        context,
+                      ).textTheme.labelSmall?.color?.withValues(alpha: 0.6),
                     ),
                     const SizedBox(width: 2),
                     Text(
                       message.pathLen == 0 ? 'direct' : '${message.pathLen}hop',
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: Theme.of(context).textTheme.labelSmall?.color?.withValues(alpha: 0.6),
+                        color: Theme.of(
+                          context,
+                        ).textTheme.labelSmall?.color?.withValues(alpha: 0.6),
                       ),
                     ),
                     const SizedBox(width: 4),
@@ -931,18 +967,23 @@ class _MessageBubbleState extends State<MessageBubble> {
                     const SizedBox(height: 6),
                     Text(
                       '${message.sarGpsCoordinates!.latitude.toStringAsFixed(5)}, ${message.sarGpsCoordinates!.longitude.toStringAsFixed(5)}',
-                      style: Theme.of(context).textTheme.labelMedium
-                          ?.copyWith(fontFamily: 'monospace'),
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        fontFamily: 'monospace',
+                      ),
                     ),
                   ],
                 ],
               ),
             ]
             // Drawing message content (skip in compact mode - drawings hidden)
-            else if (message.isDrawing && message.drawingId != null && !widget.isCompact)
+            else if (message.isDrawing &&
+                message.drawingId != null &&
+                !widget.isCompact)
               Consumer<DrawingProvider>(
                 builder: (context, drawingProvider, child) {
-                  final drawing = drawingProvider.getDrawingById(message.drawingId!);
+                  final drawing = drawingProvider.getDrawingById(
+                    message.drawingId!,
+                  );
 
                   if (drawing == null) {
                     return Text(
@@ -953,9 +994,13 @@ class _MessageBubbleState extends State<MessageBubble> {
 
                   final String drawingTypeLabel;
                   if (drawing is LineDrawing) {
-                    drawingTypeLabel = AppLocalizations.of(context)!.lineDrawing;
+                    drawingTypeLabel = AppLocalizations.of(
+                      context,
+                    )!.lineDrawing;
                   } else if (drawing is RectangleDrawing) {
-                    drawingTypeLabel = AppLocalizations.of(context)!.rectangleDrawing;
+                    drawingTypeLabel = AppLocalizations.of(
+                      context,
+                    )!.rectangleDrawing;
                   } else {
                     drawingTypeLabel = AppLocalizations.of(context)!.drawing;
                   }
@@ -1021,9 +1066,15 @@ class _MessageBubbleState extends State<MessageBubble> {
               Builder(
                 builder: (context) {
                   if (message.isGroupedMessage) {
-                    debugPrint('🎯 [MessageBubble] Rendering grouped message: ${message.id}');
-                    debugPrint('  Recipients: ${message.recipients?.length ?? 0}');
-                    debugPrint('  Delivered: ${message.deliveredRecipientsCount}');
+                    debugPrint(
+                      '🎯 [MessageBubble] Rendering grouped message: ${message.id}',
+                    );
+                    debugPrint(
+                      '  Recipients: ${message.recipients?.length ?? 0}',
+                    );
+                    debugPrint(
+                      '  Delivered: ${message.deliveredRecipientsCount}',
+                    );
                     debugPrint('  Failed: ${message.failedRecipientsCount}');
                   }
                   return const SizedBox.shrink();
@@ -1040,40 +1091,51 @@ class _MessageBubbleState extends State<MessageBubble> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            message.deliveredRecipientsCount == message.recipients!.length
+                            message.deliveredRecipientsCount ==
+                                    message.recipients!.length
                                 ? Icons.done_all
                                 : message.failedRecipientsCount > 0
-                                    ? Icons.error_outline
-                                    : Icons.schedule,
+                                ? Icons.error_outline
+                                : Icons.schedule,
                             size: 12,
-                            color: message.deliveredRecipientsCount == message.recipients!.length
+                            color:
+                                message.deliveredRecipientsCount ==
+                                    message.recipients!.length
                                 ? Colors.green
                                 : message.failedRecipientsCount > 0
-                                    ? Colors.red
-                                    : Colors.orange,
+                                ? Colors.red
+                                : Colors.orange,
                           ),
                           const SizedBox(width: 3),
                           Text(
-                            message.deliveredRecipientsCount == message.recipients!.length
+                            message.deliveredRecipientsCount ==
+                                    message.recipients!.length
                                 ? AppLocalizations.of(context)!.allDelivered
-                                : AppLocalizations.of(context)!.deliveredToContacts(
+                                : AppLocalizations.of(
+                                    context,
+                                  )!.deliveredToContacts(
                                     message.deliveredRecipientsCount,
                                     message.recipients!.length,
                                   ),
-                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: message.deliveredRecipientsCount == message.recipients!.length
-                                  ? Colors.green
-                                  : message.failedRecipientsCount > 0
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  color:
+                                      message.deliveredRecipientsCount ==
+                                          message.recipients!.length
+                                      ? Colors.green
+                                      : message.failedRecipientsCount > 0
                                       ? Colors.red
                                       : Colors.orange,
-                              fontStyle: FontStyle.italic,
-                            ),
+                                  fontStyle: FontStyle.italic,
+                                ),
                           ),
                           const SizedBox(width: 4),
                           Icon(
                             _isExpanded ? Icons.expand_less : Icons.expand_more,
                             size: 14,
-                            color: Theme.of(context).textTheme.labelSmall?.color,
+                            color: Theme.of(
+                              context,
+                            ).textTheme.labelSmall?.color,
                           ),
                         ],
                       ),
@@ -1083,7 +1145,10 @@ class _MessageBubbleState extends State<MessageBubble> {
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                            color: Theme.of(context)
+                                .colorScheme
+                                .surfaceContainerHighest
+                                .withValues(alpha: 0.5),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Column(
@@ -1091,9 +1156,8 @@ class _MessageBubbleState extends State<MessageBubble> {
                             children: [
                               Text(
                                 AppLocalizations.of(context)!.recipientDetails,
-                                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                style: Theme.of(context).textTheme.labelSmall
+                                    ?.copyWith(fontWeight: FontWeight.bold),
                               ),
                               const SizedBox(height: 4),
                               ...message.recipients!.map((recipient) {
@@ -1105,42 +1169,58 @@ class _MessageBubbleState extends State<MessageBubble> {
                                   case MessageDeliveryStatus.delivered:
                                     statusColor = Colors.green;
                                     statusIcon = Icons.check_circle;
-                                    statusText = recipient.roundTripTimeMs != null
+                                    statusText =
+                                        recipient.roundTripTimeMs != null
                                         ? '${recipient.roundTripTimeMs}ms'
-                                        : AppLocalizations.of(context)!.delivered;
+                                        : AppLocalizations.of(
+                                            context,
+                                          )!.delivered;
                                     break;
                                   case MessageDeliveryStatus.failed:
                                     statusColor = Colors.red;
                                     statusIcon = Icons.cancel;
-                                    statusText = AppLocalizations.of(context)!.failed;
+                                    statusText = AppLocalizations.of(
+                                      context,
+                                    )!.failed;
                                     break;
                                   case MessageDeliveryStatus.sending:
                                   case MessageDeliveryStatus.sent:
                                   default:
                                     statusColor = Colors.orange;
                                     statusIcon = Icons.schedule;
-                                    statusText = AppLocalizations.of(context)!.pending;
+                                    statusText = AppLocalizations.of(
+                                      context,
+                                    )!.pending;
                                 }
 
                                 return Padding(
                                   padding: const EdgeInsets.only(top: 4),
                                   child: Row(
                                     children: [
-                                      Icon(statusIcon, size: 14, color: statusColor),
+                                      Icon(
+                                        statusIcon,
+                                        size: 14,
+                                        color: statusColor,
+                                      ),
                                       const SizedBox(width: 6),
                                       Expanded(
                                         child: Text(
                                           recipient.displayName,
-                                          style: Theme.of(context).textTheme.labelSmall,
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.labelSmall,
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
                                       Text(
                                         statusText,
-                                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                          color: statusColor,
-                                          fontWeight: FontWeight.w500,
-                                        ),
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelSmall
+                                            ?.copyWith(
+                                              color: statusColor,
+                                              fontWeight: FontWeight.w500,
+                                            ),
                                       ),
                                     ],
                                   ),
@@ -1276,7 +1356,9 @@ class SystemMessageBubble extends StatelessWidget {
           Text(
             message.getLocalizedTimeAgo(context),
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.6),
+              color: Theme.of(
+                context,
+              ).textTheme.bodySmall?.color?.withValues(alpha: 0.6),
               fontSize: 10,
             ),
           ),
@@ -1286,7 +1368,9 @@ class SystemMessageBubble extends StatelessWidget {
               message.text,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 fontSize: 11,
-                color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.8),
+                color: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.color?.withValues(alpha: 0.8),
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,

@@ -583,6 +583,8 @@ class ContactTile extends StatelessWidget {
   }
 
   void _showContactDetails(BuildContext context, Contact contact) {
+    final l10n = AppLocalizations.of(context)!;
+
     // Get room login state
     final connectionProvider = context.read<ConnectionProvider>();
     final roomLoginState = contact.type == ContactType.room
@@ -650,54 +652,62 @@ class ContactTile extends StatelessWidget {
                 controller: scrollController,
                 padding: const EdgeInsets.all(16),
                 children: [
-                  _detailRow(
-                    AppLocalizations.of(context)!.type,
-                    contact.type.displayName,
-                  ),
-                  // Public Key with copy button
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        SizedBox(
-                          width: 100,
-                          child: Text(
-                            '${AppLocalizations.of(context)!.publicKey}:',
-                            style: const TextStyle(fontWeight: FontWeight.w500),
-                          ),
-                        ),
-                        Expanded(child: Text(contact.publicKeyShort)),
-                        const SizedBox(width: 8),
-                        InkWell(
-                          onTap: () {
-                            Clipboard.setData(
-                              ClipboardData(text: contact.publicKeyHex),
-                            );
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  AppLocalizations.of(context)!.publicKeyCopied,
-                                ),
-                                duration: const Duration(seconds: 2),
+                  _detailRow(l10n.type, contact.type.displayName),
+                  if (contact.isChannel) ...[
+                    _detailRow(
+                      l10n.channel,
+                      contact.getLocalizedDisplayName(context),
+                    ),
+                    if (!contact.isPublicChannel)
+                      _detailRow(
+                        'Slot',
+                        '${l10n.channel} ${contact.publicKey.length > 1 ? contact.publicKey[1] : '-'}',
+                      ),
+                  ] else
+                    // Public Key with copy button
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: 100,
+                            child: Text(
+                              '${l10n.publicKey}:',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w500,
                               ),
-                            );
-                          },
-                          borderRadius: BorderRadius.circular(4),
-                          child: Padding(
-                            padding: const EdgeInsets.all(4),
-                            child: Icon(
-                              Icons.copy,
-                              size: 16,
-                              color: Theme.of(context).colorScheme.primary,
                             ),
                           ),
-                        ),
-                      ],
+                          Expanded(child: Text(contact.publicKeyShort)),
+                          const SizedBox(width: 8),
+                          InkWell(
+                            onTap: () {
+                              Clipboard.setData(
+                                ClipboardData(text: contact.publicKeyHex),
+                              );
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(l10n.publicKeyCopied),
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(4),
+                            child: Padding(
+                              padding: const EdgeInsets.all(4),
+                              child: Icon(
+                                Icons.copy,
+                                size: 16,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
                   _detailRow(
-                    AppLocalizations.of(context)!.lastSeen,
+                    l10n.lastSeen,
                     _getLocalizedTimeSinceLastSeen(context),
                   ),
                   const SizedBox(height: 16),
@@ -1217,7 +1227,7 @@ class ContactTile extends StatelessWidget {
   /// Show delete channel confirmation dialog
   void _showDeleteChannelDialog(BuildContext context, Contact contact) {
     final l10n = AppLocalizations.of(context)!;
-    
+
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -1231,15 +1241,15 @@ class ContactTile extends StatelessWidget {
           TextButton(
             onPressed: () async {
               Navigator.of(dialogContext).pop();
-              
+
               try {
                 // Extract channel index from pseudo public key
                 // publicKey format: [0xFF, channelIdx, ...]
                 final channelIdx = contact.publicKey[1];
-                
+
                 final connectionProvider = context.read<ConnectionProvider>();
                 await connectionProvider.deleteChannel(channelIdx);
-                
+
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
