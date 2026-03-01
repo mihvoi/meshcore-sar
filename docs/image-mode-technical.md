@@ -22,15 +22,20 @@ pixels are fetched on demand when the user taps the image bubble.
   - `fragmentImage()` — split compressed bytes into packets
   - `reassembleImage()` — join received fragments into bytes
 - `lib/screens/messages_tab.dart`
-  - Pick image, compress to 128×128 grayscale AVIF, cache, send envelope
+  - Pick image from gallery or camera, compress with user settings, cache, send envelope
 - `lib/providers/image_provider.dart`
   - Reassembly sessions, outgoing cache, deferred serving
+  - Outgoing sessions also registered as complete incoming sessions for immediate local display
 - `lib/providers/app_provider.dart`
   - Incoming routing for `IE1`, `IR1`, binary `0x49` packets
 - `lib/widgets/messages/image_message_bubble.dart`
-  - Placeholder with tap-to-load; progress ring during fetch; full image view
+  - Square cover thumbnail (up to 256 px); tap-to-load for received images;
+    progress ring during fetch; full-screen `InteractiveViewer` on tap
 - `lib/services/image_codec_service.dart`
-  - `ImageCodecService.compress()` — `dart:ui` resize + grayscale + AVIF encode
+  - `ImageCodecService.compress()` — aspect-ratio-preserving resize + optional
+    grayscale + AVIF encode via `flutter_avif`
+- `lib/services/image_preferences.dart`
+  - `ImagePreferences` — persists max size, compression level, grayscale toggle
 
 ## 3. Wire Formats
 
@@ -40,17 +45,17 @@ Prefix: `IE1:` + colon-delimited payload
 
 Fields:
 
-| Field       | Type   | Description                              |
-|-------------|--------|------------------------------------------|
-| `sid`       | string | 8 hex chars (4 bytes), session ID        |
-| `fmt`       | int    | `ImageFormat.id` (0 = AVIF, 1 = JPEG)   |
-| `total`     | int    | Fragment count (1..255)                  |
-| `w`         | int    | Image width (pixels)                     |
-| `h`         | int    | Image height (pixels)                    |
-| `bytes`     | int    | Total compressed size in bytes           |
-| `senderKey6`| string | 12 hex chars (6 bytes sender prefix)     |
-| `ts`        | int    | Unix timestamp (seconds)                 |
-| `ver`       | int    | Protocol version (currently `1`)         |
+| Field        | Type   | Description                                    |
+|--------------|--------|------------------------------------------------|
+| `sid`        | string | 8 hex chars (4 bytes), session ID              |
+| `fmt`        | int    | `ImageFormat.id` (0 = AVIF, 1 = JPEG)         |
+| `total`      | int    | Fragment count (1..255)                        |
+| `w`          | int    | Actual image width after compression (pixels)  |
+| `h`          | int    | Actual image height after compression (pixels) |
+| `bytes`      | int    | Total compressed size in bytes                 |
+| `senderKey6` | string | 12 hex chars (6 bytes sender prefix)           |
+| `ts`         | int    | Unix timestamp (seconds)                       |
+| `ver`        | int    | Protocol version (currently `1`)               |
 
 Compact format:
 
@@ -58,11 +63,14 @@ Compact format:
 IE1:{sid}:{fmt}:{total}:{w}:{h}:{bytes}:{senderKey6}:{ts}:{ver}
 ```
 
-Example:
+Example (256×171 landscape image, 14 fragments):
 
 ```text
-IE1:deadbeef:0:7:128:128:1050:aabbccddeeff:1700000000:1
+IE1:deadbeef:0:14:256:171:2100:aabbccddeeff:1700000000:1
 ```
+
+Note: `w` and `h` reflect the actual post-compression dimensions, which preserve
+the source aspect ratio (contain within the configured max size).
 
 ### 3.2 Image Fetch Request (`IR1`)
 
@@ -72,11 +80,11 @@ Same structure as `VR1`:
 IR1:{sid}:{want}:{requesterKey6}:{ts}:{ver}
 ```
 
-| Field          | Value  |
-|----------------|--------|
-| `want`         | `a` (= "all fragments") |
-| `requesterKey6`| 12 hex chars |
-| `ver`          | `1`    |
+| Field            | Value                    |
+|------------------|--------------------------|
+| `want`           | `a` (= "all fragments")  |
+| `requesterKey6`  | 12 hex chars             |
+| `ver`            | `1`                      |
 
 ### 3.3 Raw Image Packet (data plane)
 
@@ -93,49 +101,72 @@ Header is 8 bytes — identical layout to `VoicePacket`.
 
 ## 4. Compression Pipeline
 
-1. Source image (any format) is decoded via `dart:ui.instantiateImageCodec`
-   with `targetWidth: 128, targetHeight: 128`.
-2. RGBA pixels exported via `image.toByteData(format: rawRgba)`.
-3. Converted to grayscale (luminance `0.299R + 0.587G + 0.114B`) in-place.
-4. Encoded to AVIF via `flutter_avif.encodeAvif()` with:
-   - `quality: 60` (CQ scale — lower = better quality)
-   - `speed: 8` (fast encode)
-5. Fragmented at 152 bytes per packet.
+`ImageCodecService.compress(rawBytes, {maxDimension, compression, grayscale})`:
 
-### Expected sizes (128×128 grayscale AVIF)
+1. **Probe** — decode source image at original resolution to read `srcW × srcH`.
+2. **Contain** — compute `dstW × dstH` that fits within `maxDimension × maxDimension`
+   while preserving aspect ratio.  Images smaller than the cap are not upscaled.
+3. **Decode** — `dart:ui.instantiateImageCodec` with `targetWidth: dstW, targetHeight: dstH`.
+4. **RGBA export** — `image.toByteData(format: rawRgba)`.
+5. **Grayscale** *(optional, default on)* — luminance `0.299R + 0.587G + 0.114B`
+   applied in-place; if disabled, colour pixels are passed through unchanged.
+6. **PNG re-encode** — `ui.ImageDescriptor.raw` → `toByteData(format: png)`.
+   Required because `encodeAvif()` takes an encoded image, not raw RGBA.
+7. **AVIF encode** — `flutter_avif.encodeAvif(pngBytes, maxQuantizer, minQuantizer, speed: 8)`.
+   `compression` (10–90) maps to libavif CQ scale:
+   `maxQ = round(compression/100 × 63)`, `minQ = round(maxQ × 0.65)`.
+8. **Fragment** — `fragmentImage()` at 152 bytes/packet (≤255 packets).
 
-| Quality | Approx size | Fragments |
-|---------|-------------|-----------|
-| 40      | 400–800 B   | 3–6       |
-| 60      | 600–1400 B  | 4–10      |
-| 80      | 1000–2500 B | 7–17      |
+Returns `({Uint8List bytes, int width, int height})` with the actual compressed dimensions.
 
-Quality 60 targets 4–9 fragments — comparable to a 10-second voice session.
+### User-configurable settings (`ImagePreferences`)
+
+| Setting      | Key                | Default | Range / Options |
+|--------------|--------------------|---------|-----------------|
+| Max size     | `image_max_size`   | 256     | 64 / 128 / 256  |
+| Compression  | `image_quality`    | 90      | 10–90           |
+| Grayscale    | `image_grayscale`  | true    | true / false    |
+
+### Expected sizes (grayscale AVIF, compression 90)
+
+| Max size | Typical size | Fragments |
+|----------|--------------|-----------|
+| 64×64    | 100–400 B    | 1–3       |
+| 128×128  | 300–900 B    | 2–6       |
+| 256×256  | 700–3000 B   | 5–20      |
+
+Non-square images produce fewer fragments than the square equivalent because
+only the shorter axis is padded — no cropping occurs.
 
 ## 5. Outgoing Flow (Send)
 
 1. User picks image from gallery or camera (`image_picker`).
-2. `ImageCodecService.compress()` produces small grayscale AVIF bytes.
-3. `fragmentImage()` splits bytes into `ImagePacket` list (≤255 fragments).
-4. Fragments cached in `ImageProvider` (TTL 15 min).
-5. `ImageEnvelope` is sent via normal message path:
+2. `ImagePreferences` is read: max size, compression, grayscale.
+3. `ImageCodecService.compress()` returns `(bytes, width, height)`.
+4. `fragmentImage()` splits bytes into `ImagePacket` list (≤255 fragments).
+5. `ImageProvider.cacheOutgoingSession()` stores fragments in both the outgoing
+   cache (for serving to peers) and the incoming session map (so the local bubble
+   renders the image immediately without a fetch round-trip).
+6. `ImageEnvelope` built with actual `width`/`height` from step 3.
+7. Envelope sent via normal message path:
    - Channel: `sendChannelMessage`
    - Direct: `sendTextMessage`
-6. Local placeholder message added with `IE1:` text and `deliveryStatus.sending`.
+8. Local placeholder message added (`IE1:` text, `deliveryStatus.sending`).
 
 ## 6. Incoming Flow (Receive)
 
 ### 6.1 `IE1` envelope received
 
-`AppProvider` calls `imageProvider.registerEnvelope()` and adds the message to chat.  The bubble shows a grey placeholder with a download icon.
+`AppProvider` calls `imageProvider.registerEnvelope()` and adds the message to
+chat.  The bubble shows a grey square placeholder with a download icon.
 
 ### 6.2 `IR1` request received
 
 `AppProvider` treats it as control-plane only (not added to chat):
 
-- Validates requester key prefix matches sender metadata.
+- Validates requester key prefix.
 - Resolves requester contact.
-- Calls `imageProvider.serveSessionTo()` which streams all fragments.
+- Calls `imageProvider.serveSessionTo()` which streams all cached fragments.
 
 ### 6.3 Raw packet received (`pushRawData`, magic `0x49`)
 
@@ -152,14 +183,27 @@ automatically rebuilds with the full image.
 - TTL: 15 minutes
 - eviction: lazy on access
 
+When `cacheOutgoingSession()` is called it also writes all fragments into
+`_sessions[sessionId]`, so the sender sees the image immediately in the bubble
+(no tap-to-load required for own messages).
+
 ## 8. Display
 
-`ImageMessageBubble`:
+`ImageMessageBubble` (max width 256 px):
 
-- **Complete session**: 128×128 `AvifImage.memory()` widget; tap → full-screen `InteractiveViewer`.
-- **Incomplete/missing**: grey placeholder with download icon; tap → sends IR1.
-- **Loading**: circular progress with `received/total` count.
-- **Error**: "Image unavailable right now" text.
+- **Complete session**: `AspectRatio(1.0)` → `AvifImage.memory(fit: cover)`
+  square thumbnail; tap → full-screen `InteractiveViewer` with fade transition.
+- **Incomplete/missing**: grey square placeholder with download icon;
+  tap → sends `IR1` fetch request.
+- **Loading**: circular progress indicator showing `received/total` count.
+- **Error**: broken-image icon.
+
+Status line below thumbnail:
+
+- Sender: `🖼️ {w}×{h} AVIF · {n} seg`
+- Receiver (complete): `🖼️ {w}×{h} AVIF`
+- Receiver (pending): `🖼️ Tap to load · {w}×{h}`
+- Loading: `📥 Loading… {received}/{total}`
 
 ## 9. Persistence
 
@@ -168,15 +212,14 @@ automatically rebuilds with the full image.
 
 - Incoming: fragment list serialized as base64 binary packets.
 - Outgoing: fragment list + envelope text + `cachedAt` timestamp.
-- Expired outgoing sessions (> 15 min) are not restored.
+- Expired outgoing sessions (> 15 min) are not restored on startup.
 
 ## 10. Operational Constraints
 
 - No firmware changes required (reuses `cmdSendRawData` / `pushRawData`).
 - On-demand fetch works only if sender app is online and has cached session.
 - Raw return path requires a valid direct route to requester.
-- Image compression uses `flutter_avif` — the `encodeAvif()` top-level
-  function must be available (verify against installed package version).
+- Available on iOS and Android (`image_picker` + `flutter_avif`).
 
 ## 11. High-Level Sequence
 
@@ -186,14 +229,15 @@ sequenceDiagram
   participant M as Mesh Chat
   participant B as Receiver App
 
-  A->>A: Pick + compress image (128×128 grayscale AVIF)
+  A->>A: Pick image (gallery or camera)
+  A->>A: Compress: contain resize → grayscale → PNG → AVIF
   A->>A: Fragment into ≤152B packets
-  A->>A: Cache fragments (TTL 15m)
-  A->>M: Send IE1 envelope
+  A->>A: Cache outgoing + populate local session (immediate display)
+  A->>M: Send IE1 envelope (actual w×h, fragment count)
   M->>B: Deliver IE1
-  B->>B: Render placeholder bubble
-  B->>A: Send IR1 request on Tap
+  B->>B: Render grey placeholder bubble
+  B->>A: Tap → send IR1 fetch request
   A->>B: Stream binary ImagePackets
   B->>B: Reassemble fragments
-  B->>B: Display AVIF image
+  B->>B: Display AVIF image (cover thumbnail)
 ```

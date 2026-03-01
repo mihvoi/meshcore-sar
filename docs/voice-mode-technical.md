@@ -180,7 +180,7 @@ Parser validation enforces:
 - No firmware changes required.
 - On-demand fetch works only if sender app is online and has cached session.
 - Raw return path needs a currently valid direct route to requester.
-- Voice capture in UI is currently iOS-only (`MessagesTab._voiceSupported`).
+- Voice capture is available on iOS and Android (`Platform.isIOS || Platform.isAndroid`).
 
 ## 11. Backward Compatibility
 
