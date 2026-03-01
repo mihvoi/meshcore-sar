@@ -7,12 +7,14 @@ import 'messages_provider.dart';
 import 'drawing_provider.dart';
 import 'channels_provider.dart';
 import 'voice_provider.dart';
+import 'image_provider.dart' as ip;
 import '../services/tile_cache_service.dart';
 import '../services/location_tracking_service.dart';
 import '../models/contact.dart';
 import '../models/message.dart';
 import '../utils/drawing_message_parser.dart';
 import '../utils/voice_message_parser.dart';
+import '../utils/image_message_parser.dart';
 
 /// Main App Provider - coordinates all other providers
 class AppProvider with ChangeNotifier {
@@ -22,6 +24,7 @@ class AppProvider with ChangeNotifier {
   final DrawingProvider drawingProvider;
   final ChannelsProvider channelsProvider;
   final VoiceProvider voiceProvider;
+  final ip.ImageProvider imageProvider;
   final TileCacheService tileCacheService;
   final LocationTrackingService locationTrackingService =
       LocationTrackingService();
@@ -39,6 +42,10 @@ class AppProvider with ChangeNotifier {
   bool get isVoiceSilenceTrimmingEnabled => _isVoiceSilenceTrimmingEnabled;
   bool _isVoiceBandPassFilterEnabled = true;
   bool get isVoiceBandPassFilterEnabled => _isVoiceBandPassFilterEnabled;
+  bool _isVoiceCompressorEnabled = true;
+  bool get isVoiceCompressorEnabled => _isVoiceCompressorEnabled;
+  bool _isVoiceLimiterEnabled = true;
+  bool get isVoiceLimiterEnabled => _isVoiceLimiterEnabled;
 
   AppProvider({
     required this.connectionProvider,
@@ -47,6 +54,7 @@ class AppProvider with ChangeNotifier {
     required this.drawingProvider,
     required this.channelsProvider,
     required this.voiceProvider,
+    required this.imageProvider,
     required this.tileCacheService,
   }) {
     _setupCallbacks();
@@ -56,6 +64,8 @@ class AppProvider with ChangeNotifier {
     _loadMapEnabled();
     _loadVoiceSilenceTrimmingEnabled();
     _loadVoiceBandPassFilterEnabled();
+    _loadVoiceCompressorEnabled();
+    _loadVoiceLimiterEnabled();
     _syncDrawingsOnStartup(); // Sync drawings immediately after providers load
     _isInitialized = true;
   }
@@ -173,6 +183,53 @@ class AppProvider with ChangeNotifier {
     }
   }
 
+  /// Load voice compressor setting from shared preferences.
+  Future<void> _loadVoiceCompressorEnabled() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _isVoiceCompressorEnabled =
+          prefs.getBool('voice_compressor_enabled') ?? true;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error loading voice compressor setting: $e');
+    }
+  }
+
+  /// Toggle voice compressor on/off.
+  Future<void> toggleVoiceCompressorEnabled(bool enabled) async {
+    try {
+      _isVoiceCompressorEnabled = enabled;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('voice_compressor_enabled', enabled);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error saving voice compressor setting: $e');
+    }
+  }
+
+  /// Load voice limiter setting from shared preferences.
+  Future<void> _loadVoiceLimiterEnabled() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _isVoiceLimiterEnabled = prefs.getBool('voice_limiter_enabled') ?? true;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error loading voice limiter setting: $e');
+    }
+  }
+
+  /// Toggle voice limiter on/off.
+  Future<void> toggleVoiceLimiterEnabled(bool enabled) async {
+    try {
+      _isVoiceLimiterEnabled = enabled;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('voice_limiter_enabled', enabled);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error saving voice limiter setting: $e');
+    }
+  }
+
   /// Initialize tile cache service
   Future<void> _initializeTileCache() async {
     try {
@@ -222,6 +279,20 @@ class AppProvider with ChangeNotifier {
     connectionProvider.addListener(_handleConnectionStateChange);
 
     voiceProvider.sendRawPacketCallback =
+        ({
+          required Uint8List contactPath,
+          required int contactPathLen,
+          required Uint8List payload,
+        }) async {
+          await connectionProvider.sendRawVoicePacket(
+            contactPath: contactPath,
+            contactPathLen: contactPathLen,
+            payload: payload,
+          );
+        };
+
+    // Image raw-packet serving reuses the same BLE raw-data path as voice.
+    imageProvider.sendRawPacketCallback =
         ({
           required Uint8List contactPath,
           required int contactPathLen,
@@ -472,6 +543,57 @@ class AppProvider with ChangeNotifier {
         return;
       }
 
+      // Image fetch request (IR1): requester asks us to stream image fragments.
+      final imageFetchRequest = ImageFetchRequest.tryParse(enrichedMessage.text);
+      if (imageFetchRequest != null) {
+        final senderPrefix = enrichedMessage.senderPublicKeyPrefix;
+        if (senderPrefix != null) {
+          final senderPrefixHex = senderPrefix
+              .take(6)
+              .map((b) => b.toRadixString(16).padLeft(2, '0'))
+              .join('');
+          if (senderPrefixHex.toLowerCase() ==
+              imageFetchRequest.requesterKey6.toLowerCase()) {
+            final requester = contactsProvider.findContactByPrefix(
+              senderPrefix,
+            );
+            if (requester != null) {
+              unawaited(
+                imageProvider.serveSessionTo(
+                  sessionId: imageFetchRequest.sessionId,
+                  requester: requester,
+                ),
+              );
+            }
+          }
+        }
+        return; // IR1 is control-plane only; not displayed in chat
+      }
+
+      // Image envelope (IE1): announce image availability.
+      final imageEnvelope = ImageEnvelope.tryParse(enrichedMessage.text);
+      if (imageEnvelope != null) {
+        imageProvider.registerEnvelope(imageEnvelope);
+        messagesProvider.addMessage(
+          enrichedMessage,
+          contactLookup: (name) {
+            try {
+              final contact = contactsProvider.contacts.firstWhere(
+                (c) => c.advName == name,
+              );
+              return contact.publicKeyHex.isNotEmpty &&
+                      contact.publicKeyHex.length >= 12
+                  ? contact.publicKeyHex.substring(0, 12)
+                  : '';
+            } catch (_) {
+              return '';
+            }
+          },
+        );
+        connectionProvider.broadcastMessageToSseClients(enrichedMessage);
+        return;
+      }
+
       // If it's a text-format voice packet, feed it to VoiceProvider
       if (VoicePacket.isVoiceText(enrichedMessage.text)) {
         final pkt = VoicePacket.tryParseText(enrichedMessage.text);
@@ -531,8 +653,21 @@ class AppProvider with ChangeNotifier {
     };
 
     // When raw binary data is received (PUSH_CODE_RAW_DATA 0x84)
-    // Used for direct binary voice packets (VoicePacket binary format, magic 0x56 'V')
+    // Magic 0x56 'V' = voice packet; magic 0x49 'I' = image packet.
     connectionProvider.onRawDataReceived = (payload, snrRaw, rssiDbm) {
+      if (ImagePacket.isImageBinary(payload)) {
+        final frag = ImagePacket.tryParseBinary(payload);
+        if (frag == null) return;
+        debugPrint('📷 [AppProvider] Binary image fragment received: $frag');
+        final session = imageProvider.session(frag.sessionId);
+        imageProvider.addFragment(
+          frag,
+          width: session?.width ?? 0,
+          height: session?.height ?? 0,
+        );
+        return;
+      }
+
       if (!VoicePacket.isVoiceBinary(payload)) return;
       final pkt = VoicePacket.tryParseBinary(payload);
       if (pkt == null) return;
@@ -984,6 +1119,7 @@ class AppProvider with ChangeNotifier {
     contactsProvider.clearContacts();
     messagesProvider.clearAll();
     unawaited(voiceProvider.clearStoredVoiceData());
+    unawaited(imageProvider.clearAll());
     notifyListeners();
   }
 

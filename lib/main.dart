@@ -12,6 +12,7 @@ import 'providers/map_provider.dart';
 import 'providers/drawing_provider.dart';
 import 'providers/channels_provider.dart';
 import 'providers/voice_provider.dart';
+import 'providers/image_provider.dart' as ip;
 import 'providers/app_provider.dart';
 import 'services/voice_codec_service.dart';
 import 'services/voice_player_service.dart';
@@ -242,6 +243,9 @@ class _MeshCoreSarAppState extends State<MeshCoreSarApp> {
           ),
         ),
 
+        // Image provider (fragment reassembly + outgoing session cache)
+        ChangeNotifierProvider(create: (_) => ip.ImageProvider()),
+
         // Tile cache service
         Provider(create: (_) => TileCacheService()),
 
@@ -263,6 +267,7 @@ class _MeshCoreSarAppState extends State<MeshCoreSarApp> {
             drawingProvider: context.read<DrawingProvider>(),
             channelsProvider: context.read<ChannelsProvider>(),
             voiceProvider: context.read<VoiceProvider>(),
+            imageProvider: context.read<ip.ImageProvider>(),
             tileCacheService: context.read<TileCacheService>(),
           ),
           update:
@@ -284,6 +289,7 @@ class _MeshCoreSarAppState extends State<MeshCoreSarApp> {
                     drawingProvider: drawings,
                     channelsProvider: channels,
                     voiceProvider: context.read<VoiceProvider>(),
+                    imageProvider: context.read<ip.ImageProvider>(),
                     tileCacheService: tileCache,
                   ),
         ),

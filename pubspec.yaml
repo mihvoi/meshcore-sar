@@ -97,6 +97,10 @@ dependencies:
   path_provider: ^2.1.5
   file_picker: ^10.3.3
 
+  # Image messaging (pick + AVIF encode/decode for mesh transmission)
+  image_picker: ^1.1.2
+  flutter_avif: ^3.1.0
+
   # Persistent storage
   shared_preferences: ^2.3.3
 

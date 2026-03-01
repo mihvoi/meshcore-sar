@@ -12,6 +12,7 @@ import '../../providers/contacts_provider.dart';
 import '../../providers/connection_provider.dart';
 import '../../providers/drawing_provider.dart';
 import '../../providers/voice_provider.dart';
+import '../../providers/image_provider.dart' as ip;
 import '../contacts/direct_message_sheet.dart';
 import '../drawing_minimap_preview.dart';
 import '../../services/sar_template_service.dart';
@@ -19,9 +20,11 @@ import '../../utils/toast_logger.dart';
 import '../../utils/sar_message_parser.dart';
 import '../../utils/key_comparison.dart';
 import '../../utils/voice_message_parser.dart';
+import '../../utils/image_message_parser.dart';
 import '../../l10n/app_localizations.dart';
 import '../../utils/message_extensions.dart';
 import 'voice_message_bubble.dart';
+import 'image_message_bubble.dart';
 
 /// Reusable message bubble widget that displays messages with various types:
 /// - Regular text messages (channel or direct)
@@ -297,6 +300,7 @@ class _MessageBubbleState extends State<MessageBubble> {
     final connectionProvider = context.read<ConnectionProvider>();
     final contactsProvider = context.read<ContactsProvider>();
     final voiceProvider = context.read<VoiceProvider>();
+    final imageProvider = context.read<ip.ImageProvider>();
     final selfPublicKey = connectionProvider.deviceInfo.publicKey;
     final isOwnMessage =
         widget.message.isSentMessage ||
@@ -340,6 +344,11 @@ class _MessageBubbleState extends State<MessageBubble> {
     final legacyVoicePacket = VoicePacket.tryParseText(widget.message.text);
     final voiceSession = widget.message.voiceId != null
         ? voiceProvider.session(widget.message.voiceId!)
+        : null;
+
+    final imageEnvelope = ImageEnvelope.tryParse(widget.message.text);
+    final imageSession = imageEnvelope != null
+        ? imageProvider.session(imageEnvelope.sessionId)
         : null;
 
     final senderPrefixHex = widget.message.senderPublicKeyPrefix
@@ -421,6 +430,37 @@ class _MessageBubbleState extends State<MessageBubble> {
         rawLines.add('Session complete: ${voiceSession.isComplete}');
         rawLines.add(
           'Session estimated duration s: ${voiceSession.estimatedDurationSeconds.toStringAsFixed(2)}',
+        );
+      } else {
+        rawLines.add('Session present locally: no');
+      }
+    }
+
+    if (imageEnvelope != null) {
+      rawLines.add('--- Image Technical ---');
+      rawLines.add('Envelope format: IE1');
+      rawLines.add('Session ID: ${imageEnvelope.sessionId}');
+      rawLines.add(
+        'Image format: ${imageEnvelope.format.label} (id=${imageEnvelope.format.id})',
+      );
+      rawLines.add(
+        'Dimensions: ${imageEnvelope.width}×${imageEnvelope.height}',
+      );
+      rawLines.add('Fragments total (envelope): ${imageEnvelope.total}');
+      rawLines.add('Compressed size (envelope): ${imageEnvelope.sizeBytes} B');
+      rawLines.add('Envelope senderKey6: ${imageEnvelope.senderKey6}');
+      rawLines.add('Envelope ts: ${imageEnvelope.timestampSec}');
+      rawLines.add('Envelope ver: ${imageEnvelope.version}');
+
+      if (imageSession != null) {
+        rawLines.add('Session present locally: yes');
+        rawLines.add(
+          'Fragments received/total: ${imageSession.receivedCount}/${imageSession.total}',
+        );
+        rawLines.add('Session complete: ${imageSession.isComplete}');
+        final kb = (imageSession.imageBytes?.length ?? 0) / 1024.0;
+        rawLines.add(
+          'Reassembled size: ${imageSession.imageBytes != null ? '${kb.toStringAsFixed(1)} kB' : '-'}',
         );
       } else {
         rawLines.add('Session present locally: no');
@@ -1793,6 +1833,9 @@ class _MessageBubbleState extends State<MessageBubble> {
                 message.voiceId != null &&
                 !widget.isCompact)
               VoiceMessageBubble(message: message, isSentByMe: isOwnMessage)
+            // Image message content (IE1 envelope)
+            else if (ImageEnvelope.isEnvelope(message.text) && !widget.isCompact)
+              ImageMessageBubble(message: message, isSentByMe: isOwnMessage)
             // Regular message content
             else if (!message.isDrawing || widget.isCompact)
               Text(message.text, style: Theme.of(context).textTheme.bodyMedium),

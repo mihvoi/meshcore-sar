@@ -13,6 +13,7 @@ import '../services/location_tracking_service.dart';
 import '../services/locale_preferences.dart';
 import '../services/update_checker_service.dart';
 import '../services/voice_bitrate_preferences.dart';
+import '../services/image_preferences.dart';
 import '../utils/sample_data_generator.dart';
 import '../theme/app_theme.dart';
 import '../l10n/app_localizations.dart';
@@ -47,6 +48,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _showRxTxIndicators = true;
   bool _isCheckingForUpdates = false;
   int _voiceBitrate = VoiceBitratePreferences.defaultBitrate;
+  int _imageMaxSize = ImagePreferences.defaultMaxSize;
+  int _imageCompression = ImagePreferences.defaultQuality;
   final LocationTrackingService _locationService = LocationTrackingService();
 
   @override
@@ -58,6 +61,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _initializeLocationService();
     _loadRxTxPreference();
     _loadVoiceBitratePreference();
+    _loadImagePreferences();
   }
 
   @override
@@ -110,6 +114,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   String _voiceBitrateSubtitle(int bitrate) {
     return '$bitrate bps';
+  }
+
+  Future<void> _loadImagePreferences() async {
+    final size = await ImagePreferences.getMaxSize();
+    final compression = await ImagePreferences.getCompression();
+    if (!mounted) return;
+    setState(() {
+      _imageMaxSize = size;
+      _imageCompression = compression;
+    });
+  }
+
+  Future<void> _saveImageMaxSize(int size) async {
+    await ImagePreferences.setMaxSize(size);
+    if (!mounted) return;
+    setState(() => _imageMaxSize = size);
+  }
+
+  Future<void> _saveImageCompression(int compression) async {
+    await ImagePreferences.setCompression(compression);
+    if (!mounted) return;
+    setState(() => _imageCompression = compression);
   }
 
   Future<void> _initializeLocationService() async {
@@ -581,6 +607,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             builder: (context, appProvider, child) => _buildVoiceStatsCard(
               bitrate: _voiceBitrate,
               bandPassEnabled: appProvider.isVoiceBandPassFilterEnabled,
+              compressorEnabled: appProvider.isVoiceCompressorEnabled,
+              limiterEnabled: appProvider.isVoiceLimiterEnabled,
               silenceTrimEnabled: appProvider.isVoiceSilenceTrimmingEnabled,
             ),
           ),
@@ -606,6 +634,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           Consumer<AppProvider>(
             builder: (context, appProvider, child) => SwitchListTile(
+              secondary: const Icon(Icons.compress),
+              title: const Text('Voice compressor'),
+              subtitle: const Text('Balances quiet and loud speech levels'),
+              value: appProvider.isVoiceCompressorEnabled,
+              onChanged: (value) async {
+                await appProvider.toggleVoiceCompressorEnabled(value);
+              },
+            ),
+          ),
+          Consumer<AppProvider>(
+            builder: (context, appProvider, child) => SwitchListTile(
+              secondary: const Icon(Icons.speed),
+              title: const Text('Voice limiter'),
+              subtitle: const Text('Prevents clipping peaks before encoding'),
+              value: appProvider.isVoiceLimiterEnabled,
+              onChanged: (value) async {
+                await appProvider.toggleVoiceLimiterEnabled(value);
+              },
+            ),
+          ),
+          Consumer<AppProvider>(
+            builder: (context, appProvider, child) => SwitchListTile(
               secondary: const Icon(Icons.content_cut),
               title: const Text('Trim silence in voice messages'),
               subtitle: const Text(
@@ -615,6 +665,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onChanged: (value) async {
                 await appProvider.toggleVoiceSilenceTrimmingEnabled(value);
               },
+            ),
+          ),
+          const Divider(),
+
+          // Image Settings Section
+          _buildSectionHeader('Image'),
+          ListTile(
+            leading: const Icon(Icons.photo_size_select_large),
+            title: const Text('Max image size'),
+            subtitle: Text('$_imageMaxSize×$_imageMaxSize px'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: _showImageMaxSizeDialog,
+          ),
+          ListTile(
+            leading: const Icon(Icons.tune),
+            title: const Text('Image compression'),
+            subtitle: Text('$_imageCompression / 90  (higher = smaller file)'),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Slider(
+              value: _imageCompression.toDouble(),
+              min: 10,
+              max: 90,
+              divisions: 8,
+              label: '$_imageCompression',
+              onChanged: (v) => setState(() => _imageCompression = v.round()),
+              onChangeEnd: (v) => _saveImageCompression(v.round()),
             ),
           ),
           const Divider(),
@@ -841,6 +919,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildVoiceStatsCard({
     required int bitrate,
     required bool bandPassEnabled,
+    required bool compressorEnabled,
+    required bool limiterEnabled,
     required bool silenceTrimEnabled,
   }) {
     final supported = VoiceBitratePreferences.supportedBitrates;
@@ -849,7 +929,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final normalized = maxBitrate > minBitrate
         ? ((bitrate - minBitrate) / (maxBitrate - minBitrate)).clamp(0.0, 1.0)
         : 1.0;
-    final enabledCount = (bandPassEnabled ? 1 : 0) + (silenceTrimEnabled ? 1 : 0);
+    final enabledCount =
+        (bandPassEnabled ? 1 : 0) +
+        (compressorEnabled ? 1 : 0) +
+        (limiterEnabled ? 1 : 0) +
+        (silenceTrimEnabled ? 1 : 0);
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -870,10 +954,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 6),
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: normalized,
-                minHeight: 8,
-              ),
+              child: LinearProgressIndicator(value: normalized, minHeight: 8),
             ),
             const SizedBox(height: 10),
             Row(
@@ -887,6 +968,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: _voiceStatChip(
+                    label: 'Compressor',
+                    enabled: compressorEnabled,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _voiceStatChip(
+                    label: 'Limiter',
+                    enabled: limiterEnabled,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _voiceStatChip(
                     label: 'Silence trim',
                     enabled: silenceTrimEnabled,
                   ),
@@ -895,7 +994,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Processing enabled: $enabledCount/2',
+              'Processing enabled: $enabledCount/4',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
@@ -1086,6 +1185,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  void _showImageMaxSizeDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Max image size'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: ImagePreferences.supportedSizes
+                .map(
+                  (size) => RadioListTile<int>(
+                    value: size,
+                    groupValue: _imageMaxSize,
+                    title: Text('${size}×$size px'),
+                    subtitle: size == ImagePreferences.defaultMaxSize
+                        ? const Text('Default')
+                        : null,
+                    onChanged: (value) {
+                      if (value != null) _saveImageMaxSize(value);
+                      Navigator.pop(context);
+                    },
+                  ),
+                )
+                .toList(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(AppLocalizations.of(context)!.cancel),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showVoiceBitrateDialog() {
     showDialog(
       context: context,
@@ -1107,7 +1242,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     (bitrate) => RadioListTile<int>(
                       value: bitrate,
                       title: Text('$bitrate bps'),
-                      subtitle: bitrate == VoiceBitratePreferences.defaultBitrate
+                      subtitle:
+                          bitrate == VoiceBitratePreferences.defaultBitrate
                           ? const Text('Default')
                           : null,
                     ),

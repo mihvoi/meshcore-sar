@@ -25,6 +25,11 @@ import '../services/voice_codec_service.dart';
 import '../utils/toast_logger.dart';
 import '../utils/key_comparison.dart';
 import '../utils/voice_message_parser.dart';
+import '../utils/image_message_parser.dart';
+import '../providers/image_provider.dart' as ip;
+import '../services/image_codec_service.dart';
+import '../services/image_preferences.dart';
+import 'package:image_picker/image_picker.dart';
 import '../l10n/app_localizations.dart';
 
 class MessagesTab extends StatefulWidget {
@@ -50,6 +55,10 @@ class _MessagesTabState extends State<MessagesTab> {
       MessageDestinationPreferences.destinationTypeChannel;
   Contact? _selectedRecipient;
 
+  // Image sending state
+  bool _isSendingImage = false;
+  final ImagePicker _imagePicker = ImagePicker();
+
   // Voice recording state
   final VoiceRecorderService _voiceRecorder = VoiceRecorderService();
   bool _isRecording = false;
@@ -57,7 +66,7 @@ class _MessagesTabState extends State<MessagesTab> {
   static const int _maxVoicePackets = 10;
   static const double _silenceRmsThreshold = 500.0;
   static const double _silencePeakThreshold = 1400.0;
-  static const int _maxInteriorSilentChunks = 1;
+  static const int _maxInteriorSilentChunks = 2;
   bool get _voiceSupported => Platform.isIOS || Platform.isAndroid;
   StreamSubscription<Int16List>? _voiceStreamSub;
   String? _currentVoiceSessionId;
@@ -418,6 +427,137 @@ class _MessagesTabState extends State<MessagesTab> {
     }
   }
 
+  // ── Image sending ───────────────────────────────────────────────────────────
+
+  Future<void> _pickAndSendImage({
+    ImageSource source = ImageSource.gallery,
+  }) async {
+    if (_isSendingImage) return;
+    final connectionProvider = context.read<ConnectionProvider>();
+    if (!connectionProvider.deviceInfo.isConnected) {
+      ToastLogger.error(context, 'Not connected to device');
+      return;
+    }
+
+    // Pick image.
+    final picked = await _imagePicker.pickImage(source: source);
+    if (picked == null) return;
+    final rawBytes = await picked.readAsBytes();
+
+    setState(() => _isSendingImage = true);
+    try {
+      // Compress to grayscale AVIF using user-selected size and compression.
+      final maxSize = await ImagePreferences.getMaxSize();
+      final compression = await ImagePreferences.getCompression();
+      final result = await ImageCodecService.compress(
+        rawBytes,
+        maxDimension: maxSize,
+        compression: compression,
+      );
+      if (result == null) {
+        ToastLogger.error(context, 'Image compression failed');
+        return;
+      }
+      final compressed = result.bytes;
+
+      // Generate session ID (4 random bytes → 8 hex chars).
+      final sessionId = List.generate(
+        8,
+        (_) => math.Random().nextInt(16).toRadixString(16),
+      ).join();
+
+      // Fragment.
+      final fragments = fragmentImage(
+        sessionId: sessionId,
+        format: ImageFormat.avif,
+        bytes: compressed,
+      );
+
+      if (fragments.isEmpty) {
+        ToastLogger.error(context, 'Image fragmentation failed');
+        return;
+      }
+
+      // Build envelope.
+      final deviceKey = connectionProvider.deviceInfo.publicKey;
+      if (deviceKey == null || deviceKey.length < 6) {
+        ToastLogger.error(context, 'Device key unavailable');
+        return;
+      }
+      final senderKey6 = deviceKey
+          .sublist(0, 6)
+          .map((b) => b.toRadixString(16).padLeft(2, '0'))
+          .join();
+
+      final envelope = ImageEnvelope(
+        sessionId: sessionId,
+        format: ImageFormat.avif,
+        total: fragments.length,
+        width: result.width,
+        height: result.height,
+        sizeBytes: compressed.length,
+        senderKey6: senderKey6,
+        timestampSec: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      );
+
+      // Cache for deferred serving.
+      final imageProvider = context.read<ip.ImageProvider>();
+      imageProvider.cacheOutgoingSession(sessionId, fragments, envelope);
+
+      // Add local placeholder message.
+      final messagesProvider = context.read<MessagesProvider>();
+      final msgId = 'img_${sessionId}_sent';
+      final isChannel =
+          _destinationType ==
+          MessageDestinationPreferences.destinationTypeChannel;
+      final placeholder = Message(
+        id: msgId,
+        messageType: isChannel ? MessageType.channel : MessageType.contact,
+        channelIdx: isChannel ? 0 : null,
+        senderPublicKeyPrefix: deviceKey.sublist(0, 6),
+        pathLen: 0,
+        textType: MessageTextType.plain,
+        senderTimestamp: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        text: envelope.encode(),
+        receivedAt: DateTime.now(),
+        deliveryStatus: MessageDeliveryStatus.sending,
+      );
+      messagesProvider.addSentMessage(placeholder);
+
+      // Send IE1 envelope via normal message path.
+      final envelopeText = envelope.encode();
+      if (_destinationType ==
+          MessageDestinationPreferences.destinationTypeChannel) {
+        await connectionProvider.sendChannelMessage(
+          channelIdx: 0,
+          text: envelopeText,
+          messageId: msgId,
+        );
+      } else if (_selectedRecipient != null) {
+        final sent = await connectionProvider.sendTextMessage(
+          contactPublicKey: _selectedRecipient!.publicKey,
+          text: envelopeText,
+          messageId: msgId,
+          contact: _selectedRecipient!,
+        );
+        if (!sent) {
+          messagesProvider.markMessageFailed(msgId);
+          ToastLogger.error(context, 'Failed to announce image');
+        }
+      }
+
+      debugPrint(
+        '📷 [Image] Sent IE1 for session $sessionId: '
+        '${fragments.length} fragments, ${compressed.length}B',
+      );
+    } catch (e, st) {
+      debugPrint('❌ [Image] _pickAndSendImage: $e\n$st');
+      ToastLogger.error(context, 'Image send failed');
+    } finally {
+      if (mounted) setState(() => _isSendingImage = false);
+    }
+  }
+
   // ── Voice recording ────────────────────────────────────────────────────────
 
   Future<void> _startVoiceRecording() async {
@@ -476,6 +616,8 @@ class _MessagesTabState extends State<MessagesTab> {
       final stream = _voiceRecorder.startCapture(
         chunkDuration: packetDuration,
         enableBandPassFilter: appProvider.isVoiceBandPassFilterEnabled,
+        enableCompressor: appProvider.isVoiceCompressorEnabled,
+        enableLimiter: appProvider.isVoiceLimiterEnabled,
       );
       debugPrint('🎙️ [Voice] capture started, listening for chunks...');
       _voiceStreamSub = stream.listen(
@@ -808,6 +950,28 @@ class _MessagesTabState extends State<MessagesTab> {
                           }
                         },
                 ),
+              ListTile(
+                enabled: !_isSendingImage,
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Send image from gallery'),
+                onTap: _isSendingImage
+                    ? null
+                    : () {
+                        Navigator.pop(sheetContext);
+                        _pickAndSendImage(source: ImageSource.gallery);
+                      },
+              ),
+              ListTile(
+                enabled: !_isSendingImage,
+                leading: const Icon(Icons.camera_alt),
+                title: const Text('Take photo'),
+                onTap: _isSendingImage
+                    ? null
+                    : () {
+                        Navigator.pop(sheetContext);
+                        _pickAndSendImage(source: ImageSource.camera);
+                      },
+              ),
             ],
           ),
         );

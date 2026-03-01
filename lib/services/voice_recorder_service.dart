@@ -25,10 +25,14 @@ class VoiceRecorderService {
   ///
   /// [chunkDuration] controls how often samples are emitted (default 1 s).
   /// [enableBandPassFilter] applies voice-tuned band-pass filtering when true.
+  /// [enableCompressor] normalizes speech dynamics before encoding.
+  /// [enableLimiter] protects against clipping peaks before encoding.
   /// The returned stream emits [Int16List] chunks that are ready for Codec2 encoding.
   Stream<Int16List> startCapture({
     Duration chunkDuration = const Duration(seconds: 1),
     bool enableBandPassFilter = true,
+    bool enableCompressor = true,
+    bool enableLimiter = true,
   }) {
     if (_isRecording) {
       throw StateError('VoiceRecorderService: already recording');
@@ -42,6 +46,8 @@ class VoiceRecorderService {
     _startRecording(
       chunkDuration,
       enableBandPassFilter: enableBandPassFilter,
+      enableCompressor: enableCompressor,
+      enableLimiter: enableLimiter,
     );
     return _controller!.stream;
   }
@@ -49,6 +55,8 @@ class VoiceRecorderService {
   Future<void> _startRecording(
     Duration chunkDuration, {
     required bool enableBandPassFilter,
+    required bool enableCompressor,
+    required bool enableLimiter,
   }) async {
     final config = const RecordConfig(
       encoder: AudioEncoder.pcm16bits,
@@ -64,6 +72,11 @@ class VoiceRecorderService {
         lowCutHz: 250.0,
         highCutHz: 3400.0,
       );
+      final dynamics = _VoiceDynamicsProcessor(
+        sampleRate: 8000,
+        enableCompressor: enableCompressor,
+        enableLimiter: enableLimiter,
+      );
       final chunkBytes = 8000 * 2 * chunkDuration.inMilliseconds ~/ 1000;
       final buffer = <int>[];
 
@@ -74,18 +87,20 @@ class VoiceRecorderService {
             final chunk = buffer.sublist(0, chunkBytes);
             buffer.removeRange(0, chunkBytes);
             final pcm = _bytesToInt16(Uint8List.fromList(chunk));
-            _controller?.add(
-              enableBandPassFilter ? voiceFilter.process(pcm) : pcm,
-            );
+            final filtered = enableBandPassFilter
+                ? voiceFilter.process(pcm)
+                : pcm;
+            _controller?.add(dynamics.process(filtered));
           }
         },
         onDone: () {
           if (buffer.isNotEmpty) {
             final padded = _padToEven(buffer);
             final pcm = _bytesToInt16(Uint8List.fromList(padded));
-            _controller?.add(
-              enableBandPassFilter ? voiceFilter.process(pcm) : pcm,
-            );
+            final filtered = enableBandPassFilter
+                ? voiceFilter.process(pcm)
+                : pcm;
+            _controller?.add(dynamics.process(filtered));
           }
           _controller?.close();
         },
@@ -135,6 +150,107 @@ class VoiceRecorderService {
   static List<int> _padToEven(List<int> buf) {
     if (buf.length % 2 != 0) buf.add(0);
     return buf;
+  }
+}
+
+/// Light speech-focused dynamics processing.
+///
+/// Compressor improves low-level intelligibility; limiter prevents peaks that
+/// can create harsh codec artifacts.
+class _VoiceDynamicsProcessor {
+  final bool _enableCompressor;
+  final bool _enableLimiter;
+  final _SimpleCompressor _compressor;
+  final _PeakLimiter _limiter;
+
+  _VoiceDynamicsProcessor({
+    required int sampleRate,
+    required bool enableCompressor,
+    required bool enableLimiter,
+  })  : _enableCompressor = enableCompressor,
+        _enableLimiter = enableLimiter,
+        _compressor = _SimpleCompressor(
+          sampleRate: sampleRate.toDouble(),
+          thresholdDb: -18.0,
+          ratio: 2.5,
+          attackMs: 8.0,
+          releaseMs: 120.0,
+          makeupGainDb: 4.0,
+        ),
+        _limiter = _PeakLimiter(ceilingDb: -1.0);
+
+  Int16List process(Int16List input) {
+    final output = Int16List(input.length);
+    for (var i = 0; i < input.length; i++) {
+      var sample = input[i].toDouble();
+      if (_enableCompressor) {
+        sample = _compressor.process(sample);
+      }
+      if (_enableLimiter) {
+        sample = _limiter.process(sample);
+      }
+      output[i] = sample.clamp(-32768.0, 32767.0).round();
+    }
+    return output;
+  }
+}
+
+/// Basic feed-forward compressor with attack/release smoothing.
+class _SimpleCompressor {
+  final double _thresholdDb;
+  final double _ratio;
+  final double _makeupGain;
+  final double _attackCoeff;
+  final double _releaseCoeff;
+  static const double _eps = 1.0;
+
+  double _env = 0.0;
+  double _gain = 1.0;
+
+  _SimpleCompressor({
+    required double sampleRate,
+    required double thresholdDb,
+    required double ratio,
+    required double attackMs,
+    required double releaseMs,
+    required double makeupGainDb,
+  })  : _thresholdDb = thresholdDb,
+        _ratio = ratio,
+        _makeupGain = math.pow(10.0, makeupGainDb / 20.0).toDouble(),
+        _attackCoeff = math.exp(-1.0 / (sampleRate * (attackMs / 1000.0))),
+        _releaseCoeff = math.exp(-1.0 / (sampleRate * (releaseMs / 1000.0)));
+
+  double process(double x) {
+    final absX = x.abs();
+    final envCoeff = absX > _env ? _attackCoeff : _releaseCoeff;
+    _env = envCoeff * _env + (1.0 - envCoeff) * absX;
+
+    final envDb = 20.0 * math.log((_env + _eps) / 32768.0) / math.ln10;
+    var targetGain = 1.0;
+    if (envDb > _thresholdDb) {
+      final outDb = _thresholdDb + (envDb - _thresholdDb) / _ratio;
+      final gainDb = outDb - envDb;
+      targetGain = math.pow(10.0, gainDb / 20.0).toDouble();
+    }
+    targetGain *= _makeupGain;
+
+    final gainCoeff = targetGain < _gain ? _attackCoeff : _releaseCoeff;
+    _gain = gainCoeff * _gain + (1.0 - gainCoeff) * targetGain;
+    return x * _gain;
+  }
+}
+
+/// Hard peak limiter with fixed ceiling.
+class _PeakLimiter {
+  final double _ceiling;
+
+  _PeakLimiter({required double ceilingDb})
+    : _ceiling = 32767.0 * math.pow(10.0, ceilingDb / 20.0).toDouble();
+
+  double process(double x) {
+    if (x > _ceiling) return _ceiling;
+    if (x < -_ceiling) return -_ceiling;
+    return x;
   }
 }
 
