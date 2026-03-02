@@ -176,7 +176,15 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
 
   Future<void> _requestAndPlayVoice(String sessionId) async {
     if (_isRequesting) return;
-    final sender = _resolveSenderContact();
+    var sender = _resolveSenderContact();
+    if (sender == null) {
+      final connectionProvider = context.read<ConnectionProvider>();
+      // Retry once after refreshing contacts; resumable sessions may outlive
+      // the in-memory contact cache.
+      await connectionProvider.getContacts();
+      if (!mounted) return;
+      sender = _resolveSenderContact();
+    }
     if (sender == null) {
       _setUnavailable();
       return;
@@ -241,6 +249,15 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
         envelope.senderKey6,
       );
       if (contact != null) return contact;
+    }
+
+    final senderName = widget.message.senderName?.trim();
+    if (senderName != null && senderName.isNotEmpty) {
+      for (final contact in contactsProvider.contacts) {
+        if (contact.advName.trim().toLowerCase() == senderName.toLowerCase()) {
+          return contact;
+        }
+      }
     }
 
     return null;

@@ -173,7 +173,15 @@ class _ImageMessageBubbleState extends State<ImageMessageBubble> {
 
   Future<void> _requestAndFetch(ImageEnvelope envelope) async {
     if (_isRequesting) return;
-    final sender = _resolveSender(envelope);
+    var sender = _resolveSender(envelope);
+    if (sender == null) {
+      final conn = context.read<ConnectionProvider>();
+      // Retry once after refreshing contacts; resumable sessions may outlive
+      // the in-memory contact cache.
+      await conn.getContacts();
+      if (!mounted) return;
+      sender = _resolveSender(envelope);
+    }
     if (sender == null) {
       setState(() => _errorText = 'Sender not reachable');
       return;
@@ -223,7 +231,21 @@ class _ImageMessageBubbleState extends State<ImageMessageBubble> {
       );
       if (c != null) return c;
     }
-    return contactsProvider.findContactByPrefixHex(envelope.senderKey6);
+    final contact = contactsProvider.findContactByPrefixHex(
+      envelope.senderKey6,
+    );
+    if (contact != null) return contact;
+
+    final senderName = widget.message.senderName?.trim();
+    if (senderName != null && senderName.isNotEmpty) {
+      for (final c in contactsProvider.contacts) {
+        if (c.advName.trim().toLowerCase() == senderName.toLowerCase()) {
+          return c;
+        }
+      }
+    }
+
+    return null;
   }
 
   static String _statusText({
