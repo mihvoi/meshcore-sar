@@ -25,7 +25,8 @@ MeshCore SAR helps teams coordinate in low-connectivity or no-connectivity envir
 
 ## Demo Video
 
-[![MeshCore SAR demo video](https://img.youtube.com/vi/rLsKeLJBpFg/maxresdefault.jpg)](https://youtu.be/rLsKeLJBpFg)
+[<img width="1280" height="720" alt="image" src="https://github.com/user-attachments/assets/13ccacee-7306-4976-a408-f31f3336828a" />](https://youtu.be/rLsKeLJBpFg)
+
 
 Watch on YouTube: https://youtu.be/rLsKeLJBpFg
 
