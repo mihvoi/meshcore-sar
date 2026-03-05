@@ -351,6 +351,11 @@ class _ImageMessageBubbleState extends State<ImageMessageBubble> {
       }
     }
 
+    final contact = contactsProvider.findContactByPrefixHex(
+      envelope.senderKey6,
+    );
+    if (contact != null) return contact;
+
     final senderPrefix = widget.message.senderPublicKeyPrefix;
     if (senderPrefix != null && senderPrefix.length >= 6) {
       final c = contactsProvider.findContactByPrefix(
@@ -358,10 +363,6 @@ class _ImageMessageBubbleState extends State<ImageMessageBubble> {
       );
       if (c != null) return c;
     }
-    final contact = contactsProvider.findContactByPrefixHex(
-      envelope.senderKey6,
-    );
-    if (contact != null) return contact;
 
     final senderName = widget.message.senderName?.trim();
     if (senderName != null && senderName.isNotEmpty) {
