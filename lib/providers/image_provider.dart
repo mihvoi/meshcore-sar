@@ -58,6 +58,7 @@ class ImageProvider with ChangeNotifier {
 
   /// Incoming sessions keyed by sessionId.
   final Map<String, ImageSession> _sessions = {};
+  final Set<String> _ignoredIncomingSessions = {};
 
   /// Outgoing sessions cached for deferred serving.
   final Map<String, _OutgoingSession> _outgoing = {};
@@ -88,6 +89,8 @@ class ImageProvider with ChangeNotifier {
   bool hasOutgoing(String sessionId) => _outgoing.containsKey(sessionId);
   Duration? estimateRemainingTransferTime(String sessionId) =>
       _sessions[sessionId]?.estimateRemaining();
+  bool isReceiveCanceled(String sessionId) =>
+      _ignoredIncomingSessions.contains(sessionId);
 
   List<int> missingFragmentIndices(String sessionId) {
     final session = _sessions[sessionId];
@@ -107,6 +110,12 @@ class ImageProvider with ChangeNotifier {
   ///
   /// Returns true when the session just became complete.
   bool addFragment(ImagePacket fragment, {int width = 0, int height = 0}) {
+    if (_ignoredIncomingSessions.contains(fragment.sessionId)) {
+      debugPrint(
+        '⏹️ [ImageProvider] Ignoring canceled incoming session ${fragment.sessionId}',
+      );
+      return false;
+    }
     _sessions.putIfAbsent(
       fragment.sessionId,
       () => ImageSession(
@@ -135,9 +144,25 @@ class ImageProvider with ChangeNotifier {
     return justComplete;
   }
 
+  void cancelIncomingSession(String sessionId) {
+    _ignoredIncomingSessions.add(sessionId);
+    _sessions.remove(sessionId);
+    unawaited(_persist());
+    notifyListeners();
+  }
+
+  void resumeIncomingSession(String sessionId) {
+    if (_ignoredIncomingSessions.remove(sessionId)) {
+      notifyListeners();
+    }
+  }
+
   /// Register envelope metadata for a session (called when IE1 is received
   /// before any binary fragments arrive).
   void registerEnvelope(ImageEnvelope envelope) {
+    if (_ignoredIncomingSessions.contains(envelope.sessionId)) {
+      return;
+    }
     final existing = _sessions[envelope.sessionId];
     if (existing == null) {
       _sessions[envelope.sessionId] = ImageSession(
@@ -249,6 +274,7 @@ class ImageProvider with ChangeNotifier {
   Future<void> clearAll() async {
     _sessions.clear();
     _outgoing.clear();
+    _ignoredIncomingSessions.clear();
     notifyListeners();
     try {
       final prefs = await SharedPreferences.getInstance();

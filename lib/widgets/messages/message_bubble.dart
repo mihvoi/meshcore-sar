@@ -468,7 +468,7 @@ class _MessageBubbleState extends State<MessageBubble> {
       'Sent message: ${widget.message.isSentMessage}',
       'Read: ${widget.message.isRead}',
       'Status: ${widget.message.deliveryStatus.name}',
-      'Path length (nodes/hops): ${widget.message.pathLen}',
+      'Path length (nodes/hops): ${_hopDebugLabel(widget.message)}',
       'Sender timestamp: ${widget.message.senderTimestamp} (${widget.message.sentAt.toIso8601String()})',
       'Received at (RFC3339): ${_formatRfc3339(widget.message.receivedAt)}',
       'Channel index: ${widget.message.channelIdx ?? '-'}',
@@ -635,8 +635,7 @@ class _MessageBubbleState extends State<MessageBubble> {
                           _techBadge(
                             context,
                             icon: Icons.route,
-                            label:
-                                '${widget.message.pathLen} hop${widget.message.pathLen == 1 ? '' : 's'}',
+                            label: _hopDisplayLabel(widget.message),
                           ),
                           _techBadge(
                             context,
@@ -1527,9 +1526,7 @@ class _MessageBubbleState extends State<MessageBubble> {
     required int? rssiDbm,
     required double? snrDb,
   }) {
-    final hopLabel = message.pathLen == 0
-        ? 'Direct'
-        : '${message.pathLen} hop${message.pathLen == 1 ? '' : 's'}';
+    final hopLabel = _hopDisplayLabel(message);
 
     return Wrap(
       spacing: 4,
@@ -1568,6 +1565,21 @@ class _MessageBubbleState extends State<MessageBubble> {
         ],
       ],
     );
+  }
+
+  String _hopDisplayLabel(Message message) {
+    if (message.pathLen == 0) return 'Direct';
+    if (message.pathLen >= 255 && message.isContactMessage) return 'Direct';
+    if (message.pathLen >= 255) return 'Unknown';
+    return '${message.pathLen} hop${message.pathLen == 1 ? '' : 's'}';
+  }
+
+  String _hopDebugLabel(Message message) {
+    if (message.pathLen >= 255 && message.isContactMessage) {
+      return 'Direct (raw: ${message.pathLen})';
+    }
+    if (message.pathLen >= 255) return 'Unknown (raw: ${message.pathLen})';
+    return _hopDisplayLabel(message);
   }
 
   Widget _techChip(
@@ -1736,9 +1748,10 @@ class _MessageBubbleState extends State<MessageBubble> {
         : message.getRichDisplayName(senderContact);
     final l10n = AppLocalizations.of(context)!;
 
-    // For sent direct/channel messages, look up destination display label
+    // Look up destination/source display labels for direct/channel messages
     dynamic recipientContact;
     String? recipientDisplayName;
+    String? channelDisplayName;
     if (isOwnMessage &&
         message.isContactMessage &&
         message.recipientPublicKey != null) {
@@ -1766,16 +1779,20 @@ class _MessageBubbleState extends State<MessageBubble> {
               recipientContact.displayName ?? recipientContact.advName;
         }
       }
-    } else if (isOwnMessage && message.isChannelMessage) {
+    } else if (message.isChannelMessage) {
       if (message.channelIdx == 0) {
-        recipientDisplayName = l10n.publicChannel;
+        channelDisplayName = l10n.publicChannel;
       } else {
         final channelContact = contactsProvider.channels.where((c) {
           return c.publicKey.length > 1 && c.publicKey[1] == message.channelIdx;
         }).firstOrNull;
-        recipientDisplayName =
+        channelDisplayName =
             channelContact?.getLocalizedDisplayName(context) ??
             '${l10n.channel} ${message.channelIdx}';
+      }
+
+      if (isOwnMessage) {
+        recipientDisplayName = channelDisplayName;
       }
     }
 
@@ -1783,86 +1800,102 @@ class _MessageBubbleState extends State<MessageBubble> {
         isOwnMessage && message.isChannelMessage && recipientDisplayName != null
         ? '${l10n.channel}: $recipientDisplayName'
         : recipientDisplayName;
+    final receivedChannelSubtitle =
+        !isOwnMessage && message.isChannelMessage && channelDisplayName != null
+        ? '${l10n.channel}: $channelDisplayName'
+        : null;
 
-    return GestureDetector(
-      onTap: () => _handleBubbleTap(
-        isSarMarker: isSarMarker,
-        isDrawing: message.isDrawing,
+    final shouldFloatBubble = message.isChannelMessage || widget.isCompact;
+    final bubble = ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: shouldFloatBubble
+            ? MediaQuery.of(context).size.width * 0.78
+            : double.infinity,
       ),
-      onLongPress: widget.isCompact ? null : () => _showMessageOptions(context),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: widget.isHighlighted
-              ? Theme.of(context).colorScheme.primaryContainer
-              : isSarMarker
-              ? _getSarMarkerColor(context, isDarkMode)
-              : message.isDrawing
-              ? (isDarkMode
-                    ? Theme.of(
+      child: GestureDetector(
+          onTap: () => _handleBubbleTap(
+            isSarMarker: isSarMarker,
+            isDrawing: message.isDrawing,
+          ),
+          onLongPress: widget.isCompact
+              ? null
+              : () => _showMessageOptions(context),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: widget.isHighlighted
+                  ? Theme.of(context).colorScheme.primaryContainer
+                  : isSarMarker
+                  ? _getSarMarkerColor(context, isDarkMode)
+                  : message.isDrawing
+                  ? (isDarkMode
+                        ? Theme.of(
+                            context,
+                          ).colorScheme.primary.withValues(alpha: 0.15)
+                        : Theme.of(
+                            context,
+                          ).colorScheme.primary.withValues(alpha: 0.08))
+                  : _getMessageBubbleColor(context, isOwnMessage, isDarkMode),
+              borderRadius: BorderRadius.circular(12),
+              border: widget.isHighlighted
+                  ? Border.all(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 3,
+                    )
+                  : isSarMarker
+                  ? Border.all(
+                      color: _getSarMarkerBorderColor(context, isDarkMode),
+                      width: 2,
+                    )
+                  : message.isDrawing
+                  ? Border.all(
+                      color: Theme.of(
                         context,
-                      ).colorScheme.primary.withValues(alpha: 0.15)
-                    : Theme.of(
+                      ).colorScheme.primary.withValues(alpha: 0.4),
+                      width: 2,
+                    )
+                  : isOwnMessage
+                  ? Border.all(
+                      color: Theme.of(
                         context,
-                      ).colorScheme.primary.withValues(alpha: 0.08))
-              : _getMessageBubbleColor(context, isOwnMessage, isDarkMode),
-          borderRadius: BorderRadius.circular(12),
-          border: widget.isHighlighted
-              ? Border.all(
-                  color: Theme.of(context).colorScheme.primary,
-                  width: 3,
-                )
-              : isSarMarker
-              ? Border.all(
-                  color: _getSarMarkerBorderColor(context, isDarkMode),
-                  width: 2,
-                )
-              : message.isDrawing
-              ? Border.all(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.primary.withValues(alpha: 0.4),
-                  width: 2,
-                )
-              : isOwnMessage
-              ? Border.all(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.primary.withValues(alpha: 0.3),
-                  width: 1.5,
-                )
-              : !message.isRead &&
-                    !message.isSentMessage &&
-                    !message.isSystemMessage
-              ? Border.all(color: Colors.blue, width: 1.5)
-              : null,
-          boxShadow: widget.isHighlighted
-              ? [
-                  BoxShadow(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.primary.withValues(alpha: 0.5),
-                    blurRadius: 12,
-                    spreadRadius: 2,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : isSarMarker || message.isDrawing
-              ? [
-                  BoxShadow(
-                    color:
-                        (isSarMarker
-                                ? _getSarMarkerBorderColor(context, isDarkMode)
-                                : Theme.of(context).colorScheme.primary)
-                            .withValues(alpha: 0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
-        ),
-        child: Column(
+                      ).colorScheme.primary.withValues(alpha: 0.3),
+                      width: 1.5,
+                    )
+                  : !message.isRead &&
+                        !message.isSentMessage &&
+                        !message.isSystemMessage
+                  ? Border.all(color: Colors.blue, width: 1.5)
+                  : null,
+              boxShadow: widget.isHighlighted
+                  ? [
+                      BoxShadow(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.primary.withValues(alpha: 0.5),
+                        blurRadius: 12,
+                        spreadRadius: 2,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : isSarMarker || message.isDrawing
+                  ? [
+                      BoxShadow(
+                        color:
+                            (isSarMarker
+                                    ? _getSarMarkerBorderColor(
+                                        context,
+                                        isDarkMode,
+                                      )
+                                    : Theme.of(context).colorScheme.primary)
+                                .withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header: Badge (if SAR or drawing) and time
@@ -1984,15 +2017,17 @@ class _MessageBubbleState extends State<MessageBubble> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      // Show destination for sent direct/channel messages on a separate line
-                      if (isOwnMessage &&
-                          recipientSubtitle != null &&
-                          !widget.isCompact) ...[
+                      // Show destination/source context on a separate line.
+                      if (!widget.isCompact &&
+                          (recipientSubtitle != null ||
+                              receivedChannelSubtitle != null)) ...[
                         const SizedBox(height: 2),
                         Row(
                           children: [
                             Icon(
-                              Icons.arrow_forward,
+                              isOwnMessage
+                                  ? Icons.arrow_forward
+                                  : Icons.arrow_back,
                               size: 12,
                               color: Theme.of(context)
                                   .textTheme
@@ -2003,7 +2038,9 @@ class _MessageBubbleState extends State<MessageBubble> {
                             const SizedBox(width: 4),
                             Expanded(
                               child: Text(
-                                recipientSubtitle,
+                                isOwnMessage
+                                    ? recipientSubtitle!
+                                    : receivedChannelSubtitle!,
                                 style: Theme.of(context).textTheme.labelSmall
                                     ?.copyWith(
                                       color: Theme.of(context)
@@ -2460,8 +2497,20 @@ class _MessageBubbleState extends State<MessageBubble> {
                 ),
             ],
           ],
-        ),
+            ),
+          ),
       ),
+    );
+
+    if (!shouldFloatBubble) {
+      return bubble;
+    }
+
+    return Row(
+      mainAxisAlignment: isOwnMessage
+          ? MainAxisAlignment.end
+          : MainAxisAlignment.start,
+      children: [Flexible(child: bubble)],
     );
   }
 }

@@ -125,7 +125,10 @@ int safeImageDataBytesForPath(int pathLen) {
       ? maxRawPayloadFromCommandFrame
       : maxRawPayloadFromMesh;
   final maxData = maxRawPayload - ImagePacket._headerLen;
-  return maxData.clamp(1, 255).toInt();
+  // Keep a safety margin below the theoretical direct-route ceiling.
+  // Fragments at the absolute 172-byte command-frame limit have proven flaky
+  // in practice, so cap to the conservative protocol default.
+  return maxData.clamp(1, ImagePacket.maxDataBytes).toInt();
 }
 
 /// Approximate end-to-end transmit time for image fragments on MeshCore LoRa.
@@ -361,9 +364,7 @@ class ImageFetchRequest {
       final ts = _parseInt(parts[3], base36: true);
       final normalizedWant = wantToken == 'a'
           ? 'all'
-          : ((wantToken.startsWith('m'))
-                ? 'missing'
-                : wantToken);
+          : ((wantToken.startsWith('m')) ? 'missing' : wantToken);
 
       if (sid == null) return null;
       final missingIndices = <int>[];
@@ -532,7 +533,11 @@ String _toBase36(int value) => value.toRadixString(36);
 
 String _encodeSessionId(String sessionIdHex) {
   if (!RegExp(r'^[0-9a-fA-F]{8}$').hasMatch(sessionIdHex)) {
-    throw ArgumentError.value(sessionIdHex, 'sessionIdHex', 'Expected 8 hex chars');
+    throw ArgumentError.value(
+      sessionIdHex,
+      'sessionIdHex',
+      'Expected 8 hex chars',
+    );
   }
   final value = int.parse(sessionIdHex, radix: 16);
   return value.toRadixString(36);
@@ -546,10 +551,7 @@ String? _decodeSessionId(String token) {
 }
 
 String _encodeMissingIndicesCompact(List<int> indices) {
-  final sorted = indices
-      .where((v) => v >= 0 && v <= 254)
-      .toSet()
-      .toList()
+  final sorted = indices.where((v) => v >= 0 && v <= 254).toSet().toList()
     ..sort();
   if (sorted.isEmpty) return '';
   final chunks = <String>[];
@@ -562,7 +564,9 @@ String _encodeMissingIndicesCompact(List<int> indices) {
       continue;
     }
     chunks.add(
-      start == prev ? _toBase36(start) : '${_toBase36(start)}-${_toBase36(prev)}',
+      start == prev
+          ? _toBase36(start)
+          : '${_toBase36(start)}-${_toBase36(prev)}',
     );
     start = curr;
     prev = curr;

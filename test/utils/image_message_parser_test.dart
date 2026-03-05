@@ -113,4 +113,17 @@ void main() {
       expect(parsed.index, equals(9));
     });
   });
+
+  group('safeImageDataBytesForPath', () {
+    test('caps direct-route fragments to conservative default size', () {
+      expect(safeImageDataBytesForPath(0), equals(ImagePacket.maxDataBytes));
+    });
+
+    test('shrinks for longer paths but never exceeds conservative default', () {
+      expect(
+        safeImageDataBytesForPath(2),
+        lessThanOrEqualTo(ImagePacket.maxDataBytes),
+      );
+    });
+  });
 }

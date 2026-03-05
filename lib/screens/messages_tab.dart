@@ -287,6 +287,61 @@ class _MessagesTabState extends State<MessagesTab> {
     return 'Select recipient';
   }
 
+  String _getCurrentScopeLabel() {
+    if (_destinationType ==
+        MessageDestinationPreferences.destinationTypeChannel) {
+      final channelName =
+          _selectedRecipient?.getLocalizedDisplayName(context) ??
+          AppLocalizations.of(context)!.publicChannel;
+      return 'Channel > $channelName';
+    }
+
+    if (_destinationType == MessageDestinationPreferences.destinationTypeRoom) {
+      final roomName =
+          _selectedRecipient?.displayName ??
+          AppLocalizations.of(context)!.messages;
+      return 'Room > $roomName';
+    }
+
+    final contactName =
+        _selectedRecipient?.displayName ??
+        AppLocalizations.of(context)!.messages;
+    return 'Direct > $contactName';
+  }
+
+  Widget _buildScopeIndicator() {
+    final theme = Theme.of(context);
+
+    return SizedBox(
+      width: double.infinity,
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.visibility_outlined,
+              size: 14,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                'View: ${_getCurrentScopeLabel()}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.left,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _sendMessage() async {
     final text = _textController.text.trim();
     if (text.isEmpty) return;
@@ -641,21 +696,8 @@ class _MessagesTabState extends State<MessagesTab> {
         'chunk=${imageDataBytesPerFragment}B',
       );
 
-      // Push all fragments immediately for direct contacts.
-      // For channels, fragments are served on demand via IR1 fetch requests.
-      if (!isChannel && recipient != null) {
-        // Small delay so the IE1 envelope can propagate before fragments arrive.
-        await Future.delayed(const Duration(milliseconds: 500));
-        if (!mounted) return;
-        final served = await imageProvider.serveSessionTo(
-          sessionId: sessionId,
-          requester: recipient,
-        );
-        debugPrint(
-          '📷 [Image] Pushed ${served ? fragments.length : 0} '
-          'fragments to ${recipient.advName}',
-        );
-      }
+      // Image fragments are always served on demand after an explicit IR2
+      // fetch request, including direct contacts.
     } catch (e, st) {
       debugPrint('❌ [Image] _pickAndSendImage: $e\n$st');
       if (!mounted) return;
@@ -1571,130 +1613,176 @@ class _MessagesTabState extends State<MessagesTab> {
                   ),
                 ),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Quick actions (+) button
-                  IconButton(
-                    icon: Icon(_isRecording ? Icons.stop : Icons.add),
-                    tooltip: _isRecording ? 'Stop recording' : 'More actions',
-                    onPressed: _isRecording
-                        ? _stopAndSendVoice
-                        : _showComposerActions,
-                    style: IconButton.styleFrom(
-                      backgroundColor: Theme.of(
-                        context,
-                      ).colorScheme.primaryContainer,
-                      foregroundColor: _isRecording
-                          ? Colors.red
-                          : Theme.of(context).colorScheme.onPrimaryContainer,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 8,
                     ),
-                  ),
-                  const SizedBox(width: 4),
-                  // Destination switcher button
-                  IconButton(
-                    icon: Icon(_getDestinationIcon()),
-                    tooltip: _getDestinationTooltip(),
-                    onPressed: _showRecipientSelector,
-                    style: IconButton.styleFrom(
-                      backgroundColor:
-                          _destinationType ==
-                              MessageDestinationPreferences
-                                  .destinationTypeChannel
-                          ? Theme.of(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        // Quick actions (+) button
+                        IconButton(
+                          icon: Icon(_isRecording ? Icons.stop : Icons.add),
+                          tooltip: _isRecording
+                              ? 'Stop recording'
+                              : 'More actions',
+                          onPressed: _isRecording
+                              ? _stopAndSendVoice
+                              : _showComposerActions,
+                          style: IconButton.styleFrom(
+                            backgroundColor: Theme.of(
                               context,
-                            ).colorScheme.surfaceContainerHighest
-                          : Theme.of(context).colorScheme.secondaryContainer,
-                      foregroundColor:
-                          _destinationType ==
-                              MessageDestinationPreferences
-                                  .destinationTypeChannel
-                          ? Theme.of(context).colorScheme.onSurface
-                          : Theme.of(context).colorScheme.onSecondaryContainer,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  // Text field with embedded send button
-                  Expanded(
-                    child: TextField(
-                      controller: _textController,
-                      focusNode: _focusNode,
-                      maxLength: _maxCharacters,
-                      maxLines: null,
-                      maxLengthEnforcement: MaxLengthEnforcement.enforced,
-                      style: const TextStyle(fontSize: 14),
-                      decoration: InputDecoration(
-                        hintText: AppLocalizations.of(context)!.typeYourMessage,
-                        hintStyle: const TextStyle(fontSize: 14),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(24),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
-                        isDense: true,
-                        counterText: _characterCount >= 150
-                            ? '$_characterCount/$_maxCharacters'
-                            : '',
-                        counterStyle: TextStyle(
-                          fontSize: 10,
-                          color: _characterCount > _maxCharacters * 0.9
-                              ? Colors.orange
-                              : Theme.of(context).textTheme.bodySmall?.color,
-                        ),
-                        suffixIcon: GestureDetector(
-                          onLongPressStart:
-                              (_voiceSupported && !_isSendingVoice)
-                              ? (_) => _startVoiceRecording()
-                              : null,
-                          onLongPressEnd: (_voiceSupported && _isRecording)
-                              ? (_) => _stopAndSendVoice()
-                              : null,
-                          onLongPressCancel: (_voiceSupported && _isRecording)
-                              ? () => _stopAndSendVoice()
-                              : null,
-                          child: IconButton(
-                            icon: _isSendingVoice
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : Icon(
-                                    _isRecording
-                                        ? Icons.mic
-                                        : Icons.send_rounded,
-                                    size: 22,
-                                    color: _isRecording
-                                        ? Colors.red
-                                        : (_textController.text.trim().isEmpty
-                                              ? Theme.of(context).disabledColor
-                                              : Theme.of(
-                                                  context,
-                                                ).colorScheme.primary),
-                                  ),
-                            onPressed:
-                                _isRecording ||
-                                    _isSendingVoice ||
-                                    _textController.text.trim().isEmpty
-                                ? null
-                                : _sendMessage,
-                            tooltip: _isRecording
-                                ? 'Recording... release to send voice'
-                                : (_isSendingVoice
-                                      ? 'Sending voice...'
-                                      : _voiceSupported
-                                      ? 'Send (long press to record voice)'
-                                      : 'Send'),
+                            ).colorScheme.primaryContainer,
+                            foregroundColor: _isRecording
+                                ? Colors.red
+                                : Theme.of(
+                                    context,
+                                  ).colorScheme.onPrimaryContainer,
                           ),
                         ),
-                      ),
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _sendMessage(),
+                        const SizedBox(width: 4),
+                        // Destination switcher button
+                        IconButton(
+                          icon: Icon(_getDestinationIcon()),
+                          tooltip: _getDestinationTooltip(),
+                          onPressed: _showRecipientSelector,
+                          style: IconButton.styleFrom(
+                            backgroundColor:
+                                _destinationType ==
+                                    MessageDestinationPreferences
+                                        .destinationTypeChannel
+                                ? Theme.of(
+                                    context,
+                                  ).colorScheme.surfaceContainerHighest
+                                : Theme.of(
+                                    context,
+                                  ).colorScheme.secondaryContainer,
+                            foregroundColor:
+                                _destinationType ==
+                                    MessageDestinationPreferences
+                                        .destinationTypeChannel
+                                ? Theme.of(context).colorScheme.onSurface
+                                : Theme.of(
+                                    context,
+                                  ).colorScheme.onSecondaryContainer,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        // Scope label + text field share the same alignment
+                        Expanded(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                  left: 4,
+                                  right: 4,
+                                  bottom: 6,
+                                ),
+                                child: _buildScopeIndicator(),
+                              ),
+                              TextField(
+                                controller: _textController,
+                                focusNode: _focusNode,
+                                maxLength: _maxCharacters,
+                                maxLines: null,
+                                maxLengthEnforcement:
+                                    MaxLengthEnforcement.enforced,
+                                style: const TextStyle(fontSize: 14),
+                                decoration: InputDecoration(
+                                  hintText: AppLocalizations.of(
+                                    context,
+                                  )!.typeYourMessage,
+                                  hintStyle: const TextStyle(fontSize: 14),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(24),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 10,
+                                  ),
+                                  isDense: true,
+                                  counterText: _characterCount >= 150
+                                      ? '$_characterCount/$_maxCharacters'
+                                      : '',
+                                  counterStyle: TextStyle(
+                                    fontSize: 10,
+                                    color:
+                                        _characterCount > _maxCharacters * 0.9
+                                        ? Colors.orange
+                                        : Theme.of(
+                                            context,
+                                          ).textTheme.bodySmall?.color,
+                                  ),
+                                  suffixIcon: GestureDetector(
+                                    onLongPressStart:
+                                        (_voiceSupported && !_isSendingVoice)
+                                        ? (_) => _startVoiceRecording()
+                                        : null,
+                                    onLongPressEnd:
+                                        (_voiceSupported && _isRecording)
+                                        ? (_) => _stopAndSendVoice()
+                                        : null,
+                                    onLongPressCancel:
+                                        (_voiceSupported && _isRecording)
+                                        ? () => _stopAndSendVoice()
+                                        : null,
+                                    child: IconButton(
+                                      icon: _isSendingVoice
+                                          ? const SizedBox(
+                                              width: 18,
+                                              height: 18,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                              ),
+                                            )
+                                          : Icon(
+                                              _isRecording
+                                                  ? Icons.mic
+                                                  : Icons.send_rounded,
+                                              size: 22,
+                                              color: _isRecording
+                                                  ? Colors.red
+                                                  : (_textController.text
+                                                            .trim()
+                                                            .isEmpty
+                                                        ? Theme.of(
+                                                            context,
+                                                          ).disabledColor
+                                                        : Theme.of(context)
+                                                              .colorScheme
+                                                              .primary),
+                                            ),
+                                      onPressed:
+                                          _isRecording ||
+                                              _isSendingVoice ||
+                                              _textController.text
+                                                  .trim()
+                                                  .isEmpty
+                                          ? null
+                                          : _sendMessage,
+                                      tooltip: _isRecording
+                                          ? 'Recording... release to send voice'
+                                          : (_isSendingVoice
+                                                ? 'Sending voice...'
+                                                : _voiceSupported
+                                                ? 'Send (long press to record voice)'
+                                                : 'Send'),
+                                    ),
+                                  ),
+                                ),
+                                textInputAction: TextInputAction.send,
+                                onSubmitted: (_) => _sendMessage(),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],

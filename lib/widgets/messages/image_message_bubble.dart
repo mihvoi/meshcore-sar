@@ -68,8 +68,7 @@ class _ImageMessageBubbleState extends State<ImageMessageBubble> {
           senderKey6FromEnvelope: envelope.senderKey6,
           senderName: widget.message.senderName,
         );
-        final effectivePathLen =
-            sender != null && sender.outPathLen >= 0
+        final effectivePathLen = sender != null && sender.outPathLen >= 0
             ? sender.outPathLen
             : widget.message.pathLen;
         final isComplete = imageProvider.isComplete(envelope.sessionId);
@@ -79,7 +78,12 @@ class _ImageMessageBubbleState extends State<ImageMessageBubble> {
 
         if (_isRequesting && isComplete) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) setState(() => _isRequesting = false);
+            if (mounted) {
+              setState(() {
+                _isRequesting = false;
+                _errorText = null;
+              });
+            }
           });
         }
 
@@ -189,8 +193,38 @@ class _ImageMessageBubbleState extends State<ImageMessageBubble> {
                 '$received/$total',
                 style: const TextStyle(color: Colors.white, fontSize: 11),
               ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: IconButton(
+                  onPressed: () => _cancelReceive(envelope.sessionId),
+                  icon: const Icon(Icons.close, size: 20),
+                  color: Colors.white70,
+                  tooltip: 'Cancel image receive',
+                ),
+              ),
             ] else if (_errorText != null) ...[
-              const Icon(Icons.broken_image, color: Colors.red, size: 36),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.broken_image, color: Colors.red, size: 36),
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    onPressed: () => _requestAndFetch(
+                      envelope,
+                      radioBw: radioBw,
+                      radioSf: radioSf,
+                      radioCr: radioCr,
+                      pathLen: pathLen,
+                    ),
+                    icon: const Icon(Icons.refresh, size: 18),
+                    label: const Text('Retry'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.white70,
+                    ),
+                  ),
+                ],
+              ),
             ] else ...[
               // Tap-to-load icon.
               IconButton(
@@ -221,6 +255,8 @@ class _ImageMessageBubbleState extends State<ImageMessageBubble> {
   }) async {
     if (_isRequesting) return;
     final conn = context.read<ConnectionProvider>();
+    final imageProvider = context.read<ip.ImageProvider>();
+    imageProvider.resumeIncomingSession(envelope.sessionId);
     final contactsProvider = context.read<ContactsProvider>();
     final resolution = await TransmissionTargetResolver.resolveFetchTarget(
       contactsProvider: contactsProvider,
@@ -264,7 +300,6 @@ class _ImageMessageBubbleState extends State<ImageMessageBubble> {
     }
 
     setState(() => _errorText = null);
-    final imageProvider = context.read<ip.ImageProvider>();
     final deviceKey = conn.deviceInfo.publicKey;
     if (deviceKey == null || deviceKey.length < 6) {
       await _showBlockingAlert(
@@ -322,7 +357,9 @@ class _ImageMessageBubbleState extends State<ImageMessageBubble> {
     if (!mounted) return;
 
     // Timeout = 2× estimated LoRa airtime (min 30s).
-    final effectivePathLen = sender.outPathLen >= 0 ? sender.outPathLen : pathLen;
+    final effectivePathLen = sender.outPathLen >= 0
+        ? sender.outPathLen
+        : pathLen;
     final txEstimate = estimateImageTransmitDuration(
       fragmentCount: missing.isEmpty ? envelope.total : missing.length,
       sizeBytes: missing.isEmpty
@@ -355,6 +392,17 @@ class _ImageMessageBubbleState extends State<ImageMessageBubble> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), duration: const Duration(seconds: 3)),
     );
+  }
+
+  void _cancelReceive(String sessionId) {
+    if (!mounted) return;
+    _requestTimeoutTimer?.cancel();
+    context.read<ip.ImageProvider>().cancelIncomingSession(sessionId);
+    _showToast('Image receive canceled');
+    setState(() {
+      _isRequesting = false;
+      _errorText = 'Image receive canceled';
+    });
   }
 
   Future<void> _showBlockingAlert(String title, String message) async {

@@ -8,6 +8,8 @@ import 'drawing_provider.dart';
 import 'channels_provider.dart';
 import 'voice_provider.dart';
 import 'image_provider.dart' as ip;
+import 'helpers/fragment_ack_wait_registry.dart';
+import 'helpers/session_metadata_restore.dart';
 import '../services/tile_cache_service.dart';
 import '../services/location_tracking_service.dart';
 import '../services/packet_capture_storage_service.dart';
@@ -62,8 +64,10 @@ class AppProvider with ChangeNotifier {
   final Map<String, String> _imageSessionSenderKey6 = {};
   final Map<String, Timer> _voiceMissingRetryTimers = {};
   final Map<String, int> _voiceMissingRetryAttempts = {};
-  final Map<String, Completer<void>> _voiceFragmentAckWaiters = {};
-  final Map<String, Completer<void>> _imageFragmentAckWaiters = {};
+  final FragmentAckWaitRegistry _voiceFragmentAckWaiters =
+      FragmentAckWaitRegistry();
+  final FragmentAckWaitRegistry _imageFragmentAckWaiters =
+      FragmentAckWaitRegistry();
   Timer? _packetCaptureFlushTimer;
   String? _lastPersistedPacketSignature;
   bool _isPersistingPacketCapture = false;
@@ -165,10 +169,33 @@ class AppProvider with ChangeNotifier {
     // Give DrawingProvider a moment to finish loading too
     await Future.delayed(const Duration(milliseconds: 100));
 
+    _restoreSessionMetadataFromMessages();
+
     debugPrint(
       '🔄 [AppProvider] Early sync: syncing drawings from messages...',
     );
     messagesProvider.syncDrawingsWithProvider(drawingProvider);
+  }
+
+  void _restoreSessionMetadataFromMessages() {
+    final restored = restoreSessionMetadataFromMessages(
+      messagesProvider.messages.map((message) => message.text),
+    );
+
+    _voiceSessionSenderKey6.addAll(restored.voiceSenderKeyBySession);
+    for (final entry in restored.imageEnvelopeBySession.entries) {
+      _imageSessionSenderKey6[entry.key] = entry.value.senderKey6.toLowerCase();
+      imageProvider.registerEnvelope(entry.value);
+    }
+
+    final restoredVoice = restored.voiceSenderKeyBySession.length;
+    final restoredImage = restored.imageEnvelopeBySession.length;
+    if (restoredVoice > 0 || restoredImage > 0) {
+      debugPrint(
+        '🔄 [AppProvider] Restored session metadata from messages: '
+        '$restoredVoice voice, $restoredImage image',
+      );
+    }
   }
 
   /// Load simple mode setting from shared preferences
@@ -788,12 +815,12 @@ class AppProvider with ChangeNotifier {
 
       final imageFetchRequest = ImageFetchRequest.tryParseBinary(payload);
       if (imageFetchRequest != null) {
-        final requester = contactsProvider.findContactByPrefixHex(
-          imageFetchRequest.requesterKey6,
-        );
+        final requester = _resolveImageFetchRequester(imageFetchRequest);
         if (requester == null) {
           debugPrint(
-            '⚠️ [AppProvider] Image fetch requester contact not found (binary)',
+            '⚠️ [AppProvider] Image fetch requester contact not found (binary) '
+            'for session ${imageFetchRequest.sessionId} / '
+            '${imageFetchRequest.requesterKey6}',
           );
           messagesProvider.logSystemMessage(
             text:
@@ -804,7 +831,9 @@ class AppProvider with ChangeNotifier {
         }
         if (requester.outPathLen > _maxDirectPayloadHops) {
           debugPrint(
-            '⚠️ [AppProvider] Image fetch requester too far: ${requester.outPathLen} hops',
+            '⚠️ [AppProvider] Image fetch requester too far: '
+            '${requester.outPathLen} hops for session '
+            '${imageFetchRequest.sessionId}',
           );
           messagesProvider.logSystemMessage(
             text:
@@ -813,6 +842,10 @@ class AppProvider with ChangeNotifier {
           );
           return;
         }
+        debugPrint(
+          '📷 [AppProvider] Serving image session ${imageFetchRequest.sessionId} '
+          'to ${requester.advName} via ${requester.outPathLen} hop(s)',
+        );
         unawaited(
           imageProvider.serveSessionTo(
             sessionId: imageFetchRequest.sessionId,
@@ -1189,6 +1222,42 @@ class AppProvider with ChangeNotifier {
     return contactsProvider.findContactByPrefixHex(prefixHex.toLowerCase());
   }
 
+  Contact? _resolveImageFetchRequester(ImageFetchRequest request) {
+    final liveContact = _resolveContactByPrefixHex(request.requesterKey6);
+    if (liveContact != null) {
+      return liveContact;
+    }
+
+    for (final message in messagesProvider.messages.reversed) {
+      final envelope = ImageEnvelope.tryParse(message.text);
+      if (envelope == null || envelope.sessionId != request.sessionId) {
+        continue;
+      }
+      final recipientKey = message.recipientPublicKey;
+      if (recipientKey == null || recipientKey.isEmpty) {
+        continue;
+      }
+      final recipient = contactsProvider.findContactByKey(recipientKey);
+      if (recipient == null) {
+        continue;
+      }
+      final recipientKey6 = recipient.publicKey
+          .sublist(0, 6)
+          .map((b) => b.toRadixString(16).padLeft(2, '0'))
+          .join();
+      if (recipientKey6 != request.requesterKey6) {
+        continue;
+      }
+      debugPrint(
+        '📷 [AppProvider] Resolved image requester from sent message metadata '
+        'for session ${request.sessionId}: ${recipient.advName}',
+      );
+      return recipient;
+    }
+
+    return null;
+  }
+
   void _scheduleVoiceMissingRetry(
     String sessionId, {
     required bool justComplete,
@@ -1312,54 +1381,48 @@ class AppProvider with ChangeNotifier {
     required String sessionId,
     required int index,
     Duration timeout = const Duration(seconds: 8),
-  }) async {
-    final key = _fragmentAckKey(sessionId, index);
-    final completer = Completer<void>();
-    _voiceFragmentAckWaiters[key] = completer;
-    try {
-      await completer.future.timeout(timeout);
-      return true;
-    } catch (_) {
-      if (_voiceFragmentAckWaiters[key] == completer) {
-        _voiceFragmentAckWaiters.remove(key);
-      }
-      return false;
-    }
-  }
+  }) => _voiceFragmentAckWaiters.waitFor(
+    _fragmentAckKey(sessionId, index),
+    timeout: timeout,
+  );
 
   void _completeVoiceFragmentAck(String sessionId, int index) {
-    final key = _fragmentAckKey(sessionId, index);
-    final completer = _voiceFragmentAckWaiters.remove(key);
-    if (completer != null && !completer.isCompleted) {
-      completer.complete();
+    final completed = _voiceFragmentAckWaiters.complete(
+      _fragmentAckKey(sessionId, index),
+    );
+    if (completed == 0) {
+      debugPrint(
+        'ℹ️ [AppProvider] Voice fragment ACK had no waiter: $sessionId#$index',
+      );
+      return;
     }
+    debugPrint(
+      '✅ [AppProvider] Voice fragment ACK received for $sessionId#$index ($completed waiter(s))',
+    );
   }
 
   Future<bool> _waitForImageFragmentAck({
     required String sessionId,
     required int index,
     Duration timeout = const Duration(seconds: 8),
-  }) async {
-    final key = _fragmentAckKey(sessionId, index);
-    final completer = Completer<void>();
-    _imageFragmentAckWaiters[key] = completer;
-    try {
-      await completer.future.timeout(timeout);
-      return true;
-    } catch (_) {
-      if (_imageFragmentAckWaiters[key] == completer) {
-        _imageFragmentAckWaiters.remove(key);
-      }
-      return false;
-    }
-  }
+  }) => _imageFragmentAckWaiters.waitFor(
+    _fragmentAckKey(sessionId, index),
+    timeout: timeout,
+  );
 
   void _completeImageFragmentAck(String sessionId, int index) {
-    final key = _fragmentAckKey(sessionId, index);
-    final completer = _imageFragmentAckWaiters.remove(key);
-    if (completer != null && !completer.isCompleted) {
-      completer.complete();
+    final completed = _imageFragmentAckWaiters.complete(
+      _fragmentAckKey(sessionId, index),
+    );
+    if (completed == 0) {
+      debugPrint(
+        'ℹ️ [AppProvider] Image fragment ACK had no waiter: $sessionId#$index',
+      );
+      return;
     }
+    debugPrint(
+      '✅ [AppProvider] Image fragment ACK received for $sessionId#$index ($completed waiter(s))',
+    );
   }
 
   void _sendVoiceFragmentAck(VoicePacket packet) {

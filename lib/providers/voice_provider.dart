@@ -59,6 +59,7 @@ class VoiceProvider with ChangeNotifier {
 
   /// Active sessions keyed by sessionId.
   final Map<String, VoiceSession> _sessions = {};
+  final Set<String> _ignoredIncomingSessions = {};
 
   /// Currently playing session ID, or null.
   String? _playingSessionId;
@@ -117,6 +118,8 @@ class VoiceProvider with ChangeNotifier {
       _outgoingSessions.containsKey(sessionId);
   Duration? estimateRemainingTransferTime(String sessionId) =>
       _sessions[sessionId]?.estimateRemaining();
+  bool isReceiveCanceled(String sessionId) =>
+      _ignoredIncomingSessions.contains(sessionId);
 
   List<int> missingPacketIndices(String sessionId) {
     final session = _sessions[sessionId];
@@ -133,6 +136,12 @@ class VoiceProvider with ChangeNotifier {
   /// Add an incoming [packet] to its session.  Creates the session on first packet.
   /// Returns true if the session just became complete.
   bool addPacket(VoicePacket packet) {
+    if (_ignoredIncomingSessions.contains(packet.sessionId)) {
+      debugPrint(
+        '⏹️ [VoiceProvider] Ignoring canceled incoming session ${packet.sessionId}',
+      );
+      return false;
+    }
     _sessions.putIfAbsent(
       packet.sessionId,
       () => VoiceSession(
@@ -157,6 +166,23 @@ class VoiceProvider with ChangeNotifier {
     _persistVoiceData();
     notifyListeners();
     return justComplete;
+  }
+
+  void cancelIncomingSession(String sessionId) {
+    _ignoredIncomingSessions.add(sessionId);
+    _sessions.remove(sessionId);
+    if (_playingSessionId == sessionId) {
+      unawaited(_player.stop());
+      _playingSessionId = null;
+    }
+    _persistVoiceData();
+    notifyListeners();
+  }
+
+  void resumeIncomingSession(String sessionId) {
+    if (_ignoredIncomingSessions.remove(sessionId)) {
+      notifyListeners();
+    }
   }
 
   /// Cache encoded packets for deferred voice serving.
@@ -237,6 +263,7 @@ class VoiceProvider with ChangeNotifier {
   Future<void> clearStoredVoiceData() async {
     _sessions.clear();
     _outgoingSessions.clear();
+    _ignoredIncomingSessions.clear();
     _playingSessionId = null;
     notifyListeners();
     try {

@@ -65,8 +65,7 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
           senderKey6FromEnvelope: envelope?.senderKey6,
           senderName: widget.message.senderName,
         );
-        final effectivePathLen =
-            sender != null && sender.outPathLen >= 0
+        final effectivePathLen = sender != null && sender.outPathLen >= 0
             ? sender.outPathLen
             : widget.message.pathLen;
         final isPlaying = voiceProvider.isPlaying(voiceId);
@@ -77,6 +76,7 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
             if (!mounted) return;
             setState(() {
               _isRequesting = false;
+              _errorText = null;
             });
           });
         }
@@ -125,6 +125,10 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
                   await voiceProvider.stop();
                   return;
                 }
+                if (_isRequesting) {
+                  _cancelReceive(voiceId);
+                  return;
+                }
                 if (isComplete) {
                   await voiceProvider.play(voiceId);
                   return;
@@ -151,7 +155,7 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
                 child: Icon(
                   isPlaying
                       ? Icons.stop
-                      : (_isRequesting ? Icons.downloading : Icons.play_arrow),
+                      : (_isRequesting ? Icons.close : Icons.play_arrow),
                   size: 28,
                   color: widget.isSentByMe
                       ? Theme.of(context).colorScheme.onPrimaryContainer
@@ -215,6 +219,8 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
   }) async {
     if (_isRequesting) return;
     final connectionProvider = context.read<ConnectionProvider>();
+    final voiceProvider = context.read<VoiceProvider>();
+    voiceProvider.resumeIncomingSession(sessionId);
     final contactsProvider = context.read<ContactsProvider>();
     final resolution = await TransmissionTargetResolver.resolveFetchTarget(
       contactsProvider: contactsProvider,
@@ -300,7 +306,9 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
     }
 
     // Timeout = 2× estimated LoRa airtime (min 30s).
-    final effectivePathLen = sender.outPathLen >= 0 ? sender.outPathLen : pathLen;
+    final effectivePathLen = sender.outPathLen >= 0
+        ? sender.outPathLen
+        : pathLen;
     final txEstimate = envelope != null
         ? estimateVoiceTransmitDuration(
             packetCount: envelope.total,
@@ -330,6 +338,18 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
       _isRequesting = false;
       _autoPlayWhenReady = false;
       _errorText = AppLocalizations.of(context)!.voiceUnavailable;
+    });
+  }
+
+  void _cancelReceive(String sessionId) {
+    if (!mounted) return;
+    _requestTimeoutTimer?.cancel();
+    context.read<VoiceProvider>().cancelIncomingSession(sessionId);
+    _showToast('Voice receive canceled');
+    setState(() {
+      _isRequesting = false;
+      _autoPlayWhenReady = false;
+      _errorText = 'Voice receive canceled';
     });
   }
 
