@@ -31,6 +31,7 @@ class ImageMessageBubble extends StatefulWidget {
 }
 
 class _ImageMessageBubbleState extends State<ImageMessageBubble> {
+  static const int _maxFetchHops = 3;
   bool _isRequesting = false;
   String? _errorText;
   Timer? _requestTimeoutTimer;
@@ -208,15 +209,41 @@ class _ImageMessageBubbleState extends State<ImageMessageBubble> {
       sender = _resolveSender(envelope);
     }
     if (sender == null) {
-      setState(() => _errorText = 'Sender not reachable');
+      await _showBlockingAlert(
+        'Cannot fetch image',
+        'Sender contact is unknown. Sync contacts first.',
+      );
       return;
     }
+    if (sender.outPathLen < 0) {
+      await _showBlockingAlert(
+        'Cannot fetch image',
+        'Sender route is unknown. Sync contacts/path first.',
+      );
+      return;
+    }
+    if (sender.outPathLen > _maxFetchHops) {
+      await _showBlockingAlert(
+        'Cannot fetch image',
+        'Message is too far (${sender.outPathLen} hops, max $_maxFetchHops).',
+      );
+      return;
+    }
+    if (sender.outPathLen >= 2) {
+      _showToast(
+        'Image fetch over ${sender.outPathLen} hops may take a while.',
+      );
+    }
 
+    setState(() => _errorText = null);
     final conn = context.read<ConnectionProvider>();
     final imageProvider = context.read<ip.ImageProvider>();
     final deviceKey = conn.deviceInfo.publicKey;
     if (deviceKey == null || deviceKey.length < 6) {
-      setState(() => _errorText = 'Device key unavailable');
+      await _showBlockingAlert(
+        'Cannot fetch image',
+        'Device key is unavailable.',
+      );
       return;
     }
 
@@ -227,8 +254,8 @@ class _ImageMessageBubbleState extends State<ImageMessageBubble> {
 
     // If we already have some fragments, request only what's missing.
     final missing = imageProvider.missingFragmentIndices(envelope.sessionId);
-    final isPartialResume = missing.isNotEmpty &&
-        missing.length < envelope.total;
+    final isPartialResume =
+        missing.isNotEmpty && missing.length < envelope.total;
     final request = isPartialResume
         ? ImageFetchRequest(
             sessionId: envelope.sessionId,
@@ -276,7 +303,9 @@ class _ImageMessageBubbleState extends State<ImageMessageBubble> {
     _requestTimeoutTimer = TransferTimeout.start(
       txEstimate: txEstimate,
       onTimeout: () {
-        if (mounted && _isRequesting && !imageProvider.isComplete(envelope.sessionId)) {
+        if (mounted &&
+            _isRequesting &&
+            !imageProvider.isComplete(envelope.sessionId)) {
           setState(() => _isRequesting = false);
         }
       },
@@ -307,6 +336,30 @@ class _ImageMessageBubbleState extends State<ImageMessageBubble> {
     }
 
     return null;
+  }
+
+  void _showToast(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 3)),
+    );
+  }
+
+  Future<void> _showBlockingAlert(String title, String message) async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   static String _statusText({

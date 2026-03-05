@@ -434,6 +434,8 @@ class _MessagesTabState extends State<MessagesTab> {
     ImageSource source = ImageSource.gallery,
   }) async {
     if (_isSendingImage) return;
+    final shouldContinue = await _confirmPublicChannelMediaSend('image');
+    if (!shouldContinue) return;
     final connectionProvider = context.read<ConnectionProvider>();
     if (!connectionProvider.deviceInfo.isConnected) {
       ToastLogger.error(context, 'Not connected to device');

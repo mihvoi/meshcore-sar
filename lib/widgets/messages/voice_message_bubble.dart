@@ -27,6 +27,7 @@ class VoiceMessageBubble extends StatefulWidget {
 }
 
 class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
+  static const int _maxFetchHops = 3;
   bool _isRequesting = false;
   bool _autoPlayWhenReady = false;
   String? _errorText;
@@ -207,14 +208,44 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
       sender = _resolveSenderContact();
     }
     if (sender == null) {
-      _setUnavailable();
+      await _showBlockingAlert(
+        'Cannot fetch voice',
+        'Sender contact is unknown. Sync contacts first.',
+      );
       return;
     }
+    if (sender.outPathLen < 0) {
+      await _showBlockingAlert(
+        'Cannot fetch voice',
+        'Sender route is unknown. Sync contacts/path first.',
+      );
+      return;
+    }
+    if (sender.outPathLen > _maxFetchHops) {
+      await _showBlockingAlert(
+        'Cannot fetch voice',
+        'Message is too far (${sender.outPathLen} hops, max $_maxFetchHops).',
+      );
+      return;
+    }
+    if (sender.outPathLen >= 2) {
+      _showToast(
+        'Voice fetch over ${sender.outPathLen} hops may take a while.',
+      );
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _errorText = null;
+    });
 
     final connectionProvider = context.read<ConnectionProvider>();
     final deviceKey = connectionProvider.deviceInfo.publicKey;
     if (deviceKey == null || deviceKey.length < 6) {
-      _setUnavailable();
+      await _showBlockingAlert(
+        'Cannot fetch voice',
+        'Device key is unavailable.',
+      );
       return;
     }
 
@@ -305,6 +336,30 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
     }
 
     return null;
+  }
+
+  void _showToast(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 3)),
+    );
+  }
+
+  Future<void> _showBlockingAlert(String title, String message) async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   static String _formatDuration(double seconds) {

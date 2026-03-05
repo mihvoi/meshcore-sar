@@ -36,6 +36,7 @@ class ImageSession {
 class ImageProvider with ChangeNotifier {
   static const String _storageKey = 'stored_image_sessions_v1';
   static const Duration _outgoingTtl = Duration(minutes: 15);
+  static const int maxDirectPayloadHops = 3;
 
   /// Incoming sessions keyed by sessionId.
   final Map<String, ImageSession> _sessions = {};
@@ -188,6 +189,12 @@ class ImageProvider with ChangeNotifier {
     }
     if (requester.outPathLen < 0) {
       debugPrint('⚠️ [ImageProvider] ${requester.advName} has no direct path');
+      return false;
+    }
+    if (requester.outPathLen > maxDirectPayloadHops) {
+      debugPrint(
+        '⚠️ [ImageProvider] ${requester.advName} is too far: ${requester.outPathLen} hops (max $maxDirectPayloadHops)',
+      );
       return false;
     }
 

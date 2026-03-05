@@ -20,6 +20,7 @@ import '../utils/image_message_parser.dart';
 
 /// Main App Provider - coordinates all other providers
 class AppProvider with ChangeNotifier {
+  static const int _maxDirectPayloadHops = 3;
   final ConnectionProvider connectionProvider;
   final ContactsProvider contactsProvider;
   final MessagesProvider messagesProvider;
@@ -565,6 +566,22 @@ class AppProvider with ChangeNotifier {
           debugPrint(
             '⚠️ [AppProvider] Voice fetch requester contact not found',
           );
+          messagesProvider.logSystemMessage(
+            text:
+                'Cannot fetch voice: requester contact is unknown. Add/sync contacts first.',
+            level: 'warning',
+          );
+          return;
+        }
+        if (requester.outPathLen > _maxDirectPayloadHops) {
+          debugPrint(
+            '⚠️ [AppProvider] Voice fetch requester too far: ${requester.outPathLen} hops',
+          );
+          messagesProvider.logSystemMessage(
+            text:
+                'Cannot fetch voice for ${requester.advName}: message is too far (${requester.outPathLen} hops, max $_maxDirectPayloadHops).',
+            level: 'warning',
+          );
           return;
         }
         unawaited(
@@ -665,6 +682,17 @@ class AppProvider with ChangeNotifier {
               senderPrefix,
             );
             if (requester != null) {
+              if (requester.outPathLen > _maxDirectPayloadHops) {
+                debugPrint(
+                  '⚠️ [AppProvider] Image fetch requester too far: ${requester.outPathLen} hops',
+                );
+                messagesProvider.logSystemMessage(
+                  text:
+                      'Cannot fetch image for ${requester.advName}: message is too far (${requester.outPathLen} hops, max $_maxDirectPayloadHops).',
+                  level: 'warning',
+                );
+                return;
+              }
               unawaited(
                 imageProvider.serveSessionTo(
                   sessionId: imageFetchRequest.sessionId,
@@ -673,6 +701,15 @@ class AppProvider with ChangeNotifier {
                       ? imageFetchRequest.missingIndices.toSet()
                       : null,
                 ),
+              );
+            } else {
+              debugPrint(
+                '⚠️ [AppProvider] Image fetch requester contact not found',
+              );
+              messagesProvider.logSystemMessage(
+                text:
+                    'Cannot fetch image: requester contact is unknown. Add/sync contacts first.',
+                level: 'warning',
               );
             }
           }

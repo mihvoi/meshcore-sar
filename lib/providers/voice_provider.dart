@@ -36,6 +36,7 @@ class VoiceSession {
 /// Manages incoming voice packet sessions and coordinates playback.
 class VoiceProvider with ChangeNotifier {
   static const String _voiceSessionsStorageKey = 'stored_voice_sessions_v1';
+  static const int maxDirectPayloadHops = 3;
   final VoiceCodecService _codec;
   final VoicePlayerService _player;
   late final StreamSubscription<void> _playerEventsSub;
@@ -158,6 +159,12 @@ class VoiceProvider with ChangeNotifier {
     if (requester.outPathLen < 0) {
       debugPrint(
         '⚠️ [VoiceProvider] Requester ${requester.advName} has no direct path',
+      );
+      return false;
+    }
+    if (requester.outPathLen > maxDirectPayloadHops) {
+      debugPrint(
+        '⚠️ [VoiceProvider] Requester ${requester.advName} is too far: ${requester.outPathLen} hops (max $maxDirectPayloadHops)',
       );
       return false;
     }
