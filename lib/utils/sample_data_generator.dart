@@ -4,11 +4,65 @@ import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import '../models/contact.dart';
 import '../models/message.dart';
+import '../models/message_contact_location.dart';
 import '../l10n/app_localizations.dart';
 
 /// Generates sample data for testing/demo purposes
 class SampleDataGenerator {
   static final Random _random = Random();
+
+  static MessageContactLocation _sampleSnapshot({
+    required LatLng location,
+    required DateTime receivedAt,
+    required String source,
+  }) {
+    return MessageContactLocation(
+      location: location,
+      source: source,
+      capturedAt: receivedAt,
+      sourceTimestamp: receivedAt.subtract(const Duration(minutes: 2)),
+    );
+  }
+
+  static LatLng _randomNearbyLocation(LatLng center, double spread) {
+    final latOffset = (_random.nextDouble() - 0.5) * spread;
+    final lonOffset = (_random.nextDouble() - 0.5) * spread;
+    return LatLng(center.latitude + latOffset, center.longitude + lonOffset);
+  }
+
+  static SampleMessageBatch generateAllMessages({
+    required LatLng centerLocation,
+    required AppLocalizations l10n,
+    int foundPersonCount = 2,
+    int fireCount = 1,
+    int stagingCount = 1,
+    int objectCount = 1,
+    int generalChannelMessages = 8,
+    int emergencyChannelMessages = 5,
+  }) {
+    final sarBatch = generateSarMarkerMessages(
+      centerLocation: centerLocation,
+      l10n: l10n,
+      foundPersonCount: foundPersonCount,
+      fireCount: fireCount,
+      stagingCount: stagingCount,
+      objectCount: objectCount,
+    );
+    final channelBatch = generateChannelMessages(
+      centerLocation: centerLocation,
+      l10n: l10n,
+      generalChannelMessages: generalChannelMessages,
+      emergencyChannelMessages: emergencyChannelMessages,
+    );
+
+    return SampleMessageBatch(
+      messages: [...sarBatch.messages, ...channelBatch.messages],
+      contactLocations: {
+        ...sarBatch.contactLocations,
+        ...channelBatch.contactLocations,
+      },
+    );
+  }
 
   /// Generate sample contacts around a center location
   static List<Contact> generateContacts({
@@ -113,7 +167,7 @@ class SampleDataGenerator {
   }
 
   /// Generate sample SAR markers around a center location
-  static List<Message> generateSarMarkerMessages({
+  static SampleMessageBatch generateSarMarkerMessages({
     required LatLng centerLocation,
     required AppLocalizations l10n,
     int foundPersonCount = 2,
@@ -122,6 +176,7 @@ class SampleDataGenerator {
     int objectCount = 1,
   }) {
     final messages = <Message>[];
+    final contactLocations = <String, MessageContactLocation>{};
     final now = DateTime.now();
     int messageId = 1;
 
@@ -137,7 +192,7 @@ class SampleDataGenerator {
       );
 
       final timestamp = now.subtract(Duration(minutes: 10 + i * 5));
-      messages.add(Message(
+      final message = Message(
         id: 'sample_fp_$messageId',
         messageType: MessageType.contact,
         senderPublicKeyPrefix: senderKey.sublist(0, 6),
@@ -150,7 +205,13 @@ class SampleDataGenerator {
         sarGpsCoordinates: LatLng(lat, lon),
         sarCustomEmoji: '🧑',
         senderName: l10n.sampleTeamMember,
-      ));
+      );
+      messages.add(message);
+      contactLocations[message.id] = _sampleSnapshot(
+        location: _randomNearbyLocation(message.sarGpsCoordinates!, 0.006),
+        receivedAt: timestamp,
+        source: 'telemetry',
+      );
       messageId++;
     }
 
@@ -166,7 +227,7 @@ class SampleDataGenerator {
       );
 
       final timestamp = now.subtract(Duration(minutes: 20 + i * 5));
-      messages.add(Message(
+      final message = Message(
         id: 'sample_fire_$messageId',
         messageType: MessageType.contact,
         senderPublicKeyPrefix: senderKey.sublist(0, 6),
@@ -179,7 +240,13 @@ class SampleDataGenerator {
         sarGpsCoordinates: LatLng(lat, lon),
         sarCustomEmoji: '🔥',
         senderName: l10n.sampleScout,
-      ));
+      );
+      messages.add(message);
+      contactLocations[message.id] = _sampleSnapshot(
+        location: _randomNearbyLocation(message.sarGpsCoordinates!, 0.008),
+        receivedAt: timestamp,
+        source: 'advert',
+      );
       messageId++;
     }
 
@@ -195,7 +262,7 @@ class SampleDataGenerator {
       );
 
       final timestamp = now.subtract(Duration(minutes: 30 + i * 5));
-      messages.add(Message(
+      final message = Message(
         id: 'sample_staging_$messageId',
         messageType: MessageType.contact,
         senderPublicKeyPrefix: senderKey.sublist(0, 6),
@@ -208,7 +275,13 @@ class SampleDataGenerator {
         sarGpsCoordinates: LatLng(lat, lon),
         sarCustomEmoji: '🏕️',
         senderName: l10n.sampleBase,
-      ));
+      );
+      messages.add(message);
+      contactLocations[message.id] = _sampleSnapshot(
+        location: _randomNearbyLocation(message.sarGpsCoordinates!, 0.01),
+        receivedAt: timestamp,
+        source: 'advert',
+      );
       messageId++;
     }
 
@@ -231,24 +304,34 @@ class SampleDataGenerator {
         l10n.sampleObjectTrailMarker,
       ];
 
-      messages.add(Message(
+      final message = Message(
         id: 'sample_object_$messageId',
         messageType: MessageType.contact,
         senderPublicKeyPrefix: senderKey.sublist(0, 6),
         pathLen: 1,
         textType: MessageTextType.plain,
         senderTimestamp: timestamp.millisecondsSinceEpoch ~/ 1000,
-        text: 'S:📦:${lat.toStringAsFixed(5)},${lon.toStringAsFixed(5)}${notes[i % notes.length]}',
+        text:
+            'S:📦:${lat.toStringAsFixed(5)},${lon.toStringAsFixed(5)}${notes[i % notes.length]}',
         receivedAt: timestamp,
         isSarMarker: true,
         sarGpsCoordinates: LatLng(lat, lon),
         sarCustomEmoji: '📦',
         senderName: l10n.sampleSearcher,
-      ));
+      );
+      messages.add(message);
+      contactLocations[message.id] = _sampleSnapshot(
+        location: _randomNearbyLocation(message.sarGpsCoordinates!, 0.007),
+        receivedAt: timestamp,
+        source: 'telemetry',
+      );
       messageId++;
     }
 
-    return messages;
+    return SampleMessageBatch(
+      messages: messages,
+      contactLocations: contactLocations,
+    );
   }
 
   /// Generate sample map drawings
@@ -272,7 +355,9 @@ class SampleDataGenerator {
       'id': 'sample_line_${now.millisecondsSinceEpoch}',
       'color': Colors.blue.toARGB32(),
       'createdAt': now.subtract(const Duration(minutes: 15)).toIso8601String(),
-      'points': linePoints.map((p) => {'lat': p.latitude, 'lon': p.longitude}).toList(),
+      'points': linePoints
+          .map((p) => {'lat': p.latitude, 'lon': p.longitude})
+          .toList(),
       'sender': l10n.sampleTeamMember,
     });
 
@@ -297,7 +382,7 @@ class SampleDataGenerator {
   }
 
   /// Generate sample channel messages for public channels
-  static List<Message> generateChannelMessages({
+  static SampleMessageBatch generateChannelMessages({
     LatLng? centerLocation,
     required AppLocalizations l10n,
     int generalChannelMessages = 8,
@@ -306,6 +391,7 @@ class SampleDataGenerator {
     // Use provided location or default to Ljubljana, Slovenia
     final center = centerLocation ?? const LatLng(46.0569, 14.5058);
     final messages = <Message>[];
+    final contactLocations = <String, MessageContactLocation>{};
     final now = DateTime.now();
     int messageId = 1000; // Start with high ID to avoid conflicts
 
@@ -352,7 +438,11 @@ class SampleDataGenerator {
     ];
 
     // Generate General channel messages
-    for (int i = 0; i < generalChannelMessages && i < generalMessages.length; i++) {
+    for (
+      int i = 0;
+      i < generalChannelMessages && i < generalMessages.length;
+      i++
+    ) {
       final senderKey = Uint8List.fromList(
         List.generate(32, (_) => _random.nextInt(256)),
       );
@@ -361,7 +451,7 @@ class SampleDataGenerator {
       final minutesAgo = 120 - (i * 15) - _random.nextInt(10);
       final timestamp = now.subtract(Duration(minutes: minutesAgo));
 
-      messages.add(Message(
+      final message = Message(
         id: 'sample_general_$messageId',
         messageType: MessageType.channel,
         channelIdx: 0, // General channel
@@ -372,12 +462,22 @@ class SampleDataGenerator {
         text: generalMessages[i],
         receivedAt: timestamp,
         senderName: teamNames[_random.nextInt(teamNames.length)],
-      ));
+      );
+      messages.add(message);
+      contactLocations[message.id] = _sampleSnapshot(
+        location: _randomNearbyLocation(center, 0.018),
+        receivedAt: timestamp,
+        source: i.isEven ? 'telemetry' : 'advert',
+      );
       messageId++;
     }
 
     // Generate Emergency channel messages
-    for (int i = 0; i < emergencyChannelMessages && i < emergencyMessages.length; i++) {
+    for (
+      int i = 0;
+      i < emergencyChannelMessages && i < emergencyMessages.length;
+      i++
+    ) {
       final senderKey = Uint8List.fromList(
         List.generate(32, (_) => _random.nextInt(256)),
       );
@@ -386,7 +486,7 @@ class SampleDataGenerator {
       final minutesAgo = 60 - (i * 10) - _random.nextInt(5);
       final timestamp = now.subtract(Duration(minutes: minutesAgo));
 
-      messages.add(Message(
+      final message = Message(
         id: 'sample_emergency_$messageId',
         messageType: MessageType.channel,
         channelIdx: 1, // Emergency channel
@@ -397,10 +497,29 @@ class SampleDataGenerator {
         text: emergencyMessages[i],
         receivedAt: timestamp,
         senderName: teamNames[_random.nextInt(teamNames.length)],
-      ));
+      );
+      messages.add(message);
+      contactLocations[message.id] = _sampleSnapshot(
+        location: _randomNearbyLocation(center, 0.012),
+        receivedAt: timestamp,
+        source: i.isEven ? 'advert' : 'telemetry',
+      );
       messageId++;
     }
 
-    return messages;
+    return SampleMessageBatch(
+      messages: messages,
+      contactLocations: contactLocations,
+    );
   }
+}
+
+class SampleMessageBatch {
+  final List<Message> messages;
+  final Map<String, MessageContactLocation> contactLocations;
+
+  const SampleMessageBatch({
+    required this.messages,
+    required this.contactLocations,
+  });
 }

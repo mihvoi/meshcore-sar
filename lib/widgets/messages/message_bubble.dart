@@ -23,8 +23,10 @@ import '../../utils/key_comparison.dart';
 import '../../utils/voice_message_parser.dart';
 import '../../utils/image_message_parser.dart';
 import '../../utils/tictactoe_message_parser.dart';
+import '../../utils/avatar_label_helper.dart';
 import '../../l10n/app_localizations.dart';
 import '../../utils/message_extensions.dart';
+import '../common/contact_avatar.dart';
 import 'voice_message_bubble.dart';
 import 'image_message_bubble.dart';
 import 'tictactoe_message_bubble.dart';
@@ -61,6 +63,103 @@ class MessageBubble extends StatefulWidget {
 class _MessageBubbleState extends State<MessageBubble> {
   bool _isExpanded = false;
   bool _showReceivedStats = false;
+
+  Widget _buildHeaderAvatar(
+    BuildContext context, {
+    required bool isOwnMessage,
+    required bool isChannelMessage,
+    required dynamic senderContact,
+    required String displayName,
+  }) {
+    if (isOwnMessage) {
+      return CircleAvatar(
+        radius: 10.5,
+        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+        child: Icon(
+          Icons.account_circle,
+          size: 16,
+          color: Theme.of(context).colorScheme.primary,
+        ),
+      );
+    }
+
+    if (senderContact is Contact) {
+      return ContactAvatar(
+        contact: senderContact,
+        radius: 10.5,
+        displayName: displayName,
+      );
+    }
+
+    final background = isChannelMessage
+        ? Colors.teal.withValues(alpha: 0.16)
+        : Theme.of(context).colorScheme.surfaceContainerHighest;
+    final foreground = isChannelMessage
+        ? Colors.teal.shade800
+        : Theme.of(context).colorScheme.onSurfaceVariant;
+
+    return CircleAvatar(
+      radius: 10.5,
+      backgroundColor: background,
+      child: Text(
+        AvatarLabelHelper.buildLabel(displayName),
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: foreground,
+          letterSpacing: -0.2,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBubbleMetaFooter(
+    BuildContext context, {
+    required Message message,
+    required bool isOwnMessage,
+    required bool isSarMarker,
+  }) {
+    final metaColor = Theme.of(
+      context,
+    ).textTheme.labelSmall?.color?.withValues(alpha: 0.68);
+
+    final items = <Widget>[
+      Text(
+        message.getLocalizedTimeAgo(context),
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: metaColor,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    ];
+
+    if (!isOwnMessage && !isSarMarker && message.pathLen < 255) {
+      items.addAll([
+        Text(
+          ' • ',
+          style: Theme.of(
+            context,
+          ).textTheme.labelSmall?.copyWith(color: metaColor),
+        ),
+        Icon(Icons.alt_route, size: 11, color: metaColor),
+        const SizedBox(width: 3),
+        Text(
+          message.pathLen == 0 ? 'direct' : '${message.pathLen}hop',
+          style: Theme.of(
+            context,
+          ).textTheme.labelSmall?.copyWith(color: metaColor),
+        ),
+      ]);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(left: 6, right: 6, top: 1, bottom: 18),
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: Row(mainAxisSize: MainAxisSize.min, children: items),
+      ),
+    );
+  }
 
   @override
   void didUpdateWidget(MessageBubble oldWidget) {
@@ -356,6 +455,7 @@ class _MessageBubbleState extends State<MessageBubble> {
     final radioSf = connectionProvider.deviceInfo.radioSf;
     final radioCr = connectionProvider.deviceInfo.radioCr;
     final contactsProvider = context.read<ContactsProvider>();
+    final messagesProvider = context.read<MessagesProvider>();
     final voiceProvider = context.read<VoiceProvider>();
     final imageProvider = context.read<ip.ImageProvider>();
     final selfPublicKey = connectionProvider.deviceInfo.publicKey;
@@ -396,6 +496,10 @@ class _MessageBubbleState extends State<MessageBubble> {
           .firstOrNull;
       recipientName = recipientContact?.advName;
     }
+
+    final senderLocationSnapshot = messagesProvider.getMessageContactLocation(
+      widget.message.id,
+    );
 
     final envelope = VoiceEnvelope.tryParseText(widget.message.text);
     final legacyVoicePacket = VoicePacket.tryParseText(widget.message.text);
@@ -496,6 +600,9 @@ class _MessageBubbleState extends State<MessageBubble> {
       'Used flood fallback: ${widget.message.usedFloodFallback}',
       'Sender key prefix: ${senderPrefixHex ?? '-'}',
       'Sender name: ${senderName ?? widget.message.senderName ?? '-'}',
+      'Sender location at receipt: ${senderLocationSnapshot?.formattedCoordinates ?? '-'}',
+      'Sender location source: ${senderLocationSnapshot?.technicalSourceLabel ?? '-'}',
+      'Sender location timestamp: ${senderLocationSnapshot?.sourceTimestamp?.toIso8601String() ?? '-'}',
       'Recipient key prefix: ${recipientPrefixHex ?? '-'}',
       'Recipient name: ${recipientName ?? '-'}',
       'Drawing flag: ${widget.message.isDrawing}',
@@ -1850,7 +1957,7 @@ class _MessageBubbleState extends State<MessageBubble> {
             ? null
             : () => _showMessageOptions(context),
         child: Container(
-          margin: const EdgeInsets.only(bottom: 8),
+          margin: EdgeInsets.zero,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color: widget.isHighlighted
@@ -1993,15 +2100,6 @@ class _MessageBubbleState extends State<MessageBubble> {
                           ],
                         ),
                       ),
-                    const Spacer(),
-                    Text(
-                      message.getLocalizedTimeAgo(context),
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        fontWeight: isSarMarker
-                            ? FontWeight.w600
-                            : FontWeight.normal,
-                      ),
-                    ),
                   ],
                 ),
 
@@ -2023,16 +2121,13 @@ class _MessageBubbleState extends State<MessageBubble> {
                         shape: BoxShape.circle,
                       ),
                     ),
-                  if (isOwnMessage)
-                    Icon(
-                      Icons.account_circle,
-                      size: 16,
-                      color: Theme.of(context).colorScheme.primary,
-                    )
-                  else if (message.isChannelMessage)
-                    const Icon(Icons.tag, size: 16)
-                  else
-                    const Icon(Icons.person, size: 16),
+                  _buildHeaderAvatar(
+                    context,
+                    isOwnMessage: isOwnMessage,
+                    isChannelMessage: message.isChannelMessage,
+                    senderContact: senderContact,
+                    displayName: displayName,
+                  ),
                   const SizedBox(width: 4),
                   Expanded(
                     child: Row(
@@ -2151,83 +2246,140 @@ class _MessageBubbleState extends State<MessageBubble> {
                       ],
                     ),
                   ),
-                  // Time for regular messages (not shown for SAR/drawing as it's already above)
-                  if (!isSarMarker && !message.isDrawing) ...[
-                    const SizedBox(width: 8),
-                    // Hop count indicator for received messages
-                    if (!isOwnMessage && message.pathLen < 255) ...[
-                      const SizedBox(width: 4),
-                      Icon(
-                        Icons.alt_route,
-                        size: 11,
-                        color: Theme.of(
-                          context,
-                        ).textTheme.labelSmall?.color?.withValues(alpha: 0.6),
-                      ),
-                      const SizedBox(width: 2),
-                      Text(
-                        message.pathLen == 0
-                            ? 'direct'
-                            : '${message.pathLen}hop',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: Theme.of(
-                            context,
-                          ).textTheme.labelSmall?.color?.withValues(alpha: 0.6),
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                    ],
-                    Text(
-                      message.getLocalizedTimeAgo(context),
-                      style: Theme.of(context).textTheme.labelSmall,
-                    ),
-                  ],
                 ],
               ),
               const SizedBox(height: 8),
 
               // SAR marker content
               if (isSarMarker && message.sarMarkerType != null) ...[
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          message.sarCustomEmoji ??
-                              message.sarMarkerType!.emoji,
-                          style: const TextStyle(fontSize: 32),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            message.sarNotes != null &&
-                                    message.sarNotes!.isNotEmpty
-                                ? message.sarNotes!
-                                : message.sarMarkerType!.getLocalizedName(
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(
+                      alpha: isDarkMode ? 0.06 : 0.42,
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: _getSarMarkerBorderColor(
+                        context,
+                        isDarkMode,
+                      ).withValues(alpha: 0.22),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 52,
+                            height: 52,
+                            decoration: BoxDecoration(
+                              color: _getSarMarkerBorderColor(
+                                context,
+                                isDarkMode,
+                              ).withValues(alpha: isDarkMode ? 0.2 : 0.12),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              message.sarCustomEmoji ??
+                                  message.sarMarkerType!.emoji,
+                              style: const TextStyle(fontSize: 30, height: 1),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  message.sarMarkerType!.getLocalizedName(
                                     context,
                                   ),
-                            style: Theme.of(context).textTheme.titleSmall
-                                ?.copyWith(fontWeight: FontWeight.bold),
+                                  style: Theme.of(context).textTheme.titleMedium
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: -0.2,
+                                      ),
+                                ),
+                                if (message.sarNotes != null &&
+                                    message.sarNotes!.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    message.sarNotes!,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          height: 1.25,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurface
+                                              .withValues(alpha: 0.86),
+                                        ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          if (!widget.isCompact)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 8, top: 2),
+                              child: Icon(
+                                Icons.chevron_right_rounded,
+                                size: 20,
+                                color: _getSarMarkerBorderColor(
+                                  context,
+                                  isDarkMode,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      if (message.sarGpsCoordinates != null) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(
+                              alpha: isDarkMode ? 0.18 : 0.05,
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.place_outlined,
+                                size: 15,
+                                color: _getSarMarkerBorderColor(
+                                  context,
+                                  isDarkMode,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  '${message.sarGpsCoordinates!.latitude.toStringAsFixed(5)}, ${message.sarGpsCoordinates!.longitude.toStringAsFixed(5)}',
+                                  style: Theme.of(context).textTheme.labelMedium
+                                      ?.copyWith(
+                                        fontFamily: 'monospace',
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 0.15,
+                                      ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        if (!widget.isCompact)
-                          Icon(
-                            Icons.chevron_right,
-                            size: 18,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
                       ],
-                    ),
-                    if (message.sarGpsCoordinates != null) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        '${message.sarGpsCoordinates!.latitude.toStringAsFixed(5)}, ${message.sarGpsCoordinates!.longitude.toStringAsFixed(5)}',
-                        style: Theme.of(context).textTheme.labelMedium
-                            ?.copyWith(fontFamily: 'monospace'),
-                      ),
                     ],
-                  ],
+                  ),
                 ),
               ]
               // Drawing message content (skip in compact mode - drawings hidden)
@@ -2610,15 +2762,30 @@ class _MessageBubbleState extends State<MessageBubble> {
       ),
     );
 
+    final bubbleWithMeta = Column(
+      crossAxisAlignment: isOwnMessage
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
+      children: [
+        bubble,
+        _buildBubbleMetaFooter(
+          context,
+          message: message,
+          isOwnMessage: isOwnMessage,
+          isSarMarker: isSarMarker,
+        ),
+      ],
+    );
+
     if (!shouldFloatBubble) {
-      return bubble;
+      return bubbleWithMeta;
     }
 
     return Row(
       mainAxisAlignment: isOwnMessage
           ? MainAxisAlignment.end
           : MainAxisAlignment.start,
-      children: [Flexible(child: bubble)],
+      children: [Flexible(child: bubbleWithMeta)],
     );
   }
 }

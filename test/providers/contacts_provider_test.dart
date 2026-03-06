@@ -194,5 +194,43 @@ void main() {
         }
       },
     );
+
+    test('builds message snapshot from latest valid telemetry', () {
+      final telemetryData = CayenneLppParser.createGpsData(
+        latitude: 45.0001,
+        longitude: 13.9999,
+      );
+
+      provider.updateTelemetry(publicKey.sublist(0, 6), telemetryData);
+      final contact = provider.findContactByKey(publicKey)!;
+      final snapshot = provider.buildMessageContactLocationSnapshot(
+        contact,
+        capturedAt: DateTime.now(),
+      );
+
+      expect(snapshot, isNotNull);
+      expect(snapshot!.source, equals('telemetry'));
+      expect(snapshot.location.latitude, closeTo(45.0001, 0.0001));
+      expect(snapshot.location.longitude, closeTo(13.9999, 0.0001));
+    });
+
+    test('builds message snapshot from advert when telemetry is invalid', () {
+      final invalidTelemetry = CayenneLppParser.createGpsData(
+        latitude: 0.0,
+        longitude: 0.0,
+      );
+
+      provider.updateTelemetry(publicKey.sublist(0, 6), invalidTelemetry);
+      final contact = provider.findContactByKey(publicKey)!;
+      final snapshot = provider.buildMessageContactLocationSnapshot(
+        contact,
+        capturedAt: DateTime.now(),
+      );
+
+      expect(snapshot, isNotNull);
+      expect(snapshot!.source, equals('advert'));
+      expect(snapshot.location.latitude, closeTo(46.0569, 0.000001));
+      expect(snapshot.location.longitude, closeTo(14.5058, 0.000001));
+    });
   });
 }

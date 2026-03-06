@@ -1,13 +1,20 @@
 import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meshcore_sar_app/models/message.dart';
+import 'package:meshcore_sar_app/models/message_contact_location.dart';
 import 'package:meshcore_sar_app/providers/messages_provider.dart';
 import 'package:meshcore_sar_app/utils/voice_message_parser.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('MessagesProvider voice detection', () {
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+    });
+
     test('marks VE2 envelope messages as voice', () {
       final provider = MessagesProvider();
       final envelope = VoiceEnvelope(
@@ -64,6 +71,40 @@ void main() {
       final stored = provider.messages.single;
       expect(stored.isVoice, isTrue);
       expect(stored.voiceId, equals('00112233'));
+    });
+
+    test('persists received contact location snapshots', () async {
+      final provider = MessagesProvider();
+      final message = Message(
+        id: 'm3',
+        messageType: MessageType.contact,
+        pathLen: 1,
+        textType: MessageTextType.plain,
+        senderTimestamp: 1700000002,
+        text: 'status update',
+        receivedAt: DateTime.now(),
+        senderPublicKeyPrefix: Uint8List.fromList([0, 1, 2, 3, 4, 5]),
+      );
+
+      provider.addMessage(
+        message,
+        contactLocationSnapshot: MessageContactLocation(
+          location: const LatLng(46.0569, 14.5058),
+          source: 'advert',
+          capturedAt: DateTime.now(),
+          sourceTimestamp: DateTime.now(),
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      final restoredProvider = MessagesProvider();
+      await restoredProvider.initialize();
+      final snapshot = restoredProvider.getMessageContactLocation('m3');
+
+      expect(snapshot, isNotNull);
+      expect(snapshot!.source, equals('advert'));
+      expect(snapshot.location.latitude, closeTo(46.0569, 0.000001));
+      expect(snapshot.location.longitude, closeTo(14.5058, 0.000001));
     });
   });
 }

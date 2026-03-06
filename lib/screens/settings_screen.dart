@@ -403,24 +403,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
         channelCount: 2,
       );
 
-      final sarMessages = SampleDataGenerator.generateSarMarkerMessages(
+      final sampleMessages = SampleDataGenerator.generateAllMessages(
         centerLocation: centerLocation,
         l10n: l10n,
         foundPersonCount: 2,
         fireCount: 1,
         stagingCount: 1,
         objectCount: 1,
-      );
-
-      final channelMessages = SampleDataGenerator.generateChannelMessages(
-        centerLocation: centerLocation,
-        l10n: l10n,
         generalChannelMessages: 8,
         emergencyChannelMessages: 5,
       );
-
-      // Combine all messages
-      final allMessages = [...sarMessages, ...channelMessages];
 
       // Add to providers
       final contactsProvider = Provider.of<ContactsProvider>(
@@ -433,7 +425,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
 
       contactsProvider.addContacts(contacts);
-      messagesProvider.addMessages(allMessages);
+      for (final message in sampleMessages.messages) {
+        messagesProvider.addMessage(
+          message,
+          contactLocationSnapshot: sampleMessages.contactLocations[message.id],
+        );
+      }
 
       if (!mounted) return;
 
@@ -446,8 +443,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             AppLocalizations.of(context)!.loadedSampleData(
               teamCount,
               channelCount,
-              sarMessages.length,
-              channelMessages.length,
+              sampleMessages.messages.where((m) => m.isSarMarker).length,
+              sampleMessages.messages.length,
             ),
           ),
           backgroundColor: Colors.green,

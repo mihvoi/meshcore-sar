@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
 import '../models/contact.dart';
+import '../models/message_contact_location.dart';
 import '../services/cayenne_lpp_parser.dart';
 import '../services/contact_storage_service.dart';
 import '../utils/key_comparison.dart';
@@ -213,6 +214,52 @@ class ContactsProvider with ChangeNotifier {
   /// Get chat contacts with location (team members on map)
   List<Contact> get chatContactsWithLocation =>
       chatContacts.where((c) => c.displayLocation != null).toList();
+
+  MessageContactLocation? buildMessageContactLocationSnapshot(
+    Contact contact, {
+    DateTime? capturedAt,
+  }) {
+    final snapshotTime = capturedAt ?? DateTime.now();
+    final telemetryGps = _getValidGpsOrNull(contact.telemetry?.gpsLocation);
+    final telemetryTimestamp = contact.telemetry?.timestamp;
+
+    AdvertLocation? advertLocation;
+    for (final point in contact.advertHistory) {
+      if (!point.timestamp.isAfter(snapshotTime)) {
+        advertLocation = point;
+        break;
+      }
+    }
+    advertLocation ??= contact.advertHistory.isNotEmpty
+        ? contact.advertHistory.first
+        : null;
+
+    if (telemetryGps != null) {
+      final shouldUseTelemetry =
+          telemetryTimestamp == null ||
+          advertLocation == null ||
+          !telemetryTimestamp.isBefore(advertLocation.timestamp);
+      if (shouldUseTelemetry) {
+        return MessageContactLocation(
+          location: telemetryGps,
+          source: 'telemetry',
+          capturedAt: snapshotTime,
+          sourceTimestamp: telemetryTimestamp,
+        );
+      }
+    }
+
+    if (advertLocation != null) {
+      return MessageContactLocation(
+        location: advertLocation.location,
+        source: 'advert',
+        capturedAt: snapshotTime,
+        sourceTimestamp: advertLocation.timestamp,
+      );
+    }
+
+    return null;
+  }
 
   /// Sort contacts by last seen (most recent first)
   int _sortByLastSeen(Contact a, Contact b) {

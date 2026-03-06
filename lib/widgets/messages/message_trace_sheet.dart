@@ -30,7 +30,9 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
 
   Future<_TraceResult> _loadTrace() async {
     final connectionProvider = context.read<ConnectionProvider>();
-    final nodes = await MeshMapNodesService.fetchNodes();
+    final nodes = await MeshMapNodesService.fetchNodes(
+      cacheTtl: MeshMapNodesService.traceCacheTtl,
+    );
     final packetPath = _extractPathFromPacketLogs(
       logs: connectionProvider.bleService.packetLogs,
       message: widget.message,
@@ -166,23 +168,31 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
                               child: hasMapPath
                                   ? flutter_map.FlutterMap(
                                       options: flutter_map.MapOptions(
-                                        initialCameraFit: flutter_map.CameraFit.bounds(
-                                          bounds: flutter_map.LatLngBounds.fromPoints(mapPoints),
-                                          padding: const EdgeInsets.all(28),
-                                        ),
+                                        initialCameraFit:
+                                            flutter_map.CameraFit.bounds(
+                                              bounds:
+                                                  flutter_map
+                                                      .LatLngBounds.fromPoints(
+                                                    mapPoints,
+                                                  ),
+                                              padding: const EdgeInsets.all(28),
+                                            ),
                                       ),
                                       children: [
                                         flutter_map.TileLayer(
                                           urlTemplate:
                                               'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                          userAgentPackageName: 'com.meshcore.sar',
+                                          userAgentPackageName:
+                                              'com.meshcore.sar',
                                         ),
                                         flutter_map.PolylineLayer(
                                           polylines: [
                                             flutter_map.Polyline(
                                               points: mapPoints,
                                               strokeWidth: 4,
-                                              color: Theme.of(context).colorScheme.primary,
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.primary,
                                             ),
                                           ],
                                         ),
@@ -202,12 +212,14 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
                                                   height: 34,
                                                   child: CircleAvatar(
                                                     radius: 16,
-                                                    backgroundColor: entry.key == 0
+                                                    backgroundColor:
+                                                        entry.key == 0
                                                         ? Colors.green
                                                         : (entry.key ==
-                                                                  trace
-                                                                          .matchedPathNodes
-                                                                          .whereType<MeshMapNode>()
+                                                                  trace.matchedPathNodes
+                                                                          .whereType<
+                                                                            MeshMapNode
+                                                                          >()
                                                                           .length -
                                                                       1
                                                               ? Colors.red
@@ -216,7 +228,8 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
                                                       '${entry.key + 1}',
                                                       style: const TextStyle(
                                                         color: Colors.white,
-                                                        fontWeight: FontWeight.bold,
+                                                        fontWeight:
+                                                            FontWeight.bold,
                                                         fontSize: 11,
                                                       ),
                                                     ),
@@ -228,7 +241,9 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
                                       ],
                                     )
                                   : const Center(
-                                      child: Text('Not enough geolocated nodes to draw path'),
+                                      child: Text(
+                                        'Not enough geolocated nodes to draw path',
+                                      ),
                                     ),
                             ),
                           ),
@@ -244,8 +259,13 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
                       ),
                       if (relayNodes.isEmpty)
                         const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          child: Text('No relay nodes could be matched for this message.'),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          child: Text(
+                            'No relay nodes could be matched for this message.',
+                          ),
                         ),
                       ...relayNodes.map(
                         (node) => ListTile(
@@ -286,10 +306,9 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
 
   MeshMapNode? _bestNodeForPrefix(List<MeshMapNode> nodes, String? prefixHex) {
     if (prefixHex == null || prefixHex.isEmpty) return null;
-    final matches = nodes
-        .where((n) => n.publicKey.startsWith(prefixHex))
-        .toList()
-      ..sort((a, b) => b.updatedAtMs.compareTo(a.updatedAtMs));
+    final matches =
+        nodes.where((n) => n.publicKey.startsWith(prefixHex)).toList()
+          ..sort((a, b) => b.updatedAtMs.compareTo(a.updatedAtMs));
     return matches.isEmpty ? null : matches.first;
   }
 
@@ -298,7 +317,9 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
     required Message message,
   }) {
     if (message.pathLen <= 0 || message.pathLen >= 255) return null;
-    final expectedPayloadType = message.messageType == MessageType.channel ? 0x05 : 0x02;
+    final expectedPayloadType = message.messageType == MessageType.channel
+        ? 0x05
+        : 0x02;
     BlePacketLog? bestLog;
     var bestDeltaMs = 999999999;
 
@@ -313,7 +334,8 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
       if (pathLen != message.pathLen) continue;
       if (raw.length < 5 + pathLen) continue;
 
-      final deltaMs = (log.timestamp.difference(message.receivedAt).inMilliseconds).abs();
+      final deltaMs =
+          (log.timestamp.difference(message.receivedAt).inMilliseconds).abs();
       if (deltaMs < bestDeltaMs) {
         bestDeltaMs = deltaMs;
         bestLog = log;
@@ -335,7 +357,9 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
     final result = <MeshMapNode?>[];
     for (var i = 0; i < pathHashes.length; i++) {
       final hashHex = pathHashes[i].toRadixString(16).padLeft(2, '0');
-      final candidates = nodes.where((n) => n.publicKey.startsWith(hashHex)).toList();
+      final candidates = nodes
+          .where((n) => n.publicKey.startsWith(hashHex))
+          .toList();
       if (candidates.isEmpty) {
         result.add(null);
         continue;
@@ -343,7 +367,9 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
 
       List<MeshMapNode> filtered = candidates;
       if (i == 0 && senderPrefix != null) {
-        final senderMatches = filtered.where((n) => n.publicKey.startsWith(senderPrefix)).toList();
+        final senderMatches = filtered
+            .where((n) => n.publicKey.startsWith(senderPrefix))
+            .toList();
         if (senderMatches.isNotEmpty) filtered = senderMatches;
       } else if (i == pathHashes.length - 1 && recipientPrefix != null) {
         final recipientMatches = filtered
@@ -366,7 +392,8 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
   }) {
     if (relayCount <= 0 || sender == null || recipient == null) return const [];
     final candidates = nodes.where((n) {
-      if (sender.publicKey == n.publicKey || recipient.publicKey == n.publicKey) {
+      if (sender.publicKey == n.publicKey ||
+          recipient.publicKey == n.publicKey) {
         return false;
       }
       return true;

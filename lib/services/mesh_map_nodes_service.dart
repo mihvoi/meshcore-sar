@@ -31,17 +31,22 @@ class MeshMapNode {
 }
 
 class MeshMapNodesService {
-  static const String _nodesEndpoint = 'https://api.meshcore.nz/api/v1/map/nodes';
+  static const String _nodesEndpoint =
+      'https://api.meshcore.nz/api/v1/map/nodes';
   static const Duration _cacheTtl = Duration(minutes: 2);
+  static const Duration traceCacheTtl = Duration(minutes: 10);
   static List<MeshMapNode>? _cachedNodes;
   static DateTime? _cachedAt;
 
-  static Future<List<MeshMapNode>> fetchNodes({bool forceRefresh = false}) async {
+  static Future<List<MeshMapNode>> fetchNodes({
+    bool forceRefresh = false,
+    Duration cacheTtl = _cacheTtl,
+  }) async {
     final now = DateTime.now();
     if (!forceRefresh &&
         _cachedNodes != null &&
         _cachedAt != null &&
-        now.difference(_cachedAt!) < _cacheTtl) {
+        now.difference(_cachedAt!) < cacheTtl) {
       return _cachedNodes!;
     }
 
@@ -58,7 +63,9 @@ class MeshMapNodesService {
     final nodes = nodesRaw
         .whereType<Map<String, dynamic>>()
         .map(MeshMapNode.fromJson)
-        .where((n) => n.publicKey.isNotEmpty && n.latitude != 0 && n.longitude != 0)
+        .where(
+          (n) => n.publicKey.isNotEmpty && n.latitude != 0 && n.longitude != 0,
+        )
         .toList();
 
     _cachedNodes = nodes;

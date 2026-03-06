@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../models/message.dart';
 import '../models/contact.dart';
+import '../models/message_contact_location.dart';
 import '../models/sar_marker.dart';
 import '../models/map_drawing.dart';
 import '../services/message_storage_service.dart';
@@ -20,6 +21,7 @@ class MessagesProvider with ChangeNotifier {
   final NotificationService _notificationService = NotificationService();
   bool _isInitialized = false;
   AppLocalizations? _localizations;
+  final Map<String, MessageContactLocation> _messageContactLocations = {};
 
   // Track pending sent messages by expected ACK/TAG
   final Map<int, Message> _pendingSentMessages = {};
@@ -104,6 +106,9 @@ class MessagesProvider with ChangeNotifier {
 
   String? get targetMessageId => _targetMessageId;
 
+  MessageContactLocation? getMessageContactLocation(String messageId) =>
+      _messageContactLocations[messageId];
+
   /// Set localizations for notifications
   void setLocalizations(AppLocalizations localizations) {
     _localizations = localizations;
@@ -132,6 +137,11 @@ class MessagesProvider with ChangeNotifier {
     try {
       debugPrint('📦 [MessagesProvider] Loading persisted messages...');
       final storedMessages = await _storageService.loadMessages();
+      final storedContactLocations = await _storageService
+          .loadMessageContactLocations();
+      _messageContactLocations
+        ..clear()
+        ..addAll(storedContactLocations);
 
       // Add stored messages with enhancement to ensure SAR detection
       for (final message in storedMessages) {
@@ -294,6 +304,7 @@ class MessagesProvider with ChangeNotifier {
   void addMessage(
     Message message, {
     String Function(String name)? contactLookup,
+    MessageContactLocation? contactLocationSnapshot,
   }) {
     // Always enhance message with SAR parser to detect SAR markers
     var enhancedMessage = SarMessageParser.enhanceMessage(message);
@@ -384,6 +395,9 @@ class MessagesProvider with ChangeNotifier {
     }
 
     _messages.add(finalMessage);
+    if (contactLocationSnapshot != null) {
+      _messageContactLocations[finalMessage.id] = contactLocationSnapshot;
+    }
 
     // If it's a SAR marker message, extract and store the marker
     if (finalMessage.isSarMarker) {
@@ -570,7 +584,10 @@ class MessagesProvider with ChangeNotifier {
   /// Persist messages to storage (async, non-blocking)
   Future<void> _persistMessages() async {
     try {
-      await _storageService.saveMessages(_messages);
+      await _storageService.saveMessages(
+        _messages,
+        messageContactLocations: _messageContactLocations,
+      );
     } catch (e) {
       debugPrint('❌ [MessagesProvider] Error persisting messages: $e');
     }
@@ -685,6 +702,7 @@ class MessagesProvider with ChangeNotifier {
       }
       _messageContactMap.remove(messageId);
       _groupedMessageMapping.remove(messageId);
+      _messageContactLocations.remove(messageId);
 
       debugPrint('🗑️ [MessagesProvider] Message $messageId deleted');
 
@@ -713,6 +731,7 @@ class MessagesProvider with ChangeNotifier {
   void clearMessages() {
     _messages.clear();
     _sarMarkers.clear();
+    _messageContactLocations.clear();
     _persistMessages();
     notifyListeners();
   }
@@ -727,6 +746,7 @@ class MessagesProvider with ChangeNotifier {
   void clearAll() {
     _messages.clear();
     _sarMarkers.clear();
+    _messageContactLocations.clear();
     _persistMessages();
     notifyListeners();
   }

@@ -607,14 +607,30 @@ class AppProvider with ChangeNotifier {
     connectionProvider.onMessageReceived = (message) {
       // Enrich message with sender name from contacts first
       Message enrichedMessage = message;
+      Contact? senderContact;
       if (message.senderPublicKeyPrefix != null && message.senderName == null) {
         final contact = contactsProvider.findContactByKey(
           message.senderPublicKeyPrefix!,
         );
         if (contact != null) {
+          senderContact = contact;
           enrichedMessage = message.copyWith(senderName: contact.advName);
         }
       }
+      senderContact ??= message.senderPublicKeyPrefix != null
+          ? contactsProvider.findContactByKey(message.senderPublicKeyPrefix!)
+          : null;
+      senderContact ??= enrichedMessage.senderName != null
+          ? contactsProvider.contacts
+                .where((c) => c.advName == enrichedMessage.senderName)
+                .firstOrNull
+          : null;
+      final contactLocationSnapshot = senderContact != null
+          ? contactsProvider.buildMessageContactLocationSnapshot(
+              senderContact,
+              capturedAt: enrichedMessage.receivedAt,
+            )
+          : null;
 
       // Check if message is a drawing broadcast
       if (DrawingMessageParser.isDrawingMessage(enrichedMessage.text)) {
@@ -645,6 +661,7 @@ class AppProvider with ChangeNotifier {
           messagesProvider.addMessage(
             updatedMessage,
             contactLookup: (name) => '',
+            contactLocationSnapshot: contactLocationSnapshot,
           );
 
           // Broadcast drawing message to SSE clients if server is running
@@ -680,6 +697,7 @@ class AppProvider with ChangeNotifier {
               return '';
             }
           },
+          contactLocationSnapshot: contactLocationSnapshot,
         );
         connectionProvider.broadcastMessageToSseClients(enrichedMessage);
         return;
@@ -707,6 +725,7 @@ class AppProvider with ChangeNotifier {
               return '';
             }
           },
+          contactLocationSnapshot: contactLocationSnapshot,
         );
         connectionProvider.broadcastMessageToSseClients(enrichedMessage);
         return;
@@ -743,6 +762,7 @@ class AppProvider with ChangeNotifier {
             return '';
           }
         },
+        contactLocationSnapshot: contactLocationSnapshot,
       );
 
       // Broadcast message to SSE clients if server is running
