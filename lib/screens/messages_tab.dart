@@ -287,61 +287,6 @@ class _MessagesTabState extends State<MessagesTab> {
     return 'Select recipient';
   }
 
-  String _getCurrentScopeLabel() {
-    if (_destinationType ==
-        MessageDestinationPreferences.destinationTypeChannel) {
-      final channelName =
-          _selectedRecipient?.getLocalizedDisplayName(context) ??
-          AppLocalizations.of(context)!.publicChannel;
-      return 'Channel > $channelName';
-    }
-
-    if (_destinationType == MessageDestinationPreferences.destinationTypeRoom) {
-      final roomName =
-          _selectedRecipient?.displayName ??
-          AppLocalizations.of(context)!.messages;
-      return 'Room > $roomName';
-    }
-
-    final contactName =
-        _selectedRecipient?.displayName ??
-        AppLocalizations.of(context)!.messages;
-    return 'Direct > $contactName';
-  }
-
-  Widget _buildScopeIndicator() {
-    final theme = Theme.of(context);
-
-    return SizedBox(
-      width: double.infinity,
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.visibility_outlined,
-              size: 14,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                'View: ${_getCurrentScopeLabel()}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.left,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Future<void> _sendMessage() async {
     final text = _textController.text.trim();
     if (text.isEmpty) return;
@@ -1622,7 +1567,7 @@ class _MessagesTabState extends State<MessagesTab> {
                       vertical: 8,
                     ),
                     child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         // Quick actions (+) button
                         IconButton(
@@ -1672,114 +1617,126 @@ class _MessagesTabState extends State<MessagesTab> {
                           ),
                         ),
                         const SizedBox(width: 4),
-                        // Scope label + text field share the same alignment
                         Expanded(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.only(
-                                  left: 4,
-                                  right: 4,
-                                  bottom: 6,
-                                ),
-                                child: _buildScopeIndicator(),
+                          child: TextField(
+                            controller: _textController,
+                            focusNode: _focusNode,
+                            maxLength: _maxCharacters,
+                            maxLines: null,
+                            maxLengthEnforcement: MaxLengthEnforcement.enforced,
+                            style: const TextStyle(fontSize: 14),
+                            decoration: InputDecoration(
+                              hintText: AppLocalizations.of(
+                                context,
+                              )!.typeYourMessage,
+                              hintStyle: const TextStyle(fontSize: 14),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(24),
                               ),
-                              TextField(
-                                controller: _textController,
-                                focusNode: _focusNode,
-                                maxLength: _maxCharacters,
-                                maxLines: null,
-                                maxLengthEnforcement:
-                                    MaxLengthEnforcement.enforced,
-                                style: const TextStyle(fontSize: 14),
-                                decoration: InputDecoration(
-                                  hintText: AppLocalizations.of(
-                                    context,
-                                  )!.typeYourMessage,
-                                  hintStyle: const TextStyle(fontSize: 14),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(24),
-                                  ),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 10,
-                                  ),
-                                  isDense: true,
-                                  counterText: _characterCount >= 150
-                                      ? '$_characterCount/$_maxCharacters'
-                                      : '',
-                                  counterStyle: TextStyle(
-                                    fontSize: 10,
-                                    color:
-                                        _characterCount > _maxCharacters * 0.9
-                                        ? Colors.orange
-                                        : Theme.of(
-                                            context,
-                                          ).textTheme.bodySmall?.color,
-                                  ),
-                                  suffixIcon: GestureDetector(
-                                    onLongPressStart:
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 10,
+                              ),
+                              isDense: true,
+                              counterText: _characterCount >= 150
+                                  ? '$_characterCount/$_maxCharacters'
+                                  : '',
+                              counterStyle: TextStyle(
+                                fontSize: 10,
+                                color: _characterCount > _maxCharacters * 0.9
+                                    ? Colors.orange
+                                    : Theme.of(
+                                        context,
+                                      ).textTheme.bodySmall?.color,
+                              ),
+                              suffixIcon: Builder(
+                                builder: (context) {
+                                  final canSendText =
+                                      !_isRecording &&
+                                      !_isSendingVoice &&
+                                      _textController.text.trim().isNotEmpty;
+                                  final semanticsLabel = _isRecording
+                                      ? 'Recording... release to send voice'
+                                      : (_isSendingVoice
+                                            ? 'Sending voice...'
+                                            : _voiceSupported
+                                            ? 'Send (long press to record voice)'
+                                            : 'Send');
+
+                                  return Semantics(
+                                    button: true,
+                                    enabled:
+                                        canSendText ||
+                                        (_voiceSupported && !_isSendingVoice),
+                                    label: semanticsLabel,
+                                    onTap: canSendText ? _sendMessage : null,
+                                    onLongPress:
                                         (_voiceSupported && !_isSendingVoice)
-                                        ? (_) => _startVoiceRecording()
+                                        ? () {
+                                            if (_isRecording) {
+                                              _stopAndSendVoice();
+                                              return;
+                                            }
+                                            _startVoiceRecording();
+                                          }
                                         : null,
-                                    onLongPressEnd:
-                                        (_voiceSupported && _isRecording)
-                                        ? (_) => _stopAndSendVoice()
-                                        : null,
-                                    onLongPressCancel:
-                                        (_voiceSupported && _isRecording)
-                                        ? () => _stopAndSendVoice()
-                                        : null,
-                                    child: IconButton(
-                                      icon: _isSendingVoice
-                                          ? const SizedBox(
-                                              width: 18,
-                                              height: 18,
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                              ),
-                                            )
-                                          : Icon(
-                                              _isRecording
-                                                  ? Icons.mic
-                                                  : Icons.send_rounded,
-                                              size: 22,
-                                              color: _isRecording
-                                                  ? Colors.red
-                                                  : (_textController.text
-                                                            .trim()
-                                                            .isEmpty
-                                                        ? Theme.of(
-                                                            context,
-                                                          ).disabledColor
-                                                        : Theme.of(context)
-                                                              .colorScheme
-                                                              .primary),
-                                            ),
-                                      onPressed:
-                                          _isRecording ||
-                                              _isSendingVoice ||
-                                              _textController.text
-                                                  .trim()
-                                                  .isEmpty
-                                          ? null
-                                          : _sendMessage,
-                                      tooltip: _isRecording
-                                          ? 'Recording... release to send voice'
-                                          : (_isSendingVoice
-                                                ? 'Sending voice...'
-                                                : _voiceSupported
-                                                ? 'Send (long press to record voice)'
-                                                : 'Send'),
+                                    child: Tooltip(
+                                      message: semanticsLabel,
+                                      excludeFromSemantics: true,
+                                      child: GestureDetector(
+                                        excludeFromSemantics: true,
+                                        onLongPressStart:
+                                            (_voiceSupported &&
+                                                !_isSendingVoice)
+                                            ? (_) => _startVoiceRecording()
+                                            : null,
+                                        onLongPressEnd:
+                                            (_voiceSupported && _isRecording)
+                                            ? (_) => _stopAndSendVoice()
+                                            : null,
+                                        onLongPressCancel:
+                                            (_voiceSupported && _isRecording)
+                                            ? () => _stopAndSendVoice()
+                                            : null,
+                                        child: IconButton(
+                                          icon: _isSendingVoice
+                                              ? const SizedBox(
+                                                  width: 18,
+                                                  height: 18,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                        strokeWidth: 2,
+                                                      ),
+                                                )
+                                              : Icon(
+                                                  _isRecording
+                                                      ? Icons.mic
+                                                      : Icons.send_rounded,
+                                                  size: 22,
+                                                  color: _isRecording
+                                                      ? Colors.red
+                                                      : (_textController.text
+                                                                .trim()
+                                                                .isEmpty
+                                                            ? Theme.of(
+                                                                context,
+                                                              ).disabledColor
+                                                            : Theme.of(context)
+                                                                  .colorScheme
+                                                                  .primary),
+                                                ),
+                                          onPressed: canSendText
+                                              ? _sendMessage
+                                              : null,
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                ),
-                                textInputAction: TextInputAction.send,
-                                onSubmitted: (_) => _sendMessage(),
+                                  );
+                                },
                               ),
-                            ],
+                            ),
+                            textInputAction: TextInputAction.send,
+                            onSubmitted: (_) => _sendMessage(),
                           ),
                         ),
                       ],
