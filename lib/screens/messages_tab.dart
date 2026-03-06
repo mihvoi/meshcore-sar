@@ -466,7 +466,10 @@ class _MessagesTabState extends State<MessagesTab> {
     );
 
     // Add to messages list with "sending" status
-    messagesProvider.addSentMessage(sentMessage);
+    messagesProvider.addSentMessage(
+      sentMessage,
+      contact: _selectedRecipient,
+    );
 
     // Send message to selected recipient
     final sentSuccessfully = await connectionProvider.sendTextMessage(
@@ -1498,145 +1501,163 @@ class _MessagesTabState extends State<MessagesTab> {
     return Consumer<MessagesProvider>(
       builder: (context, messagesProvider, child) {
         final messages = _getFilteredMessages(messagesProvider);
+        final bottomInset = MediaQuery.of(context).viewPadding.bottom;
+        final composerBottomPadding = bottomInset > 0 ? 2.0 : 10.0;
 
-        return Column(
-          children: [
-            // Messages list with pull-to-refresh
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: _handleRefresh,
-                child: messages.isEmpty
-                    ? LayoutBuilder(
-                        builder: (context, constraints) =>
-                            SingleChildScrollView(
-                              physics: const AlwaysScrollableScrollPhysics(),
-                              child: ConstrainedBox(
-                                constraints: BoxConstraints(
-                                  minHeight: constraints.maxHeight,
-                                ),
-                                child: Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.message_outlined,
-                                        size: 64,
-                                        color: Theme.of(context).disabledColor,
-                                      ),
-                                      const SizedBox(height: 16),
-                                      Text(
-                                        AppLocalizations.of(
-                                          context,
-                                        )!.noMessagesYet,
-                                        style: Theme.of(
-                                          context,
-                                        ).textTheme.titleLarge,
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        AppLocalizations.of(
-                                          context,
-                                        )!.pullDownToSync,
-                                        style: Theme.of(
-                                          context,
-                                        ).textTheme.bodyMedium,
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ],
+        return GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: Column(
+            children: [
+              // Messages list with pull-to-refresh
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: _handleRefresh,
+                  child: messages.isEmpty
+                      ? LayoutBuilder(
+                          builder: (context, constraints) =>
+                              SingleChildScrollView(
+                                keyboardDismissBehavior:
+                                    ScrollViewKeyboardDismissBehavior.onDrag,
+                                physics:
+                                    const AlwaysScrollableScrollPhysics(),
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    minHeight: constraints.maxHeight,
+                                  ),
+                                  child: Center(
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.message_outlined,
+                                          size: 64,
+                                          color: Theme.of(
+                                            context,
+                                          ).disabledColor,
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          AppLocalizations.of(
+                                            context,
+                                          )!.noMessagesYet,
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.titleLarge,
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          AppLocalizations.of(
+                                            context,
+                                          )!.pullDownToSync,
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.bodyMedium,
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                      )
-                    : ListView.builder(
-                        controller: _scrollController,
-                        reverse: true,
-                        padding: const EdgeInsets.all(8),
-                        itemCount: messages.length,
-                        itemBuilder: (context, index) {
-                          final message = messages[index];
-                          final isHighlighted =
-                              message.id == _highlightedMessageId;
+                        )
+                      : ListView.builder(
+                          controller: _scrollController,
+                          keyboardDismissBehavior:
+                              ScrollViewKeyboardDismissBehavior.onDrag,
+                          reverse: true,
+                          padding: const EdgeInsets.all(8),
+                          itemCount: messages.length,
+                          itemBuilder: (context, index) {
+                            final message = messages[index];
+                            final isHighlighted =
+                                message.id == _highlightedMessageId;
 
-                          return MessageBubble(
-                            key: ValueKey(message.id),
-                            message: message,
-                            isHighlighted: isHighlighted,
-                            onNavigateToMap: widget.onNavigateToMap,
-                            onTap:
-                                widget.onNavigateToMap != null &&
-                                    message.isSarMarker &&
-                                    message.sarGpsCoordinates != null
-                                ? () {
-                                    final mapProvider = context
-                                        .read<MapProvider>();
-                                    mapProvider.navigateToLocation(
-                                      location: message.sarGpsCoordinates!,
-                                      zoom: 15.0,
-                                    );
-                                    widget.onNavigateToMap?.call();
-                                  }
-                                : widget.onNavigateToMap != null &&
-                                      message.isDrawing &&
-                                      message.drawingId != null
-                                ? () {
-                                    debugPrint(
-                                      '🗺️ [MessagesTab] Drawing tapped! ID: ${message.drawingId}',
-                                    );
-                                    final mapProvider = context
-                                        .read<MapProvider>();
-                                    final drawingProvider = context
-                                        .read<DrawingProvider>();
-                                    mapProvider.navigateToDrawing(
-                                      message.drawingId!,
-                                      drawingProvider,
-                                    );
-                                    widget.onNavigateToMap?.call();
-                                  }
-                                : null,
-                          );
-                        },
-                      ),
+                            return MessageBubble(
+                              key: ValueKey(message.id),
+                              message: message,
+                              isHighlighted: isHighlighted,
+                              onNavigateToMap: widget.onNavigateToMap,
+                              onTap:
+                                  widget.onNavigateToMap != null &&
+                                      message.isSarMarker &&
+                                      message.sarGpsCoordinates != null
+                                  ? () {
+                                      final mapProvider = context
+                                          .read<MapProvider>();
+                                      mapProvider.navigateToLocation(
+                                        location: message.sarGpsCoordinates!,
+                                        zoom: 15.0,
+                                      );
+                                      widget.onNavigateToMap?.call();
+                                    }
+                                  : widget.onNavigateToMap != null &&
+                                        message.isDrawing &&
+                                        message.drawingId != null
+                                  ? () {
+                                      debugPrint(
+                                        '🗺️ [MessagesTab] Drawing tapped! ID: ${message.drawingId}',
+                                      );
+                                      final mapProvider = context
+                                          .read<MapProvider>();
+                                      final drawingProvider = context
+                                          .read<DrawingProvider>();
+                                      mapProvider.navigateToDrawing(
+                                        message.drawingId!,
+                                        drawingProvider,
+                                      );
+                                      widget.onNavigateToMap?.call();
+                                    }
+                                  : null,
+                            );
+                          },
+                        ),
+                ),
               ),
-            ),
 
-            // Message input area
-            Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SafeArea(
-                    top: false,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.surfaceContainerLow,
-                          borderRadius: BorderRadius.circular(28),
-                          border: Border.all(
+              // Message input area
+              Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SafeArea(
+                      top: false,
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          10,
+                          10,
+                          10,
+                          composerBottomPadding,
+                        ),
+                        child: Container(
+                          decoration: BoxDecoration(
                             color: Theme.of(
                               context,
-                            ).dividerColor.withValues(alpha: 0.35),
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.05),
-                              blurRadius: 18,
-                              offset: const Offset(0, 6),
+                            ).colorScheme.surfaceContainerLow,
+                            borderRadius: BorderRadius.circular(28),
+                            border: Border.all(
+                              color: Theme.of(
+                                context,
+                              ).dividerColor.withValues(alpha: 0.35),
                             ),
-                          ],
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.05),
+                                blurRadius: 18,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
                               Row(
                                 children: [
                                   Container(
@@ -1860,20 +1881,52 @@ class _MessagesTabState extends State<MessagesTab> {
                                           excludeFromSemantics: true,
                                           child: GestureDetector(
                                             excludeFromSemantics: true,
+                                            onTap: canSendText
+                                                ? () {
+                                                    debugPrint(
+                                                      '👆 [MessagesTab] Send button tapped '
+                                                      '(canSendText=$canSendText, '
+                                                      'textLength=${_textController.text.trim().length}, '
+                                                      'recording=$_isRecording, '
+                                                      'sendingVoice=$_isSendingVoice)',
+                                                    );
+                                                    _sendMessage();
+                                                  }
+                                                : null,
                                             onLongPressStart:
                                                 (_voiceSupported &&
                                                     !_isSendingVoice)
-                                                ? (_) => _startVoiceRecording()
+                                                ? (_) {
+                                                    debugPrint(
+                                                      '🎙️ [MessagesTab] Send button long-press start '
+                                                      '(voiceSupported=$_voiceSupported, '
+                                                      'sendingVoice=$_isSendingVoice, '
+                                                      'recording=$_isRecording)',
+                                                    );
+                                                    _startVoiceRecording();
+                                                  }
                                                 : null,
                                             onLongPressEnd:
                                                 (_voiceSupported &&
                                                     _isRecording)
-                                                ? (_) => _stopAndSendVoice()
+                                                ? (_) {
+                                                    debugPrint(
+                                                      '🎙️ [MessagesTab] Send button long-press end '
+                                                      '(recording=$_isRecording)',
+                                                    );
+                                                    _stopAndSendVoice();
+                                                  }
                                                 : null,
                                             onLongPressCancel:
                                                 (_voiceSupported &&
                                                     _isRecording)
-                                                ? () => _stopAndSendVoice()
+                                                ? () {
+                                                    debugPrint(
+                                                      '🎙️ [MessagesTab] Send button long-press cancel '
+                                                      '(recording=$_isRecording)',
+                                                    );
+                                                    _stopAndSendVoice();
+                                                  }
                                                 : null,
                                             child: Column(
                                               mainAxisSize: MainAxisSize.min,
@@ -1993,16 +2046,17 @@ class _MessagesTabState extends State<MessagesTab> {
                                   ),
                                 ],
                               ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         );
       },
     );
