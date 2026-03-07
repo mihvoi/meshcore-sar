@@ -12,7 +12,7 @@ permissions:
   id-token: write
 
 env:
-  FLUTTER_VERSION: "3.35.6"
+  FLUTTER_VERSION: "3.41.4"
   APP_NAME: meshcore-sar
   ANDROID_NDK_VERSION: "27.0.12077973"
 
