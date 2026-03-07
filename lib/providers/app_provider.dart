@@ -202,6 +202,21 @@ class AppProvider with ChangeNotifier {
     }
   }
 
+  String? _resolveContactNameForNotification(Uint8List? publicKey) {
+    if (publicKey == null || publicKey.isEmpty) return null;
+
+    Contact? contact;
+    if (publicKey.length >= 32) {
+      contact = contactsProvider.findContactByKey(publicKey);
+    }
+    contact ??= publicKey.length >= 6
+        ? contactsProvider.findContactByPrefix(
+            Uint8List.fromList(publicKey.sublist(0, 6)),
+          )
+        : null;
+    return contact?.advName;
+  }
+
   /// Load simple mode setting from shared preferences
   Future<void> _loadSimpleMode() async {
     try {
@@ -437,6 +452,10 @@ class AppProvider with ChangeNotifier {
   void _setupCallbacks() {
     // Monitor connection state changes to start/stop location tracking
     connectionProvider.addListener(_handleConnectionStateChange);
+    messagesProvider.resolveContactNameCallback =
+        _resolveContactNameForNotification;
+    messagesProvider.resolveChannelNameCallback =
+        channelsProvider.getChannelDisplayName;
 
     voiceProvider.sendRawPacketCallback =
         ({

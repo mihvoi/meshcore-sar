@@ -11,6 +11,7 @@ import '../services/notification_service.dart';
 import '../utils/sar_message_parser.dart';
 import '../utils/drawing_message_parser.dart';
 import '../utils/voice_message_parser.dart';
+import '../utils/image_message_parser.dart';
 import '../l10n/app_localizations.dart';
 import 'helpers/message_retry_manager.dart';
 
@@ -78,6 +79,9 @@ class MessagesProvider with ChangeNotifier {
 
   Future<void> Function({required Contact contact, required int failureStreak})?
   onDirectPathFailedCallback;
+
+  String? Function(Uint8List? publicKey)? resolveContactNameCallback;
+  String Function(int channelIdx)? resolveChannelNameCallback;
 
   List<Message> get messages => List.unmodifiable(_messages);
 
@@ -576,33 +580,31 @@ class MessagesProvider with ChangeNotifier {
   /// Trigger notification for regular message
   Future<void> _triggerMessageNotification(Message message) async {
     try {
-      // Get sender name from message
-      final senderName =
-          message.senderName ?? message.senderKeyShort ?? 'Unknown';
-
-      // Determine if it's a channel message
+      final senderName = _resolveParticipantName(
+        publicKey: message.senderPublicKeyPrefix,
+        fallback: message.senderName ?? message.senderKeyShort,
+      );
       final isChannelMessage = message.isChannelMessage;
-
-      // Get channel name if available
-      String? channelName;
-      if (isChannelMessage) {
-        // You could map channelIdx to channel name here if needed
-        // For now, use "Public" for channel 0
-        channelName = message.channelIdx == 0
-            ? 'Public'
-            : 'Channel ${message.channelIdx}';
-      }
+      final channelName = isChannelMessage
+          ? _resolveChannelName(message.channelIdx)
+          : null;
+      final messageText = _buildNotificationMessageText(
+        message,
+        senderName: senderName,
+        isChannelMessage: isChannelMessage,
+        channelName: channelName,
+      );
 
       debugPrint('🔔 [MessagesProvider] Triggering message notification');
       debugPrint('   Sender: $senderName');
       debugPrint('   Type: ${isChannelMessage ? "Channel" : "Direct"}');
       debugPrint(
-        '   Message: ${message.text.substring(0, message.text.length > 50 ? 50 : message.text.length)}...',
+        '   Message: ${messageText.substring(0, messageText.length > 50 ? 50 : messageText.length)}...',
       );
 
       await _notificationService.showMessageNotification(
         senderName: senderName,
-        messageText: message.text,
+        messageText: messageText,
         isChannelMessage: isChannelMessage,
         channelName: channelName,
         localizations: _localizations,
@@ -612,6 +614,78 @@ class MessagesProvider with ChangeNotifier {
         '❌ [MessagesProvider] Error triggering message notification: $e',
       );
     }
+  }
+
+  String _resolveParticipantName({
+    required Uint8List? publicKey,
+    String? fallback,
+  }) {
+    final resolved = resolveContactNameCallback?.call(publicKey)?.trim();
+    if (resolved != null && resolved.isNotEmpty) {
+      return resolved;
+    }
+    final normalizedFallback = fallback?.trim();
+    if (normalizedFallback != null && normalizedFallback.isNotEmpty) {
+      return normalizedFallback;
+    }
+    return 'Unknown';
+  }
+
+  String _resolveChannelName(int? channelIdx) {
+    final idx = channelIdx ?? 0;
+    final resolved = resolveChannelNameCallback?.call(idx).trim();
+    if (resolved != null && resolved.isNotEmpty) {
+      return resolved;
+    }
+    return idx == 0 ? 'Public' : 'Channel $idx';
+  }
+
+  String _buildNotificationMessageText(
+    Message message, {
+    required String senderName,
+    required bool isChannelMessage,
+    String? channelName,
+  }) {
+    final voiceEnvelope = VoiceEnvelope.tryParseText(message.text);
+    if (voiceEnvelope != null) {
+      final seconds = (voiceEnvelope.durationMs / 1000).ceil();
+      final route = isChannelMessage
+          ? 'Channel: ${channelName ?? _resolveChannelName(message.channelIdx)}'
+          : 'From: $senderName';
+      return '$route\nVoice message - ${voiceEnvelope.mode.label} - ${seconds}s - ${voiceEnvelope.total} packets';
+    }
+
+    final imageEnvelope = ImageEnvelope.tryParse(message.text);
+    if (imageEnvelope != null) {
+      final route = isChannelMessage
+          ? 'Channel: ${channelName ?? _resolveChannelName(message.channelIdx)}'
+          : 'From: $senderName';
+      return '$route\nImage - ${imageEnvelope.format.label} - ${imageEnvelope.width}x${imageEnvelope.height} - ${_formatBytes(imageEnvelope.sizeBytes)}';
+    }
+
+    if (!isChannelMessage && message.recipientPublicKey != null) {
+      final recipientName = _resolveParticipantName(
+        publicKey: message.recipientPublicKey,
+        fallback: null,
+      );
+      if (recipientName != 'Unknown') {
+        return 'From: $senderName\nTo: $recipientName\n${message.text}';
+      }
+    }
+
+    if (isChannelMessage && channelName != null && channelName.isNotEmpty) {
+      return 'Channel: $channelName\n${message.text}';
+    }
+
+    return message.text;
+  }
+
+  String _formatBytes(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    final kib = bytes / 1024;
+    if (kib < 1024) return '${kib.toStringAsFixed(kib >= 10 ? 0 : 1)} KB';
+    final mib = kib / 1024;
+    return '${mib.toStringAsFixed(mib >= 10 ? 0 : 1)} MB';
   }
 
   /// Persist messages to storage (async, non-blocking)
