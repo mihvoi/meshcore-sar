@@ -58,7 +58,6 @@ class NotificationService {
         requestAlertPermission: true,
         requestBadgePermission: true,
         requestSoundPermission: true,
-        requestCriticalPermission: true, // For urgent SAR notifications
       );
 
       // Combined initialization settings
@@ -100,8 +99,6 @@ class NotificationService {
           alert: true,
           badge: true,
           sound: true,
-          critical:
-              true, // Request critical alert permission for urgent SAR notifications
         );
         _permissionGranted = granted ?? false;
         debugPrint(
@@ -274,8 +271,7 @@ class NotificationService {
         badgeNumber: 1,
         threadIdentifier: 'sar_markers',
         categoryIdentifier: 'SAR_ALERT',
-        interruptionLevel:
-            InterruptionLevel.critical, // Critical alert (bypasses silent mode)
+        interruptionLevel: InterruptionLevel.timeSensitive,
       );
 
       // Combined notification details
