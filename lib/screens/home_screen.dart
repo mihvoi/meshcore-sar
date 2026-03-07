@@ -27,6 +27,8 @@ import '../utils/battery_display_helper.dart';
 
 enum _HomeTab { messages, contacts, sensors, map }
 
+enum _AdvertMode { flood, direct }
+
 class HomeScreen extends StatefulWidget {
   final Function(AppThemeMode) onThemeChanged;
   final Function(Locale?) onLocaleChanged;
@@ -245,7 +247,187 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  Future<void> _advertiseDevice(BuildContext context) async {
+  Future<void> _triggerAdvertFeedback() async {
+    final platform = Theme.of(context).platform;
+
+    try {
+      if (platform == TargetPlatform.iOS) {
+        await HapticFeedback.lightImpact();
+        await Future.delayed(const Duration(milliseconds: 50));
+        await HapticFeedback.lightImpact();
+      } else {
+        if (await Vibration.hasVibrator()) {
+          await Vibration.vibrate(duration: 50);
+        } else {
+          await HapticFeedback.mediumImpact();
+        }
+      }
+    } catch (e) {
+      debugPrint('Haptic feedback error: $e');
+      await HapticFeedback.vibrate();
+    }
+  }
+
+  Future<_AdvertMode?> _showAdvertModeSheet(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+
+    return showModalBottomSheet<_AdvertMode>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Advert mode',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Choose how far this announcement should travel.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 4,
+                  vertical: 4,
+                ),
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    Icons.hub_rounded,
+                    color: theme.colorScheme.onPrimaryContainer,
+                  ),
+                ),
+                title: Text(l10n.flood),
+                subtitle: const Text('Relay through repeaters across the mesh'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                onTap: () => Navigator.of(context).pop(_AdvertMode.flood),
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 4,
+                  vertical: 4,
+                ),
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.secondaryContainer,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    Icons.near_me_rounded,
+                    color: theme.colorScheme.onSecondaryContainer,
+                  ),
+                ),
+                title: Text(l10n.direct),
+                subtitle: const Text('Nearby only, without repeater flooding'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                onTap: () => Navigator.of(context).pop(_AdvertMode.direct),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActivityBadge({
+    required String label,
+    required int count,
+    required bool isActive,
+    required Color activeColor,
+  }) {
+    final color = isActive ? activeColor : Colors.grey;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            '$label:$count',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactActivityIndicator({
+    required bool rxActive,
+    required bool txActive,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: rxActive ? Colors.green : Colors.grey,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: txActive ? Colors.blue : Colors.grey,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _advertiseDevice(
+    BuildContext context, {
+    bool floodMode = true,
+  }) async {
     final connectionProvider = context.read<ConnectionProvider>();
 
     if (!connectionProvider.deviceInfo.isConnected) {
@@ -325,8 +507,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       // Small delay to ensure the lat/lon is set
       await Future.delayed(const Duration(milliseconds: 100));
 
-      // Send flood advertisement
-      await connectionProvider.sendSelfAdvert(floodMode: true);
+      await connectionProvider.sendSelfAdvert(floodMode: floodMode);
+
+      if (context.mounted) {
+        ToastLogger.success(
+          context,
+          floodMode ? 'Flood advert sent' : 'Direct advert sent',
+        );
+      }
     } catch (e) {
       debugPrint('❌ Failed to advertise device: $e');
       if (context.mounted) {
@@ -367,6 +555,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       appBar: shouldHideUI
           ? null
           : AppBar(
+              toolbarHeight: 64,
+              titleSpacing: 8,
               title: _buildCompactStatusBar(),
               actions: [
                 Consumer<ConnectionProvider>(
@@ -565,7 +755,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         final deviceInfo = provider.deviceInfo;
         final isConnected = deviceInfo.isConnected;
         final isTcpConnected = provider.connectionMode == ConnectionMode.tcp;
-        final isBleConnected = isConnected && !isTcpConnected;
 
         if (!isConnected) {
           // Disconnected state: show connect button
@@ -627,238 +816,242 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           );
         }
 
-        // Connected state: LEFT | CENTER | RIGHT layout
-        return Row(
-          children: [
-            // LEFT: Name + BT/Battery + Cog
-            Expanded(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Flexible(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+        final theme = Theme.of(context);
+        final subtitleColor = theme.colorScheme.onSurfaceVariant;
+        final signalColor = isTcpConnected
+            ? Colors.green
+            : (deviceInfo.signalRssi != null
+                  ? BatteryDisplayHelper.getSignalColor(deviceInfo.signalRssi!)
+                  : Colors.grey);
+
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final isTight = constraints.maxWidth < 360;
+
+            return Row(
+              children: [
+                Flexible(
+                  fit: FlexFit.loose,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest
+                          .withValues(alpha: 0.55),
+                      borderRadius: BorderRadius.circular(22),
+                    ),
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          deviceInfo.selfName ??
-                              AppLocalizations.of(context)!.appTitle,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                        Flexible(
+                          fit: FlexFit.loose,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                deviceInfo.selfName ??
+                                    AppLocalizations.of(context)!.appTitle,
+                                style: (isTight
+                                        ? theme.textTheme.titleSmall
+                                        : theme.textTheme.titleMedium)
+                                    ?.copyWith(fontWeight: FontWeight.w700),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 2),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    isTcpConnected
+                                        ? Icons.wifi_rounded
+                                        : Icons.bluetooth_connected_rounded,
+                                    size: 13,
+                                    color: signalColor,
+                                  ),
+                                  if (!isTcpConnected &&
+                                      deviceInfo.signalRssi != null) ...[
+                                    const SizedBox(width: 4),
+                                    SizedBox(
+                                      width: 28,
+                                      child: Text(
+                                        '${deviceInfo.signalRssi}',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600,
+                                          color: signalColor,
+                                        ),
+                                        maxLines: 1,
+                                      ),
+                                    ),
+                                  ],
+                                  if (deviceInfo.batteryPercent != null) ...[
+                                    const SizedBox(width: 8),
+                                    Icon(
+                                      BatteryDisplayHelper.getBatteryIcon(
+                                        deviceInfo.batteryPercent!,
+                                      ),
+                                      size: 13,
+                                      color:
+                                          BatteryDisplayHelper.getBatteryColor(
+                                            deviceInfo.batteryPercent!,
+                                          ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    SizedBox(
+                                      width: 30,
+                                      child: Text(
+                                        '${deviceInfo.batteryPercent!.round()}%',
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600,
+                                          color:
+                                              BatteryDisplayHelper.getBatteryColor(
+                                                deviceInfo.batteryPercent!,
+                                              ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ],
                           ),
-                          overflow: TextOverflow.ellipsis,
                         ),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              isTcpConnected
-                                  ? Icons.wifi
-                                  : Icons.bluetooth_connected,
-                              color: isTcpConnected
-                                  ? Colors.green
-                                  : (deviceInfo.signalRssi != null
-                                        ? BatteryDisplayHelper.getSignalColor(
-                                            deviceInfo.signalRssi!,
-                                          )
-                                        : Colors.grey),
-                              size: 13,
+                        const SizedBox(width: 4),
+                        IconButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const DeviceConfigScreen(),
+                              ),
+                            );
+                          },
+                          onLongPress: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => PacketLogScreen(
+                                  bleService: provider.bleService,
+                                ),
+                              ),
+                            );
+                          },
+                          tooltip: AppLocalizations.of(context)!.settings,
+                          icon: const Icon(Icons.tune_rounded),
+                          color: subtitleColor,
+                          style: IconButton.styleFrom(
+                            backgroundColor: theme.colorScheme.surface,
+                            foregroundColor: subtitleColor,
+                            minimumSize: Size.square(isTight ? 38 : 40),
+                            padding: EdgeInsets.zero,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        GestureDetector(
+                          onTap: () async {
+                            await _triggerAdvertFeedback();
+                            if (!mounted || !context.mounted) return;
+                            await _advertiseDevice(context);
+                          },
+                          onLongPress: () async {
+                            await _triggerAdvertFeedback();
+                            if (!mounted || !context.mounted) return;
+
+                            final mode = await _showAdvertModeSheet(context);
+                            if (!mounted || !context.mounted || mode == null) {
+                              return;
+                            }
+
+                            await _advertiseDevice(
+                              context,
+                              floodMode: mode == _AdvertMode.flood,
+                            );
+                          },
+                          child: Container(
+                            width: isTight ? 38 : 40,
+                            height: isTight ? 38 : 40,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  theme.colorScheme.primary,
+                                  theme.colorScheme.primary.withValues(
+                                    alpha: 0.78,
+                                  ),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                            if (isBleConnected &&
-                                deviceInfo.signalRssi != null) ...[
-                              const SizedBox(width: 3),
-                              Text(
-                                '${deviceInfo.signalRssi}',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: BatteryDisplayHelper.getSignalColor(
-                                    deviceInfo.signalRssi!,
-                                  ),
-                                ),
-                              ),
-                            ],
-                            if (isTcpConnected) ...[
-                              const SizedBox(width: 3),
-                              Text(
-                                'WiFi',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.green,
-                                ),
-                              ),
-                            ],
-                            if (deviceInfo.batteryPercent != null) ...[
-                              const SizedBox(width: 8),
-                              Icon(
-                                BatteryDisplayHelper.getBatteryIcon(
-                                  deviceInfo.batteryPercent!,
-                                ),
-                                color: BatteryDisplayHelper.getBatteryColor(
-                                  deviceInfo.batteryPercent!,
-                                ),
-                                size: 13,
-                              ),
-                              const SizedBox(width: 3),
-                              Text(
-                                '${deviceInfo.batteryPercent!.round()}%',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: BatteryDisplayHelper.getBatteryColor(
-                                    deviceInfo.batteryPercent!,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
+                            child: Icon(
+                              Icons.campaign_rounded,
+                              color: Colors.white,
+                              size: isTight ? 18 : 20,
+                            ),
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
+                ),
+                SizedBox(width: isTight ? 8 : 12),
+                if (_showRxTxIndicators)
                   GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const DeviceConfigScreen(),
-                        ),
-                      );
-                    },
                     onLongPress: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => PacketLogScreen(
-                            bleService: provider.bleService,
-                          ),
+                          builder: (context) =>
+                              PacketLogScreen(bleService: provider.bleService),
                         ),
                       );
                     },
-                    child: Container(
-                      width: 32,
-                      height: 32,
-                      alignment: Alignment.center,
-                      child: const Icon(Icons.settings, size: 18),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // CENTER: Broadcast button
-            const SizedBox(width: 8),
-            FilledButton(
-              onPressed: () async {
-                // Capture platform before async operations
-                final platform = Theme.of(context).platform;
-                // iOS: Use haptic feedback (always works)
-                // Android: Try vibration package for better control
-                try {
-                  if (platform == TargetPlatform.iOS) {
-                    // iOS: Try multiple haptic types for reliability
-                    await HapticFeedback.lightImpact();
-                    await Future.delayed(const Duration(milliseconds: 50));
-                    await HapticFeedback.lightImpact();
-                  } else {
-                    // Android vibration
-                    if (await Vibration.hasVibrator()) {
-                      await Vibration.vibrate(duration: 50);
-                    } else {
-                      await HapticFeedback.mediumImpact();
-                    }
-                  }
-                } catch (e) {
-                  // Fallback if anything fails
-                  debugPrint('Haptic feedback error: $e');
-                  await HapticFeedback.vibrate();
-                }
-                if (!mounted) return;
-                if (!context.mounted) return;
-                _advertiseDevice(context);
-              },
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.blue.shade700,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.all(10),
-                minimumSize: const Size(40, 40),
-                shape: const CircleBorder(),
-              ),
-              child: const Icon(Icons.campaign, size: 20),
-            ),
-            const SizedBox(width: 8),
-
-            // RIGHT: RX/TX indicators
-            if (_showRxTxIndicators)
-              GestureDetector(
-                onLongPress: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          PacketLogScreen(bleService: provider.bleService),
-                    ),
-                  );
-                },
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 7,
-                          height: 7,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: provider.rxActivity
-                                ? Colors.green
-                                : Colors.grey.withValues(alpha: 0.3),
+                    child: isTight
+                        ? _buildCompactActivityIndicator(
+                            rxActive: provider.rxActivity,
+                            txActive: provider.txActivity,
+                          )
+                        : Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surfaceContainerHigh
+                                  .withValues(alpha: 0.85),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                _buildActivityBadge(
+                                  label: 'RX',
+                                  count: provider.rxPacketCount,
+                                  isActive: provider.rxActivity,
+                                  activeColor: Colors.green,
+                                ),
+                                const SizedBox(height: 6),
+                                _buildActivityBadge(
+                                  label: 'TX',
+                                  count: provider.txPacketCount,
+                                  isActive: provider.txActivity,
+                                  activeColor: Colors.blue,
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 3),
-                        Text(
-                          'RX:${provider.rxPacketCount}',
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 3),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 7,
-                          height: 7,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: provider.txActivity
-                                ? Colors.blue
-                                : Colors.grey.withValues(alpha: 0.3),
-                          ),
-                        ),
-                        const SizedBox(width: 3),
-                        Text(
-                          'TX:${provider.txPacketCount}',
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              )
-            else
-              const SizedBox(
-                width: 52,
-              ), // Placeholder to maintain layout balance
-          ],
+                  )
+                else
+                  SizedBox(width: isTight ? 24 : 74),
+              ],
+            );
+          },
         );
       },
     );
