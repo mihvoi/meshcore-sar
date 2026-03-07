@@ -13,7 +13,6 @@ import '../../providers/connection_provider.dart';
 import '../../providers/drawing_provider.dart';
 import '../../providers/voice_provider.dart';
 import '../../providers/image_provider.dart' as ip;
-import '../contacts/direct_message_sheet.dart';
 import '../drawing_minimap_preview.dart';
 import '../../models/ble_packet_log.dart';
 import '../../services/sar_template_service.dart';
@@ -193,18 +192,11 @@ class _MessageBubbleState extends State<MessageBubble> {
   }
 
   void _showMessageOptions(BuildContext context) {
-    // Determine if this is own message
     final connectionProvider = context.read<ConnectionProvider>();
     final selfPublicKey = connectionProvider.deviceInfo.publicKey;
     final isOwnMessage =
         widget.message.isSentMessage ||
         widget.message.isFromSelf(selfPublicKey);
-
-    // Check if we can reply to this message (must be contact message from someone else)
-    final canReply =
-        widget.message.isContactMessage &&
-        !isOwnMessage &&
-        widget.message.senderPublicKeyPrefix != null;
 
     showModalBottomSheet(
       context: context,
@@ -217,16 +209,6 @@ class _MessageBubbleState extends State<MessageBubble> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Reply option (only for contact messages from others)
-            if (canReply)
-              ListTile(
-                leading: const Icon(Icons.reply),
-                title: Text(AppLocalizations.of(context)!.reply),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showReplySheet(context);
-                },
-              ),
             // Copy text option
             ListTile(
               leading: const Icon(Icons.copy),
@@ -1282,44 +1264,6 @@ class _MessageBubbleState extends State<MessageBubble> {
     final pathLen = raw[4];
     if (pathLen <= 0 || raw.length < 5 + pathLen) return null;
     return raw.sublist(5, 5 + pathLen);
-  }
-
-  void _showReplySheet(BuildContext context) {
-    // Find the sender contact by public key prefix
-    final contactsProvider = context.read<ContactsProvider>();
-
-    if (widget.message.senderPublicKeyPrefix == null) {
-      ToastLogger.error(context, 'Cannot reply: sender information missing');
-      return;
-    }
-
-    // Find contact by public key prefix (first 6 bytes)
-    final senderKeyHex = widget.message.senderPublicKeyPrefix!
-        .sublist(
-          0,
-          widget.message.senderPublicKeyPrefix!.length < 6
-              ? widget.message.senderPublicKeyPrefix!.length
-              : 6,
-        )
-        .map((b) => b.toRadixString(16).padLeft(2, '0'))
-        .join('');
-
-    final senderContact = contactsProvider.contacts.where((c) {
-      return c.publicKeyHex.startsWith(senderKeyHex);
-    }).firstOrNull;
-
-    if (senderContact == null) {
-      ToastLogger.error(context, 'Cannot reply: contact not found');
-      return;
-    }
-
-    // Show direct message sheet for the sender
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => DirectMessageSheet(contact: senderContact),
-    );
   }
 
   void _showDeleteConfirmation(BuildContext context) {

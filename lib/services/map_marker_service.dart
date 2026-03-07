@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/contact.dart';
 import '../models/sar_marker.dart';
+import '../widgets/common/contact_avatar.dart';
 import '../widgets/map/location_pointer.dart';
 
 /// Centralized service for map marker management.
@@ -77,9 +78,15 @@ class MapMarkerService {
                 // Marker icon
                 Container(
                   decoration: BoxDecoration(
-                    color: getContactMarkerColor(contact, context),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
+                    color: Colors.white,
+                    shape: contact.type == ContactType.channel ||
+                            contact.type == ContactType.room
+                        ? BoxShape.rectangle
+                        : BoxShape.circle,
+                    borderRadius: contact.type == ContactType.channel ||
+                            contact.type == ContactType.room
+                        ? BorderRadius.circular(14)
+                        : null,
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.3),
@@ -88,17 +95,8 @@ class MapMarkerService {
                       ),
                     ],
                   ),
-                  padding: const EdgeInsets.all(6),
-                  child: contact.roleEmoji != null
-                      ? Text(
-                          contact.roleEmoji!,
-                          style: const TextStyle(fontSize: 18),
-                        )
-                      : Icon(
-                          getContactMarkerIcon(contact),
-                          color: Colors.white,
-                          size: 18,
-                        ),
+                  padding: const EdgeInsets.all(2),
+                  child: ContactAvatar(contact: contact, radius: 16),
                 ),
                 const SizedBox(height: 2),
                 // Name label (without emoji)

@@ -10,7 +10,6 @@ import '../../providers/contacts_provider.dart';
 import '../../providers/map_provider.dart';
 import '../../providers/app_provider.dart';
 import 'contact_route_dialog.dart';
-import 'direct_message_sheet.dart';
 import 'room_login_sheet.dart';
 import '../../utils/location_formats.dart';
 import '../../utils/toast_logger.dart';
@@ -460,9 +459,9 @@ class ContactTile extends StatelessWidget {
               )
             : null,
         onTap: () {
-          // In simple mode, tap directly opens message sheet for chat contacts
+          // In simple mode, tap directly opens the route editor for chat contacts
           if (isSimpleMode && contact.type == ContactType.chat) {
-            _showDirectMessageDialog(context, contact);
+            _showSetRouteDialog(context, contact);
           } else if (isSimpleMode && contact.type == ContactType.repeater) {
             // In simple mode, tapping a repeater jumps to the map
             _jumpToMapForRepeater(context, contact);
@@ -512,15 +511,6 @@ class ContactTile extends StatelessWidget {
                 }
               },
       ),
-    );
-  }
-
-  void _showDirectMessageDialog(BuildContext context, Contact contact) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => DirectMessageSheet(contact: contact),
     );
   }
 
@@ -1036,31 +1026,6 @@ class ContactTile extends StatelessWidget {
                             ),
                           ),
                         ],
-                      ),
-                    ],
-                    // Direct Message button for chat contacts
-                    if (contact.type == ContactType.chat) ...[
-                      const SizedBox(height: 24),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.pop(context); // Close details first
-                            _showDirectMessageDialog(context, contact);
-                          },
-                          icon: const Icon(Icons.message),
-                          label: Text(
-                            AppLocalizations.of(context)!.sendDirectMessage,
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            backgroundColor: _getTypeColor(
-                              contact.type,
-                              context,
-                            ),
-                            foregroundColor: Colors.white,
-                          ),
-                        ),
                       ),
                     ],
                     // Room Login button for room contacts (except Public Channel)
