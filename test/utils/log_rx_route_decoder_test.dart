@@ -24,15 +24,39 @@ void main() {
 
       expect(decoded, isNotNull);
       expect(decoded!.payloadType, 0x01);
-      expect(decoded.pathHashes, [0xc2, 0xba, 0x5f, 0xde]);
-      expect(decoded.originalSenderHash, 0xc2);
+      expect(decoded.pathBytes, [0xc2, 0xba, 0x5f, 0xde]);
+      expect(decoded.hashSize, 2);
+      expect(decoded.hopHashes, ['c2ba', '5fde']);
+      expect(decoded.originalSenderHashHex, 'c2ba');
+    });
+
+    test('uses preferred hash size when packet length is ambiguous', () {
+      final packet = Uint8List.fromList([
+        0x88,
+        0x37,
+        0xae,
+        0x09,
+        0x06,
+        0xaa,
+        0xbb,
+        0xcc,
+        0xdd,
+        0xee,
+        0xff,
+      ]);
+
+      final decoded = LogRxRouteDecoder.decode(packet, preferredHashSize: 1);
+
+      expect(decoded, isNotNull);
+      expect(decoded!.hashSize, 1);
+      expect(decoded.hopHashes, ['aa', 'bb', 'cc', 'dd', 'ee', 'ff']);
     });
   });
 
   group('LogRxRouteDecoder.resolveHash', () {
     test('prefers own node when hash matches device key', () {
       final resolved = LogRxRouteDecoder.resolveHash(
-        0xc2,
+        'c201',
         contacts: const [],
         ownPublicKey: Uint8List.fromList([0xc2, 0x01, 0x02]),
         ownName: 'Base',
@@ -44,8 +68,10 @@ void main() {
 
     test('resolves unique contact by first public key byte', () {
       final resolved = LogRxRouteDecoder.resolveHash(
-        0xc2,
-        contacts: [_contact(name: 'Alpha', keyPrefix: 0xc2)],
+        'c211',
+        contacts: [
+          _contact(name: 'Alpha', keyPrefix: [0xc2, 0x11]),
+        ],
       );
 
       expect(resolved.isUniqueMatch, isTrue);
@@ -54,10 +80,10 @@ void main() {
 
     test('marks ambiguous matches without pretending certainty', () {
       final resolved = LogRxRouteDecoder.resolveHash(
-        0xc2,
+        'c2',
         contacts: [
-          _contact(name: 'Alpha', keyPrefix: 0xc2),
-          _contact(name: 'Bravo', keyPrefix: 0xc2),
+          _contact(name: 'Alpha', keyPrefix: [0xc2, 0x11]),
+          _contact(name: 'Bravo', keyPrefix: [0xc2, 0x22]),
         ],
       );
 
@@ -67,10 +93,10 @@ void main() {
   });
 }
 
-Contact _contact({required String name, required int keyPrefix}) {
+Contact _contact({required String name, required List<int> keyPrefix}) {
   return Contact(
     publicKey: Uint8List.fromList([
-      keyPrefix,
+      ...keyPrefix,
       0x11,
       0x22,
       0x33,

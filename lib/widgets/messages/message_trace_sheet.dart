@@ -10,6 +10,8 @@ import '../../models/message.dart';
 import '../../providers/connection_provider.dart';
 import '../../providers/contacts_provider.dart';
 import '../../services/mesh_map_nodes_service.dart';
+import '../../services/route_hash_preferences.dart';
+import '../../utils/log_rx_route_decoder.dart';
 
 class MessageTraceSheet extends StatefulWidget {
   final Message message;
@@ -32,6 +34,7 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
   Future<_TraceResult> _loadTrace() async {
     final connectionProvider = context.read<ConnectionProvider>();
     final contactsProvider = context.read<ContactsProvider>();
+    final preferredHashSize = await RouteHashPreferences.getHashSize();
     final packetPath = _extractPathFromPacketLogs(
       logs: connectionProvider.bleService.packetLogs,
       message: widget.message,
@@ -46,10 +49,14 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
     var trace = _buildTraceResult(
       nodes: localNodes,
       packetPath: packetPath,
+      preferredHashSize: preferredHashSize,
       senderPrefix: senderPrefix,
       recipientPrefix: recipientPrefix,
     );
-    if (_isCompleteTrace(trace, expectedRelayCount: math.max(0, widget.message.pathLen))) {
+    if (_isCompleteTrace(
+      trace,
+      expectedRelayCount: math.max(0, widget.message.pathLen),
+    )) {
       return trace;
     }
 
@@ -59,6 +66,7 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
     trace = _buildTraceResult(
       nodes: _mergeNodes(localNodes, remoteNodes),
       packetPath: packetPath,
+      preferredHashSize: preferredHashSize,
       senderPrefix: senderPrefix,
       recipientPrefix: recipientPrefix,
     );
@@ -336,9 +344,7 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
 
     if (trace.mode == TraceMode.packetPath) {
       final entries = trace.matchedPathNodes.asMap().entries.map((entry) {
-        final hashHex = trace.pathHashes[entry.key]
-            .toRadixString(16)
-            .padLeft(2, '0');
+        final hashHex = trace.pathHashes[entry.key].toUpperCase();
         return _RouteDisplayEntry(
           node: entry.value,
           label: entry.value?.name ?? 'Unknown',
@@ -428,6 +434,7 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
   _TraceResult _buildTraceResult({
     required List<MeshMapNode> nodes,
     required List<int>? packetPath,
+    required int preferredHashSize,
     required String? senderPrefix,
     required String? recipientPrefix,
   }) {
@@ -435,9 +442,17 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
     final recipientNode = _bestNodeForPrefix(nodes, recipientPrefix);
 
     if (packetPath != null && packetPath.isNotEmpty) {
+      final hashSize = LogRxRouteDecoder.inferHashSize(
+        packetPath,
+        preferredHashSize: preferredHashSize,
+      );
+      final hopHashes = LogRxRouteDecoder.splitHopHashes(
+        packetPath,
+        hashSize: hashSize,
+      );
       final matched = _matchNodesFromPathHashes(
         nodes: nodes,
-        pathHashes: packetPath,
+        pathHashes: hopHashes,
         senderPrefix: senderPrefix,
         recipientPrefix: recipientPrefix,
       );
@@ -445,7 +460,7 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
         mode: TraceMode.packetPath,
         sender: senderNode,
         recipient: recipientNode,
-        pathHashes: packetPath,
+        pathHashes: hopHashes,
         matchedPathNodes: matched,
       );
     }
@@ -481,7 +496,9 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
           trace.matchedPathNodes.every((node) => node != null);
     }
 
-    final concreteCount = trace.matchedPathNodes.whereType<MeshMapNode>().length;
+    final concreteCount = trace.matchedPathNodes
+        .whereType<MeshMapNode>()
+        .length;
     return concreteCount >= expectedRelayCount + 2;
   }
 
@@ -523,13 +540,13 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
 
   List<MeshMapNode?> _matchNodesFromPathHashes({
     required List<MeshMapNode> nodes,
-    required List<int> pathHashes,
+    required List<String> pathHashes,
     required String? senderPrefix,
     required String? recipientPrefix,
   }) {
     final result = <MeshMapNode?>[];
     for (var i = 0; i < pathHashes.length; i++) {
-      final hashHex = pathHashes[i].toRadixString(16).padLeft(2, '0');
+      final hashHex = pathHashes[i].toLowerCase();
       final candidates = nodes
           .where((n) => n.publicKey.startsWith(hashHex))
           .toList();
@@ -618,7 +635,7 @@ class _TraceResult {
   final TraceMode mode;
   final MeshMapNode? sender;
   final MeshMapNode? recipient;
-  final List<int> pathHashes;
+  final List<String> pathHashes;
   final List<MeshMapNode?> matchedPathNodes;
 
   const _TraceResult({
@@ -645,7 +662,10 @@ class _RouteDisplayEntry {
     return _RouteDisplayEntry(
       node: node,
       label: node.name,
-      keyLabel: node.publicKey.substring(0, math.min(12, node.publicKey.length)),
+      keyLabel: node.publicKey.substring(
+        0,
+        math.min(12, node.publicKey.length),
+      ),
     );
   }
 }

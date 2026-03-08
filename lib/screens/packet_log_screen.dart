@@ -8,6 +8,7 @@ import 'package:meshcore_client/meshcore_client.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/connection_provider.dart';
 import '../providers/contacts_provider.dart';
+import '../services/route_hash_preferences.dart';
 import '../utils/log_rx_route_decoder.dart';
 
 class PacketLogScreen extends StatefulWidget {
@@ -460,26 +461,6 @@ class _PacketLogCard extends StatelessWidget {
     final isRx = log.direction == PacketDirection.rx;
     final directionColor = isRx ? Colors.green : Colors.blue;
     final rxInfo = log.logRxDataInfo;
-    final contacts = context.watch<ContactsProvider>().contacts;
-    final connectionProvider = context.watch<ConnectionProvider>();
-    final decodedRoute = LogRxRouteDecoder.decode(log.rawData);
-    final ownPublicKey = connectionProvider.deviceInfo.publicKey;
-    final ownName =
-        connectionProvider.deviceInfo.selfName ??
-        connectionProvider.deviceInfo.displayName;
-    final resolvedPath = decodedRoute?.pathHashes
-        .map(
-          (hash) => LogRxRouteDecoder.resolveHash(
-            hash,
-            contacts: contacts,
-            ownPublicKey: ownPublicKey,
-            ownName: ownName,
-          ),
-        )
-        .toList();
-    final originalSender = resolvedPath != null && resolvedPath.isNotEmpty
-        ? resolvedPath.first
-        : null;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -604,13 +585,9 @@ class _PacketLogCard extends StatelessWidget {
                     ),
                   ),
                 ],
-                if (isRx && decodedRoute != null) ...[
+                if (isRx) ...[
                   const SizedBox(height: 12),
-                  _RouteSection(
-                    route: decodedRoute,
-                    path: resolvedPath ?? const [],
-                    originalSender: originalSender,
-                  ),
+                  _DecodedRouteSection(log: log),
                 ],
                 const SizedBox(height: 12),
                 Container(
@@ -755,6 +732,53 @@ class _PacketLogCard extends StatelessWidget {
   }
 }
 
+class _DecodedRouteSection extends StatelessWidget {
+  final BlePacketLog log;
+
+  const _DecodedRouteSection({required this.log});
+
+  @override
+  Widget build(BuildContext context) {
+    final contacts = context.watch<ContactsProvider>().contacts;
+    final connectionProvider = context.watch<ConnectionProvider>();
+    final ownPublicKey = connectionProvider.deviceInfo.publicKey;
+    final ownName =
+        connectionProvider.deviceInfo.selfName ??
+        connectionProvider.deviceInfo.displayName;
+
+    return FutureBuilder<int>(
+      future: RouteHashPreferences.getHashSize(),
+      builder: (context, snapshot) {
+        final decodedRoute = LogRxRouteDecoder.decode(
+          log.rawData,
+          preferredHashSize: snapshot.data,
+        );
+        if (decodedRoute == null) {
+          return const SizedBox.shrink();
+        }
+
+        final resolvedPath = decodedRoute.hopHashes
+            .map(
+              (hashHex) => LogRxRouteDecoder.resolveHash(
+                hashHex,
+                contacts: contacts,
+                ownPublicKey: ownPublicKey,
+                ownName: ownName,
+              ),
+            )
+            .toList();
+        final originalSender = resolvedPath.isEmpty ? null : resolvedPath.first;
+
+        return _RouteSection(
+          route: decodedRoute,
+          path: resolvedPath,
+          originalSender: originalSender,
+        );
+      },
+    );
+  }
+}
+
 class _RouteSection extends StatelessWidget {
   final DecodedLogRxRoute route;
   final List<ResolvedNodeHash> path;
@@ -802,7 +826,13 @@ class _RouteSection extends StatelessWidget {
               _FactCard(
                 icon: Icons.hub,
                 label: 'Hops',
-                value: '${route.pathHashes.length}',
+                value: '${route.hopCount}',
+              ),
+              _FactCard(
+                icon: Icons.tag,
+                label: 'Hash size',
+                value:
+                    '${route.hashSize} byte${route.hashSize == 1 ? '' : 's'}',
               ),
               if (originalSender != null)
                 _FactCard(
