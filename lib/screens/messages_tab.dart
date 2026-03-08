@@ -267,6 +267,7 @@ class _MessagesTabState extends State<MessagesTab> {
   /// Show recipient selector bottom sheet
   void _showRecipientSelector() {
     final contactsProvider = context.read<ContactsProvider>();
+    final messagesProvider = context.read<MessagesProvider>();
 
     // Filter contacts by type
     final contacts = contactsProvider.contacts
@@ -287,6 +288,13 @@ class _MessagesTabState extends State<MessagesTab> {
         contacts: contacts,
         rooms: rooms,
         channels: channels,
+        unreadCount: messagesProvider.unreadCount,
+        unreadCountsByPublicKey: {
+          for (final contact in [...contacts, ...rooms, ...channels])
+            contact.publicKeyHex: messagesProvider.getUnreadCountForDestination(
+              contact,
+            ),
+        },
         currentDestinationType: _destinationType,
         currentRecipientPublicKey: _selectedRecipient?.publicKeyHex,
         onSelect: _onRecipientSelected,

@@ -145,31 +145,31 @@ class AppLocalizationsTr extends AppLocalizations {
   String get appName => 'Uygulama adı';
 
   @override
-  String get aboutMeshCoreSar => 'About MeshCore SAR';
+  String get aboutMeshCoreSar => 'MeshCore SAR hakkında';
 
   @override
   String get aboutDescription =>
-      'A Search & Rescue application designed for emergency response teams. Features include:\n\n• BLE mesh networking for device-to-device communication\n• Offline maps with multiple layer options\n• Real-time team member tracking\n• SAR tactical markers (found person, fire, staging)\n• Contact management and messaging\n• GPS tracking with compass heading\n• Map tile caching for offline use';
+      'Acil durum müdahale ekipleri için tasarlanmış bir Arama ve Kurtarma uygulaması. Özellikler:\n\n• Cihazdan cihaza iletişim için BLE mesh ağı\n• Birden çok katman seçeneğiyle çevrimdışı haritalar\n• Ekip üyelerinin gerçek zamanlı takibi\n• SAR taktik işaretleri (bulunan kişi, yangın, toplanma alanı)\n• Kişi yönetimi ve mesajlaşma\n• Pusula yönüyle GPS takibi\n• Çevrimdışı kullanım için harita karo önbelleği';
 
   @override
-  String get technologiesUsed => 'Technologies Used:';
+  String get technologiesUsed => 'Kullanılan teknolojiler:';
 
   @override
   String get technologiesList =>
-      '• Flutter for cross-platform development\n• BLE (Bluetooth Low Energy) for mesh networking\n• OpenStreetMap for mapping\n• Provider for state management\n• SharedPreferences for local storage';
+      '• Çok platformlu geliştirme için Flutter\n• Mesh ağı için BLE (Bluetooth Low Energy)\n• Haritalama için OpenStreetMap\n• Durum yönetimi için Provider\n• Yerel depolama için SharedPreferences';
 
   @override
   String get moreInfo => 'Daha fazla bilgi';
 
   @override
-  String get packageName => 'Package Name';
+  String get packageName => 'Paket adı';
 
   @override
   String get sampleData => 'Örnek veriler';
 
   @override
   String get sampleDataDescription =>
-      'Load or clear sample contacts, channel messages, and SAR markers for testing';
+      'Test için örnek kişiler, kanal mesajları ve SAR işaretleri yükleyin veya temizleyin';
 
   @override
   String get loadSampleData => 'Örnek verileri yükle';
@@ -194,7 +194,7 @@ class AppLocalizationsTr extends AppLocalizations {
     int sarCount,
     int messageCount,
   ) {
-    return 'Loaded $teamCount team members, $channelCount channels, $sarCount SAR markers, $messageCount messages';
+    return '$teamCount ekip üyesi, $channelCount kanal, $sarCount SAR işareti, $messageCount mesaj yüklendi';
   }
 
   @override
@@ -207,16 +207,16 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get failedToStartBackgroundTracking =>
-      'Failed to start background tracking. Check permissions and BLE connection.';
+      'Arka plan takibi başlatılamadı. İzinleri ve BLE bağlantısını kontrol edin.';
 
   @override
   String locationBroadcast(String latitude, String longitude) {
-    return 'Location broadcast: $latitude, $longitude';
+    return 'Konum yayını: $latitude, $longitude';
   }
 
   @override
   String get defaultPinInfo =>
-      'The default pin for devices without a screen is 123456. Trouble pairing? Forget the bluetooth device in system settings.';
+      'Ekranı olmayan cihazlar için varsayılan PIN 123456’dır. Eşleştirme sorunu mu yaşıyorsunuz? Sistem ayarlarından Bluetooth cihazını unutun.';
 
   @override
   String get noMessagesYet => 'Henüz mesaj yok';
@@ -237,7 +237,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get refresh => 'Yenile';
 
   @override
-  String get resetPath => 'Reset Path (Re-route)';
+  String get resetPath => 'Yolu sıfırla (yeniden yönlendir)';
 
   @override
   String get publicKeyCopied => 'Genel anahtar panoya kopyalandı';
@@ -314,14 +314,15 @@ class AppLocalizationsTr extends AppLocalizations {
   }
 
   @override
-  String get longPressForSecondPoint => 'Long press for second point';
+  String get longPressForSecondPoint => 'İkinci nokta için uzun basın';
 
   @override
-  String get longPressToStartMeasurement => 'Long press to set first point';
+  String get longPressToStartMeasurement =>
+      'İlk noktayı ayarlamak için uzun basın';
 
   @override
   String get longPressToStartNewMeasurement =>
-      'Long press to start new measurement';
+      'Yeni ölçüm başlatmak için uzun basın';
 
   @override
   String get shareDrawings => 'Çizimleri paylaş';
@@ -330,21 +331,21 @@ class AppLocalizationsTr extends AppLocalizations {
   String get clearAllDrawings => 'Tüm çizimleri temizle';
 
   @override
-  String get completeLine => 'Complete Line';
+  String get completeLine => 'Çizgiyi tamamla';
 
   @override
   String broadcastDrawingsToTeam(int count, String plural) {
-    return 'Broadcast $count drawing$plural to team';
+    return '$count çizim$plural ekibe yayınla';
   }
 
   @override
   String removeAllDrawings(int count, String plural) {
-    return 'Remove all $count drawing$plural';
+    return 'Tüm $count çizim$plural kaldır';
   }
 
   @override
   String deleteAllDrawingsConfirm(int count, String plural) {
-    return 'Delete all $count drawing$plural from the map?';
+    return 'Haritadaki tüm $count çizim$plural silinsin mi?';
   }
 
   @override
@@ -352,7 +353,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String shareDrawingsCount(int count, String plural) {
-    return 'Share $count Drawing$plural';
+    return '$count çizim$plural paylaş';
   }
 
   @override
@@ -381,7 +382,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get publicChannel => 'Genel kanal';
 
   @override
-  String get broadcastToAll => 'Broadcast to all nearby nodes (ephemeral)';
+  String get broadcastToAll => 'Yakındaki tüm düğümlere yayınla (geçici)';
 
   @override
   String get storedPermanently => 'Odada kalıcı olarak saklanır';
@@ -409,11 +410,11 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get ephemeralBroadcastInfo =>
-      'Ephemeral: Broadcast over-the-air only. Not stored - nodes must be online.';
+      'Geçici: yalnızca havadan yayınlanır. Saklanmaz; düğümlerin çevrimiçi olması gerekir.';
 
   @override
   String get persistentRoomInfo =>
-      'Persistent: Stored immutably in room. Synced automatically and preserved offline.';
+      'Kalıcı: odada değişmez şekilde saklanır. Otomatik olarak eşitlenir ve çevrimdışı korunur.';
 
   @override
   String get location => 'Konum';
@@ -446,7 +447,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String lowAccuracyWarning(int accuracy) {
-    return 'Location accuracy is ±${accuracy}m. This may not be accurate enough for SAR operations.\n\nContinue anyway?';
+    return 'Konum doğruluğu ±${accuracy}m. Bu, SAR operasyonları için yeterince doğru olmayabilir.\n\nYine de devam edilsin mi?';
   }
 
   @override
@@ -454,7 +455,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get enterPasswordInfo =>
-      'Enter the password to access this room. The password will be saved for future use.';
+      'Bu odaya erişmek için parolayı girin. Parola daha sonra kullanılmak üzere kaydedilecektir.';
 
   @override
   String get password => 'Parola';
@@ -470,14 +471,14 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String failedToAddRoom(String error) {
-    return 'Failed to add room to device: $error\n\nThe room may not have advertised yet.\nTry waiting for the room to broadcast.';
+    return 'Oda cihaza eklenemedi: $error\n\nOda henüz yayın yapmamış olabilir.\nYayın yapmasını beklemeyi deneyin.';
   }
 
   @override
   String get direct => 'Doğrudan';
 
   @override
-  String get flood => 'Flood';
+  String get flood => 'Yayılım';
 
   @override
   String get loggedIn => 'Giriş yapıldı';
@@ -490,7 +491,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String directPingTimeout(String name) {
-    return 'Direct ping timeout - retrying $name with flooding...';
+    return 'Doğrudan ping zaman aşımına uğradı - $name flooding ile yeniden deneniyor...';
   }
 
   @override
@@ -500,7 +501,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String deleteContactConfirmation(String name) {
-    return 'Are you sure you want to delete \"$name\"?\n\nThis will remove the contact from both the app and the companion radio device.';
+    return '\"$name\" kişisini silmek istediğinizden emin misiniz?\n\nBu işlem kişiyi hem uygulamadan hem de bağlı radyo cihazından kaldıracaktır.';
   }
 
   @override
@@ -570,7 +571,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String pathResetInfo(String name) {
-    return 'Path reset for $name. Next message will find a new route.';
+    return '$name için yol sıfırlandı. Sonraki mesaj yeni bir rota bulacak.';
   }
 
   @override
@@ -595,7 +596,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get filterMarkers => 'İşaretleri filtrele';
 
   @override
-  String get filterMarkersTooltip => 'Filter markers';
+  String get filterMarkersTooltip => 'İşaretleri filtrele';
 
   @override
   String get contactsFilter => 'Kişiler';
@@ -636,7 +637,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String latLonFormat(String latitude, String longitude) {
-    return 'Lat: $latitude Lon: $longitude';
+    return 'Enl: $latitude Boy: $longitude';
   }
 
   @override
@@ -699,22 +700,22 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get cannotReplySenderMissing =>
-      'Cannot reply: sender information missing';
+      'Yanıtlanamıyor: gönderen bilgisi eksik';
 
   @override
-  String get cannotReplyContactNotFound => 'Cannot reply: contact not found';
+  String get cannotReplyContactNotFound => 'Yanıtlanamıyor: kişi bulunamadı';
 
   @override
   String get copyText => 'Metni kopyala';
 
   @override
-  String get saveAsTemplate => 'Save as Template';
+  String get saveAsTemplate => 'Şablon olarak kaydet';
 
   @override
-  String get templateSaved => 'Template saved successfully';
+  String get templateSaved => 'Şablon başarıyla kaydedildi';
 
   @override
-  String get templateAlreadyExists => 'Template with this emoji already exists';
+  String get templateAlreadyExists => 'Bu emoji ile bir şablon zaten var';
 
   @override
   String get deleteMessage => 'Mesajı sil';
@@ -733,7 +734,7 @@ class AppLocalizationsTr extends AppLocalizations {
     String lon,
     String url,
   ) {
-    return '$markerInfo\n\nCoordinates: $lat, $lon\n\nGoogle Maps: $url';
+    return '$markerInfo\n\nKoordinatlar: $lat, $lon\n\nGoogle Maps: $url';
   }
 
   @override
@@ -784,29 +785,29 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String deliveredToContacts(int delivered, int total) {
-    return 'Delivered to $delivered/$total contacts';
+    return '$delivered/$total kişiye teslim edildi';
   }
 
   @override
-  String get allDelivered => 'All delivered';
+  String get allDelivered => 'Hepsi teslim edildi';
 
   @override
-  String get recipientDetails => 'Recipient Details';
+  String get recipientDetails => 'Alıcı ayrıntıları';
 
   @override
   String get pending => 'Bekliyor';
 
   @override
-  String get sarMarkerFoundPerson => 'Found Person';
+  String get sarMarkerFoundPerson => 'Bulunan kişi';
 
   @override
-  String get sarMarkerFire => 'Fire Location';
+  String get sarMarkerFire => 'Yangın konumu';
 
   @override
-  String get sarMarkerStagingArea => 'Staging Area';
+  String get sarMarkerStagingArea => 'Toplanma alanı';
 
   @override
-  String get sarMarkerObject => 'Object Found';
+  String get sarMarkerObject => 'Bulunan nesne';
 
   @override
   String get from => 'Kimden';
@@ -824,7 +825,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get frequencyMHz => 'Frekans (MHz)';
 
   @override
-  String get frequencyExample => 'e.g., 869.618';
+  String get frequencyExample => 'örn. 869.618';
 
   @override
   String get bandwidth => 'Bant genişliği';
@@ -888,7 +889,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get clearTrailConfirmation =>
-      'Are you sure you want to clear the current location trail? This action cannot be undone.';
+      'Geçerli konum izini temizlemek istediğinizden emin misiniz? Bu işlem geri alınamaz.';
 
   @override
   String get noTrailRecorded => 'Henüz iz kaydedilmedi';
@@ -911,11 +912,11 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String showingTrailsForContacts(int count) {
-    return 'Showing trails for $count contacts';
+    return '$count kişi için izler gösteriliyor';
   }
 
   @override
-  String get individualContactTrails => 'Individual Contact Trails';
+  String get individualContactTrails => 'Tek tek kişi izleri';
 
   @override
   String get deviceInformation => 'Cihaz bilgileri';
@@ -954,7 +955,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get meshNetworkName => 'Mesh ağ adı';
 
   @override
-  String get nameBroadcastInMesh => 'Name broadcast in mesh advertisements';
+  String get nameBroadcastInMesh => 'Mesh duyurularında yayınlanan ad';
 
   @override
   String get telemetryAndLocationSharing => 'Telemetri ve konum paylaşımı';
@@ -982,12 +983,12 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String typeNumber(int number) {
-    return 'Type $number';
+    return 'Tür $number';
   }
 
   @override
   String copiedToClipboardShort(String label) {
-    return 'Copied $label to clipboard';
+    return '$label panoya kopyalandı';
   }
 
   @override
@@ -1004,7 +1005,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get sarTemplates => 'SAR şablonları';
 
   @override
-  String get manageSarTemplates => 'Manage cursor on target templates';
+  String get manageSarTemplates => 'SAR şablonlarını yönet';
 
   @override
   String get addTemplate => 'Şablon ekle';
@@ -1067,9 +1068,9 @@ class AppLocalizationsTr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'Imported $count templates',
-      one: 'Imported 1 template',
-      zero: 'No templates imported',
+      other: '$count şablon içe aktarıldı',
+      one: '1 şablon içe aktarıldı',
+      zero: 'Şablon içe aktarılmadı',
     );
     return '$_temp0';
   }
@@ -1079,8 +1080,8 @@ class AppLocalizationsTr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'Exported $count templates to clipboard',
-      one: 'Exported 1 template to clipboard',
+      other: '$count şablon panoya aktarıldı',
+      one: '1 şablon panoya aktarıldı',
     );
     return '$_temp0';
   }
@@ -1090,7 +1091,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get resetToDefaultsConfirmation =>
-      'This will delete all custom templates and restore the 4 default templates. Continue?';
+      'Bu işlem tüm özel şablonları silecek ve 4 varsayılan şablonu geri yükleyecek. Devam edilsin mi?';
 
   @override
   String get reset => 'Sıfırla';
@@ -1134,7 +1135,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get locationPermissionDialogContent =>
-      'Location permission is permanently denied. Please enable it in your device settings to use GPS tracking and location sharing features.';
+      'Konum izni kalıcı olarak reddedildi. GPS takibi ve konum paylaşımını kullanmak için lütfen cihaz ayarlarından etkinleştirin.';
 
   @override
   String get openSettings => 'Ayarları aç';
@@ -1150,16 +1151,16 @@ class AppLocalizationsTr extends AppLocalizations {
   String get locationPermissionAlreadyGranted => 'Konum izni zaten verilmiş.';
 
   @override
-  String get sarNavyBlue => 'SAR Navy Blue';
+  String get sarNavyBlue => 'SAR Lacivert';
 
   @override
-  String get sarNavyBlueDescription => 'Professional/Operations Mode';
+  String get sarNavyBlueDescription => 'Profesyonel/Operasyon modu';
 
   @override
   String get selectRecipient => 'Alıcı seç';
 
   @override
-  String get broadcastToAllNearby => 'Broadcast to all nearby';
+  String get broadcastToAllNearby => 'Yakındaki herkese yayınla';
 
   @override
   String get searchRecipients => 'Alıcı ara...';
@@ -1183,28 +1184,28 @@ class AppLocalizationsTr extends AppLocalizations {
   String get channel => 'Kanal';
 
   @override
-  String get samplePoliceLead => 'Police Lead';
+  String get samplePoliceLead => 'Polis lideri';
 
   @override
-  String get sampleDroneOperator => 'Drone Operator';
+  String get sampleDroneOperator => 'Drone operatörü';
 
   @override
-  String get sampleFirefighterAlpha => 'Firefighter';
+  String get sampleFirefighterAlpha => 'İtfaiyeci';
 
   @override
-  String get sampleMedicCharlie => 'Medic';
+  String get sampleMedicCharlie => 'Sağlık görevlisi';
 
   @override
-  String get sampleCommandDelta => 'Command';
+  String get sampleCommandDelta => 'Komuta';
 
   @override
-  String get sampleFireEngine => 'Fire Engine';
+  String get sampleFireEngine => 'İtfaiye aracı';
 
   @override
-  String get sampleAirSupport => 'Air Support';
+  String get sampleAirSupport => 'Hava desteği';
 
   @override
-  String get sampleBaseCoordinator => 'Base Coordinator';
+  String get sampleBaseCoordinator => 'Üs koordinatörü';
 
   @override
   String get channelEmergency => 'Acil durum';
@@ -1216,127 +1217,131 @@ class AppLocalizationsTr extends AppLocalizations {
   String get channelUpdates => 'Güncellemeler';
 
   @override
-  String get sampleTeamMember => 'Sample Team Member';
+  String get sampleTeamMember => 'Örnek ekip üyesi';
 
   @override
-  String get sampleScout => 'Sample Scout';
+  String get sampleScout => 'Örnek keşifçi';
 
   @override
-  String get sampleBase => 'Sample Base';
+  String get sampleBase => 'Örnek üs';
 
   @override
-  String get sampleSearcher => 'Sample Searcher';
+  String get sampleSearcher => 'Örnek arayıcı';
 
   @override
-  String get sampleObjectBackpack => ' Backpack found - blue color';
+  String get sampleObjectBackpack => ' Sırt çantası bulundu - mavi renk';
 
   @override
-  String get sampleObjectVehicle => ' Vehicle abandoned - check for owner';
+  String get sampleObjectVehicle => ' Terk edilmiş araç - sahibi kontrol edin';
 
   @override
-  String get sampleObjectCamping => ' Camping equipment discovered';
+  String get sampleObjectCamping => ' Kamp ekipmanı bulundu';
 
   @override
-  String get sampleObjectTrailMarker => ' Trail marker found off-path';
+  String get sampleObjectTrailMarker => ' Yol dışında patika işareti bulundu';
 
   @override
-  String get sampleMsgAllTeamsCheckIn => 'All teams check in';
+  String get sampleMsgAllTeamsCheckIn => 'Tüm ekipler durum bildirimi yapsın';
 
   @override
-  String get sampleMsgWeatherUpdate => 'Weather update: Clear skies, temp 18°C';
+  String get sampleMsgWeatherUpdate =>
+      'Hava durumu: açık gökyüzü, sıcaklık 18°C';
 
   @override
-  String get sampleMsgBaseCamp => 'Base camp established at staging area';
+  String get sampleMsgBaseCamp => 'Üs kampı toplanma alanında kuruldu';
 
   @override
-  String get sampleMsgTeamAlpha => 'Team moving to sector 2';
+  String get sampleMsgTeamAlpha => 'Ekip sektör 2’ye ilerliyor';
 
   @override
-  String get sampleMsgRadioCheck => 'Radio check - all stations respond';
+  String get sampleMsgRadioCheck =>
+      'Telsiz kontrolü - tüm istasyonlar yanıt versin';
 
   @override
-  String get sampleMsgWaterSupply => 'Water supply available at checkpoint 3';
+  String get sampleMsgWaterSupply =>
+      'Su ikmali 3 numaralı kontrol noktasında mevcut';
 
   @override
-  String get sampleMsgTeamBravo => 'Team reporting: sector 1 clear';
+  String get sampleMsgTeamBravo => 'Ekip raporu: sektör 1 temiz';
 
   @override
-  String get sampleMsgEtaRallyPoint => 'ETA to rally point: 15 minutes';
+  String get sampleMsgEtaRallyPoint =>
+      'Toplanma noktasına tahmini varış: 15 dakika';
 
   @override
-  String get sampleMsgSupplyDrop => 'Supply drop confirmed for 14:00';
+  String get sampleMsgSupplyDrop => 'İkmal bırakma 14:00 için onaylandı';
 
   @override
-  String get sampleMsgDroneSurvey => 'Drone survey completed - no findings';
+  String get sampleMsgDroneSurvey => 'Drone taraması tamamlandı - bulgu yok';
 
   @override
-  String get sampleMsgTeamCharlie => 'Team requesting backup';
+  String get sampleMsgTeamCharlie => 'Ekip takviye istiyor';
 
   @override
-  String get sampleMsgRadioDiscipline => 'All units: maintain radio discipline';
+  String get sampleMsgRadioDiscipline =>
+      'Tüm birimler: telsiz disiplinini koruyun';
 
   @override
-  String get sampleMsgUrgentMedical =>
-      'URGENT: Medical assistance needed at sector 4';
+  String get sampleMsgUrgentMedical => 'ACİL: sektör 4’te tıbbi yardım gerekli';
 
   @override
-  String get sampleMsgAdultMale => ' Adult male, conscious';
+  String get sampleMsgAdultMale => ' Yetişkin erkek, bilinci açık';
 
   @override
-  String get sampleMsgFireSpotted => 'Fire spotted - coordinates incoming';
+  String get sampleMsgFireSpotted => 'Yangın görüldü - koordinatlar geliyor';
 
   @override
-  String get sampleMsgSpreadingRapidly => ' Spreading rapidly!';
+  String get sampleMsgSpreadingRapidly => ' Hızla yayılıyor!';
 
   @override
-  String get sampleMsgPriorityHelicopter => 'PRIORITY: Need helicopter support';
+  String get sampleMsgPriorityHelicopter =>
+      'ÖNCELİK: helikopter desteği gerekli';
 
   @override
-  String get sampleMsgMedicalTeamEnRoute =>
-      'Medical team en route to your location';
+  String get sampleMsgMedicalTeamEnRoute => 'Tıbbi ekip konumunuza geliyor';
 
   @override
-  String get sampleMsgEvacHelicopter => 'Evac helicopter ETA 10 minutes';
+  String get sampleMsgEvacHelicopter => 'Tahliye helikopteri ETA 10 dakika';
 
   @override
-  String get sampleMsgEmergencyResolved => 'Emergency resolved - all clear';
+  String get sampleMsgEmergencyResolved => 'Acil durum çözüldü - tehlike yok';
 
   @override
-  String get sampleMsgEmergencyStagingArea => ' Emergency staging area';
+  String get sampleMsgEmergencyStagingArea => ' Acil durum toplanma alanı';
 
   @override
   String get sampleMsgEmergencyServices =>
-      'Emergency services notified and responding';
+      'Acil servisler bilgilendirildi ve müdahale ediyor';
 
   @override
-  String get sampleAlphaTeamLead => 'Team Lead';
+  String get sampleAlphaTeamLead => 'Ekip lideri';
 
   @override
-  String get sampleBravoScout => 'Scout';
+  String get sampleBravoScout => 'Keşifçi';
 
   @override
-  String get sampleCharlieMedic => 'Medic';
+  String get sampleCharlieMedic => 'Sağlık görevlisi';
 
   @override
-  String get sampleDeltaNavigator => 'Navigator';
+  String get sampleDeltaNavigator => 'Navigatör';
 
   @override
-  String get sampleEchoSupport => 'Support';
+  String get sampleEchoSupport => 'Destek';
 
   @override
-  String get sampleBaseCommand => 'Base Command';
+  String get sampleBaseCommand => 'Üs komutası';
 
   @override
-  String get sampleFieldCoordinator => 'Field Coordinator';
+  String get sampleFieldCoordinator => 'Saha koordinatörü';
 
   @override
-  String get sampleMedicalTeam => 'Medical Team';
+  String get sampleMedicalTeam => 'Tıbbi ekip';
 
   @override
   String get mapDrawing => 'Harita çizimi';
 
   @override
-  String get navigateToDrawing => 'Navigate to Drawing';
+  String get navigateToDrawing => 'Çizime git';
 
   @override
   String get copyCoordinates => 'Koordinatları kopyala';
@@ -1363,7 +1368,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get longitudeLabel => 'Boylam';
 
   @override
-  String get exampleCoordinates => 'Example: 46.0569, 14.5058';
+  String get exampleCoordinates => 'Örnek: 46.0569, 14.5058';
 
   @override
   String get shareDrawing => 'Çizimi paylaş';
@@ -1379,14 +1384,14 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get deleteDrawingConfirm =>
-      'Are you sure you want to delete this drawing?';
+      'Bu çizimi silmek istediğinizden emin misiniz?';
 
   @override
   String get drawingDeleted => 'Çizim silindi';
 
   @override
   String yourDrawingsCount(int count) {
-    return 'Your Drawings ($count)';
+    return 'Çizimleriniz ($count)';
   }
 
   @override
@@ -1414,43 +1419,43 @@ class AppLocalizationsTr extends AppLocalizations {
   String get updateLater => 'Daha sonra';
 
   @override
-  String get cadastralParcels => 'Cadastral Parcels';
+  String get cadastralParcels => 'Kadastro parselleri';
 
   @override
-  String get forestRoads => 'Forest Roads';
+  String get forestRoads => 'Orman yolları';
 
   @override
-  String get wmsOverlays => 'WMS Overlays';
+  String get wmsOverlays => 'WMS katmanları';
 
   @override
-  String get hikingTrails => 'Hiking Trails';
+  String get hikingTrails => 'Yürüyüş parkurları';
 
   @override
-  String get mainRoads => 'Main Roads';
+  String get mainRoads => 'Ana yollar';
 
   @override
-  String get houseNumbers => 'House Numbers';
+  String get houseNumbers => 'Kapı numaraları';
 
   @override
-  String get fireHazardZones => 'Fire Hazard Zones';
+  String get fireHazardZones => 'Yangın tehlike bölgeleri';
 
   @override
-  String get historicalFires => 'Historical Fires';
+  String get historicalFires => 'Geçmiş yangınlar';
 
   @override
-  String get firebreaks => 'Firebreaks';
+  String get firebreaks => 'Yangın şeritleri';
 
   @override
-  String get krasFireZones => 'Kras Fire Zones';
+  String get krasFireZones => 'Kras yangın bölgeleri';
 
   @override
-  String get placeNames => 'Place Names';
+  String get placeNames => 'Yer adları';
 
   @override
-  String get municipalityBorders => 'Municipality Borders';
+  String get municipalityBorders => 'Belediye sınırları';
 
   @override
-  String get topographicMap => 'Topographic Map 1:25000';
+  String get topographicMap => 'Topoğrafik harita 1:25000';
 
   @override
   String get recentMessages => 'Son mesajlar';
@@ -1472,28 +1477,28 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get channelSecretHelp =>
-      'This secret must be shared with all team members who need access to this channel';
+      'Bu sır, bu kanala erişmesi gereken tüm ekip üyeleriyle paylaşılmalıdır';
 
   @override
   String get channelTypesInfo =>
-      'Hash channels (#team): Secret auto-generated from name. Same name = same channel across devices.\n\nPrivate channels: Use explicit secret. Only those with the secret can join.';
+      'Hash kanallar (#team): sır, isimden otomatik üretilir. Aynı isim = tüm cihazlarda aynı kanal.\n\nÖzel kanallar: açık bir sır kullanın. Yalnızca sırrı bilenler katılabilir.';
 
   @override
   String get hashChannelInfo =>
-      'Hash channel: Secret will be auto-generated from the channel name. Anyone using the same name will join the same channel.';
+      'Hash kanal: sır kanal adından otomatik üretilecektir. Aynı adı kullanan herkes aynı kanala katılır.';
 
   @override
   String get channelNameRequired => 'Kanal adı gerekli';
 
   @override
-  String get channelNameTooLong => 'Channel name must be 31 characters or less';
+  String get channelNameTooLong => 'Kanal adı en fazla 31 karakter olabilir';
 
   @override
   String get channelSecretRequired => 'Kanal sırrı gerekli';
 
   @override
   String get channelSecretTooLong =>
-      'Channel secret must be 32 characters or less';
+      'Kanal sırrı en fazla 32 karakter olabilir';
 
   @override
   String get invalidAsciiCharacters =>
@@ -1512,7 +1517,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String deleteChannelConfirmation(String channelName) {
-    return 'Are you sure you want to delete channel \"$channelName\"? This action cannot be undone.';
+    return '\"$channelName\" kanalını silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.';
   }
 
   @override
@@ -1543,79 +1548,83 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get wizardWelcomeDescription =>
-      'A powerful off-grid communication tool for search and rescue operations. Connect with your team using mesh radio technology when traditional networks are unavailable.';
+      'Arama ve kurtarma operasyonları için güçlü bir şebeke dışı iletişim aracı. Geleneksel ağlar kullanılamadığında ekibinizle mesh radyo teknolojisi üzerinden bağlantı kurun.';
 
   @override
   String get wizardConnectingTitle => 'Radyonuza bağlanma';
 
   @override
   String get wizardConnectingDescription =>
-      'Connect your smartphone to a MeshCore radio device via Bluetooth to start communicating off-grid.';
+      'Şebeke dışı iletişime başlamak için akıllı telefonunuzu Bluetooth üzerinden bir MeshCore radyo cihazına bağlayın.';
 
   @override
-  String get wizardConnectingFeature1 => 'Scan for nearby MeshCore devices';
+  String get wizardConnectingFeature1 =>
+      'Yakındaki MeshCore cihazlarını tarayın';
 
   @override
-  String get wizardConnectingFeature2 => 'Pair with your radio via Bluetooth';
+  String get wizardConnectingFeature2 =>
+      'Radyonuzla Bluetooth üzerinden eşleşin';
 
   @override
   String get wizardConnectingFeature3 =>
-      'Works completely offline - no internet required';
+      'Tamamen çevrimdışı çalışır - internet gerekmez';
 
   @override
   String get wizardChannelTitle => 'Kanallar';
 
   @override
   String get wizardChannelDescription =>
-      'Broadcast messages to everyone on a channel, perfect for team-wide announcements and coordination.';
+      'Bir kanaldaki herkese mesaj yayınlayın; ekip genelindeki duyurular ve koordinasyon için idealdir.';
 
   @override
   String get wizardChannelFeature1 =>
-      'Public Channel for general team communication';
+      'Genel ekip iletişimi için herkese açık kanal';
 
   @override
   String get wizardChannelFeature2 =>
-      'Create custom channels for specific groups';
+      'Belirli gruplar için özel kanallar oluşturun';
 
   @override
   String get wizardChannelFeature3 =>
-      'Messages are automatically relayed by the mesh';
+      'Mesajlar mesh tarafından otomatik iletilir';
 
   @override
   String get wizardContactsTitle => 'Kişiler';
 
   @override
   String get wizardContactsDescription =>
-      'Your team members appear automatically as they join the mesh network. Send them direct messages or view their location.';
+      'Ekip üyeleriniz mesh ağına katıldıkça otomatik olarak görünür. Onlara doğrudan mesaj gönderin veya konumlarını görüntüleyin.';
 
   @override
-  String get wizardContactsFeature1 => 'Contacts discovered automatically';
+  String get wizardContactsFeature1 => 'Kişiler otomatik bulunur';
 
   @override
-  String get wizardContactsFeature2 => 'Send private direct messages';
+  String get wizardContactsFeature2 => 'Özel doğrudan mesaj gönderin';
 
   @override
-  String get wizardContactsFeature3 => 'View battery level and last seen time';
+  String get wizardContactsFeature3 =>
+      'Pil seviyesini ve son görülme zamanını görüntüleyin';
 
   @override
   String get wizardMapTitle => 'Harita ve konum';
 
   @override
   String get wizardMapDescription =>
-      'Track your team in real-time and mark important locations for search and rescue operations.';
+      'Ekibinizi gerçek zamanlı izleyin ve arama kurtarma operasyonları için önemli konumları işaretleyin.';
 
   @override
   String get wizardMapFeature1 =>
-      'SAR markers for found persons, fires, and staging areas';
+      'Bulunan kişiler, yangınlar ve toplanma alanları için SAR işaretleri';
 
   @override
-  String get wizardMapFeature2 => 'Real-time GPS tracking of team members';
+  String get wizardMapFeature2 => 'Ekip üyelerinin gerçek zamanlı GPS takibi';
 
   @override
-  String get wizardMapFeature3 => 'Download offline maps for remote areas';
+  String get wizardMapFeature3 =>
+      'Uzak bölgeler için çevrimdışı haritalar indirin';
 
   @override
-  String get wizardMapFeature4 => 'Draw shapes and share tactical information';
+  String get wizardMapFeature4 => 'Şekiller çizin ve taktik bilgileri paylaşın';
 
   @override
   String get viewWelcomeTutorial => 'Karşılama eğitimini görüntüle';
@@ -1625,12 +1634,12 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String directMessagesInfo(int count) {
-    return 'Direct messages with ACKs. Sent to $count team members.';
+    return 'ACK’li doğrudan mesajlar. $count ekip üyesine gönderildi.';
   }
 
   @override
   String sarMarkerSentToContacts(int count) {
-    return 'SAR marker sent to $count contacts';
+    return 'SAR işareti $count kişiye gönderildi';
   }
 
   @override
@@ -1643,72 +1652,72 @@ class AppLocalizationsTr extends AppLocalizations {
   String get technicalDetails => 'Teknik ayrıntılar';
 
   @override
-  String get messageTechnicalDetails => 'Message technical details';
+  String get messageTechnicalDetails => 'Mesaj teknik ayrıntıları';
 
   @override
-  String get linkQuality => 'Link quality';
+  String get linkQuality => 'Bağlantı kalitesi';
 
   @override
-  String get delivery => 'Delivery';
+  String get delivery => 'Teslimat';
 
   @override
   String get status => 'Durum';
 
   @override
-  String get expectedAckTag => 'Expected ACK tag';
+  String get expectedAckTag => 'Beklenen ACK etiketi';
 
   @override
-  String get roundTrip => 'Round-trip';
+  String get roundTrip => 'Gidiş dönüş';
 
   @override
-  String get retryAttempt => 'Retry attempt';
+  String get retryAttempt => 'Yeniden deneme sayısı';
 
   @override
-  String get floodFallback => 'Flood fallback';
+  String get floodFallback => 'Flood yedeği';
 
   @override
-  String get identity => 'Identity';
+  String get identity => 'Kimlik';
 
   @override
-  String get messageId => 'Message ID';
+  String get messageId => 'Mesaj kimliği';
 
   @override
-  String get sender => 'Sender';
+  String get sender => 'Gönderen';
 
   @override
-  String get senderKey => 'Sender key';
+  String get senderKey => 'Gönderen anahtarı';
 
   @override
-  String get recipient => 'Recipient';
+  String get recipient => 'Alıcı';
 
   @override
-  String get recipientKey => 'Recipient key';
+  String get recipientKey => 'Alıcı anahtarı';
 
   @override
   String get voice => 'Ses';
 
   @override
-  String get voiceId => 'Voice ID';
+  String get voiceId => 'Ses kimliği';
 
   @override
-  String get envelope => 'Envelope';
+  String get envelope => 'Zarf';
 
   @override
-  String get sessionProgress => 'Session progress';
+  String get sessionProgress => 'Oturum ilerlemesi';
 
   @override
   String get complete => 'Tamamlandı';
 
   @override
-  String get rawDump => 'Raw dump';
+  String get rawDump => 'Ham döküm';
 
   @override
   String get cannotRetryMissingRecipient =>
-      'Cannot retry: recipient information missing';
+      'Yeniden denenemiyor: alıcı bilgisi eksik';
 
   @override
   String get voiceUnavailable => 'Ses şu anda kullanılamıyor';
 
   @override
-  String get requestingVoice => 'Requesting voice';
+  String get requestingVoice => 'Ses isteniyor';
 }

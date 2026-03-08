@@ -46,11 +46,11 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get locationPermissionPermanentlyDenied =>
-      'Location permission permanently denied. Please enable in Settings.';
+      'Dostęp do lokalizacji został trwale zablokowany. Włącz go w Ustawieniach.';
 
   @override
   String get locationPermissionRequired =>
-      'Location permission is required for GPS tracking and team coordination. You can enable it later in Settings.';
+      'Dostęp do lokalizacji jest wymagany do śledzenia GPS i koordynacji zespołu. Możesz go włączyć później w Ustawieniach.';
 
   @override
   String get locationServicesDisabled =>
@@ -61,7 +61,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String failedToAdvertise(String error) {
-    return 'Failed to advertise: $error';
+    return 'Nie udało się rozgłosić: $error';
   }
 
   @override
@@ -83,42 +83,42 @@ class AppLocalizationsPl extends AppLocalizations {
   String get dark => 'Ciemny';
 
   @override
-  String get blueLightTheme => 'Blue light theme';
+  String get blueLightTheme => 'Niebieski jasny motyw';
 
   @override
-  String get blueDarkTheme => 'Blue dark theme';
+  String get blueDarkTheme => 'Niebieski ciemny motyw';
 
   @override
-  String get sarRed => 'SAR Red';
+  String get sarRed => 'SAR Czerwony';
 
   @override
-  String get alertEmergencyMode => 'Alert/Emergency mode';
+  String get alertEmergencyMode => 'Tryb alarmowy/awaryjny';
 
   @override
-  String get sarGreen => 'SAR Green';
+  String get sarGreen => 'SAR Zielony';
 
   @override
-  String get safeAllClearMode => 'Safe/All Clear mode';
+  String get safeAllClearMode => 'Tryb bezpieczny/wszystko jasne';
 
   @override
-  String get autoSystem => 'Auto (System)';
+  String get autoSystem => 'Automatyczny (system)';
 
   @override
-  String get followSystemTheme => 'Follow system theme';
+  String get followSystemTheme => 'Dopasuj do motywu systemowego';
 
   @override
-  String get showRxTxIndicators => 'Show RX/TX Indicators';
+  String get showRxTxIndicators => 'Pokaż wskaźniki RX/TX';
 
   @override
   String get displayPacketActivity =>
-      'Display packet activity indicators in top bar';
+      'Wyświetlaj wskaźniki aktywności pakietów na górnym pasku';
 
   @override
-  String get disableMap => 'Disable Map';
+  String get disableMap => 'Wyłącz mapę';
 
   @override
   String get disableMapDescription =>
-      'Hide the map tab to reduce battery usage';
+      'Ukryj kartę mapy, aby zmniejszyć zużycie baterii';
 
   @override
   String get language => 'Język';
@@ -139,37 +139,37 @@ class AppLocalizationsPl extends AppLocalizations {
   String get about => 'Informacje';
 
   @override
-  String get appVersion => 'App Version';
+  String get appVersion => 'Wersja aplikacji';
 
   @override
-  String get appName => 'App Name';
+  String get appName => 'Nazwa aplikacji';
 
   @override
-  String get aboutMeshCoreSar => 'About MeshCore SAR';
+  String get aboutMeshCoreSar => 'O MeshCore SAR';
 
   @override
   String get aboutDescription =>
-      'A Search & Rescue application designed for emergency response teams. Features include:\n\n• BLE mesh networking for device-to-device communication\n• Offline maps with multiple layer options\n• Real-time team member tracking\n• SAR tactical markers (found person, fire, staging)\n• Contact management and messaging\n• GPS tracking with compass heading\n• Map tile caching for offline use';
+      'Aplikacja poszukiwawczo-ratownicza zaprojektowana dla zespołów reagowania kryzysowego. Funkcje obejmują:\n\n• Sieć BLE mesh do komunikacji urządzenie-urządzenie\n• Mapy offline z wieloma warstwami\n• Śledzenie członków zespołu w czasie rzeczywistym\n• Taktyczne znaczniki SAR (odnaleziona osoba, pożar, strefa zbiórki)\n• Zarządzanie kontaktami i wiadomościami\n• Śledzenie GPS z kompasem\n• Buforowanie kafelków mapy do użytku offline';
 
   @override
-  String get technologiesUsed => 'Technologies Used:';
+  String get technologiesUsed => 'Użyte technologie:';
 
   @override
   String get technologiesList =>
-      '• Flutter for cross-platform development\n• BLE (Bluetooth Low Energy) for mesh networking\n• OpenStreetMap for mapping\n• Provider for state management\n• SharedPreferences for local storage';
+      '• Flutter do rozwoju wieloplatformowego\n• BLE (Bluetooth Low Energy) do sieci mesh\n• OpenStreetMap do map\n• Provider do zarządzania stanem\n• SharedPreferences do pamięci lokalnej';
 
   @override
-  String get moreInfo => 'More Info';
+  String get moreInfo => 'Więcej informacji';
 
   @override
-  String get packageName => 'Package Name';
+  String get packageName => 'Nazwa pakietu';
 
   @override
   String get sampleData => 'Dane przykładowe';
 
   @override
   String get sampleDataDescription =>
-      'Load or clear sample contacts, channel messages, and SAR markers for testing';
+      'Wczytaj lub wyczyść przykładowe kontakty, wiadomości kanałów i znaczniki SAR do testów';
 
   @override
   String get loadSampleData => 'Wczytaj dane przykładowe';
@@ -178,11 +178,11 @@ class AppLocalizationsPl extends AppLocalizations {
   String get clearAllData => 'Wyczyść wszystkie dane';
 
   @override
-  String get clearAllDataConfirmTitle => 'Clear All Data';
+  String get clearAllDataConfirmTitle => 'Wyczyść wszystkie dane';
 
   @override
   String get clearAllDataConfirmMessage =>
-      'This will clear all contacts and SAR markers. Are you sure?';
+      'To wyczyści wszystkie kontakty i znaczniki SAR. Czy na pewno?';
 
   @override
   String get clear => 'Wyczyść';
@@ -194,29 +194,29 @@ class AppLocalizationsPl extends AppLocalizations {
     int sarCount,
     int messageCount,
   ) {
-    return 'Loaded $teamCount team members, $channelCount channels, $sarCount SAR markers, $messageCount messages';
+    return 'Wczytano $teamCount członków zespołu, $channelCount kanałów, $sarCount znaczników SAR, $messageCount wiadomości';
   }
 
   @override
   String failedToLoadSampleData(String error) {
-    return 'Failed to load sample data: $error';
+    return 'Nie udało się wczytać danych przykładowych: $error';
   }
 
   @override
-  String get allDataCleared => 'All data cleared';
+  String get allDataCleared => 'Wszystkie dane wyczyszczono';
 
   @override
   String get failedToStartBackgroundTracking =>
-      'Failed to start background tracking. Check permissions and BLE connection.';
+      'Nie udało się uruchomić śledzenia w tle. Sprawdź uprawnienia i połączenie BLE.';
 
   @override
   String locationBroadcast(String latitude, String longitude) {
-    return 'Location broadcast: $latitude, $longitude';
+    return 'Nadawanie lokalizacji: $latitude, $longitude';
   }
 
   @override
   String get defaultPinInfo =>
-      'The default pin for devices without a screen is 123456. Trouble pairing? Forget the bluetooth device in system settings.';
+      'Domyślny PIN dla urządzeń bez ekranu to 123456. Problem z parowaniem? Zapomnij urządzenie Bluetooth w ustawieniach systemu.';
 
   @override
   String get noMessagesYet => 'Brak wiadomości';
@@ -238,14 +238,14 @@ class AppLocalizationsPl extends AppLocalizations {
   String get refresh => 'Odśwież';
 
   @override
-  String get resetPath => 'Reset Path (Re-route)';
+  String get resetPath => 'Resetuj trasę (wyznacz ponownie)';
 
   @override
-  String get publicKeyCopied => 'Public key copied to clipboard';
+  String get publicKeyCopied => 'Klucz publiczny skopiowano do schowka';
 
   @override
   String copiedToClipboard(String label) {
-    return '$label copied to clipboard';
+    return 'Skopiowano $label do schowka';
   }
 
   @override
@@ -253,7 +253,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String failedToSyncContacts(String error) {
-    return 'Failed to sync contacts: $error';
+    return 'Nie udało się zsynchronizować kontaktów: $error';
   }
 
   @override
@@ -270,7 +270,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String failedToSendLogin(String error) {
-    return 'Failed to send login: $error';
+    return 'Nie udało się wysłać logowania: $error';
   }
 
   @override
@@ -292,37 +292,38 @@ class AppLocalizationsPl extends AppLocalizations {
   String get drawLine => 'Rysuj linię';
 
   @override
-  String get drawLineDesc => 'Draw a freehand line on the map';
+  String get drawLineDesc => 'Narysuj odręczną linię na mapie';
 
   @override
   String get drawRectangle => 'Rysuj prostokąt';
 
   @override
-  String get drawRectangleDesc => 'Draw a rectangular area on the map';
+  String get drawRectangleDesc => 'Narysuj prostokątny obszar na mapie';
 
   @override
   String get measureDistance => 'Mierz odległość';
 
   @override
-  String get measureDistanceDesc => 'Long press two points to measure';
+  String get measureDistanceDesc => 'Przytrzymaj dwa punkty, aby zmierzyć';
 
   @override
   String get clearMeasurement => 'Wyczyść pomiar';
 
   @override
   String distanceLabel(String distance) {
-    return 'Distance: $distance';
+    return 'Odległość: $distance';
   }
 
   @override
-  String get longPressForSecondPoint => 'Long press for second point';
+  String get longPressForSecondPoint => 'Przytrzymaj dla drugiego punktu';
 
   @override
-  String get longPressToStartMeasurement => 'Long press to set first point';
+  String get longPressToStartMeasurement =>
+      'Przytrzymaj, aby ustawić pierwszy punkt';
 
   @override
   String get longPressToStartNewMeasurement =>
-      'Long press to start new measurement';
+      'Przytrzymaj, aby rozpocząć nowy pomiar';
 
   @override
   String get shareDrawings => 'Udostępnij rysunki';
@@ -331,21 +332,21 @@ class AppLocalizationsPl extends AppLocalizations {
   String get clearAllDrawings => 'Wyczyść wszystkie rysunki';
 
   @override
-  String get completeLine => 'Complete Line';
+  String get completeLine => 'Zakończ linię';
 
   @override
   String broadcastDrawingsToTeam(int count, String plural) {
-    return 'Broadcast $count drawing$plural to team';
+    return 'Nadaj $count rysunek$plural do zespołu';
   }
 
   @override
   String removeAllDrawings(int count, String plural) {
-    return 'Remove all $count drawing$plural';
+    return 'Usuń wszystkie $count rysunek$plural';
   }
 
   @override
   String deleteAllDrawingsConfirm(int count, String plural) {
-    return 'Delete all $count drawing$plural from the map?';
+    return 'Usunąć wszystkie $count rysunek$plural z mapy?';
   }
 
   @override
@@ -353,26 +354,26 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String shareDrawingsCount(int count, String plural) {
-    return 'Share $count Drawing$plural';
+    return 'Udostępnij $count rysunek$plural';
   }
 
   @override
   String get showReceivedDrawings => 'Pokaż odebrane rysunki';
 
   @override
-  String get showingAllDrawings => 'Showing all drawings';
+  String get showingAllDrawings => 'Pokazywane są wszystkie rysunki';
 
   @override
-  String get showingOnlyYourDrawings => 'Showing only your drawings';
+  String get showingOnlyYourDrawings => 'Pokazywane są tylko twoje rysunki';
 
   @override
   String get showSarMarkers => 'Pokaż znaczniki SAR';
 
   @override
-  String get showingSarMarkers => 'Showing SAR markers';
+  String get showingSarMarkers => 'Pokazywane są znaczniki SAR';
 
   @override
-  String get hidingSarMarkers => 'Hiding SAR markers';
+  String get hidingSarMarkers => 'Ukrywanie znaczników SAR';
 
   @override
   String get clearAll => 'Wyczyść wszystko';
@@ -381,10 +382,11 @@ class AppLocalizationsPl extends AppLocalizations {
   String get publicChannel => 'Kanał publiczny';
 
   @override
-  String get broadcastToAll => 'Broadcast to all nearby nodes (ephemeral)';
+  String get broadcastToAll =>
+      'Nadaj do wszystkich pobliskich węzłów (tymczasowo)';
 
   @override
-  String get storedPermanently => 'Stored permanently in room';
+  String get storedPermanently => 'Przechowywane na stałe w pokoju';
 
   @override
   String get notConnectedToDevice => 'Brak połączenia z urządzeniem';
@@ -402,24 +404,24 @@ class AppLocalizationsPl extends AppLocalizations {
   String get sendTo => 'Wyślij do';
 
   @override
-  String get noDestinationsAvailable => 'No destinations available.';
+  String get noDestinationsAvailable => 'Brak dostępnych odbiorców.';
 
   @override
   String get selectDestination => 'Wybierz odbiorcę...';
 
   @override
   String get ephemeralBroadcastInfo =>
-      'Ephemeral: Broadcast over-the-air only. Not stored - nodes must be online.';
+      'Tymczasowe: nadawane tylko drogą radiową. Nie jest zapisywane - węzły muszą być online.';
 
   @override
   String get persistentRoomInfo =>
-      'Persistent: Stored immutably in room. Synced automatically and preserved offline.';
+      'Trwałe: zapisywane niezmiennie w pokoju. Synchronizowane automatycznie i zachowywane offline.';
 
   @override
   String get location => 'Lokalizacja';
 
   @override
-  String get fromMap => 'From Map';
+  String get fromMap => 'Z mapy';
 
   @override
   String get gettingLocation => 'Pobieranie lokalizacji...';
@@ -435,18 +437,18 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String accuracyMeters(int accuracy) {
-    return 'Accuracy: ±${accuracy}m';
+    return 'Dokładność: ±${accuracy}m';
   }
 
   @override
   String get notesOptional => 'Notatki (opcjonalnie)';
 
   @override
-  String get addAdditionalInformation => 'Add additional information...';
+  String get addAdditionalInformation => 'Dodaj dodatkowe informacje...';
 
   @override
   String lowAccuracyWarning(int accuracy) {
-    return 'Location accuracy is ±${accuracy}m. This may not be accurate enough for SAR operations.\n\nContinue anyway?';
+    return 'Dokładność lokalizacji wynosi ±${accuracy}m. To może nie być wystarczająco dokładne dla działań SAR.\n\nKontynuować mimo to?';
   }
 
   @override
@@ -454,7 +456,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get enterPasswordInfo =>
-      'Enter the password to access this room. The password will be saved for future use.';
+      'Wprowadź hasło, aby uzyskać dostęp do tego pokoju. Hasło zostanie zapisane na przyszłość.';
 
   @override
   String get password => 'Hasło';
@@ -470,14 +472,14 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String failedToAddRoom(String error) {
-    return 'Failed to add room to device: $error\n\nThe room may not have advertised yet.\nTry waiting for the room to broadcast.';
+    return 'Nie udało się dodać pokoju do urządzenia: $error\n\nPokój mógł jeszcze nie rozpocząć nadawania.\nSpróbuj poczekać, aż pokój zacznie nadawać.';
   }
 
   @override
   String get direct => 'Bezpośrednie';
 
   @override
-  String get flood => 'Flood';
+  String get flood => 'Rozgłoszeniowo';
 
   @override
   String get loggedIn => 'Zalogowano';
@@ -490,22 +492,22 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String directPingTimeout(String name) {
-    return 'Direct ping timeout - retrying $name with flooding...';
+    return 'Przekroczono czas bezpośredniego ping - ponawianie dla $name przez flooding...';
   }
 
   @override
   String pingFailed(String name) {
-    return 'Ping failed to $name - no response received';
+    return 'Ping do $name nie powiódł się - nie otrzymano odpowiedzi';
   }
 
   @override
   String deleteContactConfirmation(String name) {
-    return 'Are you sure you want to delete \"$name\"?\n\nThis will remove the contact from both the app and the companion radio device.';
+    return 'Czy na pewno chcesz usunąć „$name”?\n\nTo usunie kontakt zarówno z aplikacji, jak i z towarzyszącego urządzenia radiowego.';
   }
 
   @override
   String failedToRemoveContact(String error) {
-    return 'Failed to remove contact: $error';
+    return 'Nie udało się usunąć kontaktu: $error';
   }
 
   @override
@@ -527,7 +529,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get notLoggedIn => 'Niezalogowany';
 
   @override
-  String get adminAccess => 'Admin Access';
+  String get adminAccess => 'Dostęp administratora';
 
   @override
   String get yes => 'Tak';
@@ -539,10 +541,10 @@ class AppLocalizationsPl extends AppLocalizations {
   String get permissions => 'Uprawnienia';
 
   @override
-  String get passwordSaved => 'Password Saved';
+  String get passwordSaved => 'Hasło zapisano';
 
   @override
-  String get locationColon => 'Location:';
+  String get locationColon => 'Lokalizacja:';
 
   @override
   String get telemetry => 'Telemetria';
@@ -563,18 +565,18 @@ class AppLocalizationsPl extends AppLocalizations {
   String get pressure => 'Ciśnienie';
 
   @override
-  String get gpsTelemetry => 'GPS (Telemetry)';
+  String get gpsTelemetry => 'GPS (telemetria)';
 
   @override
   String get updated => 'Zaktualizowano';
 
   @override
   String pathResetInfo(String name) {
-    return 'Path reset for $name. Next message will find a new route.';
+    return 'Trasa dla $name została zresetowana. Następna wiadomość znajdzie nową trasę.';
   }
 
   @override
-  String get reLoginToRoom => 'Re-Login to Room';
+  String get reLoginToRoom => 'Zaloguj ponownie do pokoju';
 
   @override
   String get heading => 'Kierunek';
@@ -595,7 +597,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get filterMarkers => 'Filtruj znaczniki';
 
   @override
-  String get filterMarkersTooltip => 'Filter markers';
+  String get filterMarkersTooltip => 'Filtruj znaczniki';
 
   @override
   String get contactsFilter => 'Kontakty';
@@ -622,21 +624,21 @@ class AppLocalizationsPl extends AppLocalizations {
   String get locationUnavailable => 'Lokalizacja niedostępna';
 
   @override
-  String get ahead => 'ahead';
+  String get ahead => 'przed tobą';
 
   @override
   String degreesRight(int degrees) {
-    return '$degrees° right';
+    return '$degrees° w prawo';
   }
 
   @override
   String degreesLeft(int degrees) {
-    return '$degrees° left';
+    return '$degrees° w lewo';
   }
 
   @override
   String latLonFormat(String latitude, String longitude) {
-    return 'Lat: $latitude Lon: $longitude';
+    return 'Szer.: $latitude Dł.: $longitude';
   }
 
   @override
@@ -644,7 +646,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get connectToDeviceToLoadContacts =>
-      'Connect to a device to load contacts';
+      'Połącz się z urządzeniem, aby wczytać kontakty';
 
   @override
   String get teamMembers => 'Członkowie zespołu';
@@ -680,7 +682,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get googleTerrain => 'Google Teren';
 
   @override
-  String get dragToPosition => 'Drag to Position';
+  String get dragToPosition => 'Przeciągnij do pozycji';
 
   @override
   String get createSarMarker => 'Utwórz znacznik SAR';
@@ -689,39 +691,40 @@ class AppLocalizationsPl extends AppLocalizations {
   String get compass => 'Kompas';
 
   @override
-  String get navigationAndContacts => 'Navigation & Contacts';
+  String get navigationAndContacts => 'Nawigacja i kontakty';
 
   @override
   String get sarAlert => 'ALERT SAR';
 
   @override
-  String get textCopiedToClipboard => 'Text copied to clipboard';
+  String get textCopiedToClipboard => 'Tekst skopiowano do schowka';
 
   @override
   String get cannotReplySenderMissing =>
-      'Cannot reply: sender information missing';
+      'Nie można odpowiedzieć: brak informacji o nadawcy';
 
   @override
-  String get cannotReplyContactNotFound => 'Cannot reply: contact not found';
+  String get cannotReplyContactNotFound =>
+      'Nie można odpowiedzieć: nie znaleziono kontaktu';
 
   @override
   String get copyText => 'Kopiuj tekst';
 
   @override
-  String get saveAsTemplate => 'Save as Template';
+  String get saveAsTemplate => 'Zapisz jako szablon';
 
   @override
-  String get templateSaved => 'Template saved successfully';
+  String get templateSaved => 'Szablon zapisano pomyślnie';
 
   @override
-  String get templateAlreadyExists => 'Template with this emoji already exists';
+  String get templateAlreadyExists => 'Szablon z tym emoji już istnieje';
 
   @override
   String get deleteMessage => 'Usuń wiadomość';
 
   @override
   String get deleteMessageConfirmation =>
-      'Are you sure you want to delete this message?';
+      'Czy na pewno chcesz usunąć tę wiadomość?';
 
   @override
   String get shareLocation => 'Udostępnij lokalizację';
@@ -733,11 +736,11 @@ class AppLocalizationsPl extends AppLocalizations {
     String lon,
     String url,
   ) {
-    return '$markerInfo\n\nCoordinates: $lat, $lon\n\nGoogle Maps: $url';
+    return '$markerInfo\n\nWspółrzędne: $lat, $lon\n\nGoogle Maps: $url';
   }
 
   @override
-  String get sarLocationShare => 'SAR Location';
+  String get sarLocationShare => 'Lokalizacja SAR';
 
   @override
   String get justNow => 'Przed chwilą';
@@ -773,7 +776,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String deliveredWithTime(int time) {
-    return 'Delivered (${time}ms)';
+    return 'Dostarczono (${time}ms)';
   }
 
   @override
@@ -784,29 +787,29 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String deliveredToContacts(int delivered, int total) {
-    return 'Delivered to $delivered/$total contacts';
+    return 'Dostarczono do $delivered/$total kontaktów';
   }
 
   @override
-  String get allDelivered => 'All delivered';
+  String get allDelivered => 'Wszystko dostarczono';
 
   @override
-  String get recipientDetails => 'Recipient Details';
+  String get recipientDetails => 'Szczegóły odbiorcy';
 
   @override
   String get pending => 'Oczekujące';
 
   @override
-  String get sarMarkerFoundPerson => 'Found Person';
+  String get sarMarkerFoundPerson => 'Odnaleziona osoba';
 
   @override
-  String get sarMarkerFire => 'Fire Location';
+  String get sarMarkerFire => 'Miejsce pożaru';
 
   @override
-  String get sarMarkerStagingArea => 'Staging Area';
+  String get sarMarkerStagingArea => 'Strefa zbiórki';
 
   @override
-  String get sarMarkerObject => 'Object Found';
+  String get sarMarkerObject => 'Odnaleziony obiekt';
 
   @override
   String get from => 'Od';
@@ -824,7 +827,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get frequencyMHz => 'Częstotliwość (MHz)';
 
   @override
-  String get frequencyExample => 'e.g., 869.618';
+  String get frequencyExample => 'np. 869.618';
 
   @override
   String get bandwidth => 'Szerokość pasma';
@@ -869,10 +872,10 @@ class AppLocalizationsPl extends AppLocalizations {
   String get showTrailOnMap => 'Pokaż ślad na mapie';
 
   @override
-  String get trailVisible => 'Trail is visible on the map';
+  String get trailVisible => 'Ślad jest widoczny na mapie';
 
   @override
-  String get trailHiddenRecording => 'Trail is hidden (still recording)';
+  String get trailHiddenRecording => 'Ślad jest ukryty (nadal nagrywany)';
 
   @override
   String get duration => 'Czas trwania';
@@ -884,18 +887,18 @@ class AppLocalizationsPl extends AppLocalizations {
   String get clearTrail => 'Wyczyść ślad';
 
   @override
-  String get clearTrailQuestion => 'Clear Trail?';
+  String get clearTrailQuestion => 'Wyczyścić ślad?';
 
   @override
   String get clearTrailConfirmation =>
-      'Are you sure you want to clear the current location trail? This action cannot be undone.';
+      'Czy na pewno chcesz wyczyścić bieżący ślad lokalizacji? Tego działania nie można cofnąć.';
 
   @override
   String get noTrailRecorded => 'Brak zapisanego śladu';
 
   @override
   String get startTrackingToRecord =>
-      'Start location tracking to record your trail';
+      'Rozpocznij śledzenie lokalizacji, aby zapisać ślad';
 
   @override
   String get trailControls => 'Sterowanie śladem';
@@ -904,19 +907,19 @@ class AppLocalizationsPl extends AppLocalizations {
   String get contactTrails => 'Ślady kontaktów';
 
   @override
-  String get showAllContactTrails => 'Show All Contact Trails';
+  String get showAllContactTrails => 'Pokaż wszystkie ślady kontaktów';
 
   @override
   String get noContactsWithLocationHistory =>
-      'No contacts with location history';
+      'Brak kontaktów z historią lokalizacji';
 
   @override
   String showingTrailsForContacts(int count) {
-    return 'Showing trails for $count contacts';
+    return 'Pokazywane są ślady dla $count kontaktów';
   }
 
   @override
-  String get individualContactTrails => 'Individual Contact Trails';
+  String get individualContactTrails => 'Indywidualne ślady kontaktów';
 
   @override
   String get deviceInformation => 'Informacje o urządzeniu';
@@ -949,16 +952,17 @@ class AppLocalizationsPl extends AppLocalizations {
   String get maxChannels => 'Maks. kanałów';
 
   @override
-  String get publicInfo => 'Public Info';
+  String get publicInfo => 'Informacje publiczne';
 
   @override
-  String get meshNetworkName => 'Mesh Network Name';
+  String get meshNetworkName => 'Nazwa sieci mesh';
 
   @override
-  String get nameBroadcastInMesh => 'Name broadcast in mesh advertisements';
+  String get nameBroadcastInMesh => 'Nazwa nadawana w ogłoszeniach mesh';
 
   @override
-  String get telemetryAndLocationSharing => 'Telemetry & Location Sharing';
+  String get telemetryAndLocationSharing =>
+      'Telemetria i udostępnianie lokalizacji';
 
   @override
   String get lat => 'Szer.';
@@ -970,42 +974,42 @@ class AppLocalizationsPl extends AppLocalizations {
   String get useCurrentLocation => 'Użyj bieżącej lokalizacji';
 
   @override
-  String get noneUnknown => 'None/Unknown';
+  String get noneUnknown => 'Brak/Nieznane';
 
   @override
-  String get chatNode => 'Chat Node';
+  String get chatNode => 'Węzeł czatu';
 
   @override
   String get repeater => 'Przekaźnik';
 
   @override
-  String get roomChannel => 'Room/Channel';
+  String get roomChannel => 'Pokój/Kanał';
 
   @override
   String typeNumber(int number) {
-    return 'Type $number';
+    return 'Typ $number';
   }
 
   @override
   String copiedToClipboardShort(String label) {
-    return 'Copied $label to clipboard';
+    return 'Skopiowano $label do schowka';
   }
 
   @override
   String failedToSave(String error) {
-    return 'Failed to save: $error';
+    return 'Nie udało się zapisać: $error';
   }
 
   @override
   String failedToGetLocation(String error) {
-    return 'Failed to get location: $error';
+    return 'Nie udało się pobrać lokalizacji: $error';
   }
 
   @override
   String get sarTemplates => 'Szablony SAR';
 
   @override
-  String get manageSarTemplates => 'Manage cursor on target templates';
+  String get manageSarTemplates => 'Zarządzaj szablonami SAR';
 
   @override
   String get addTemplate => 'Dodaj szablon';
@@ -1051,7 +1055,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String deleteTemplateConfirmation(String name) {
-    return 'Delete template \'$name\'?';
+    return 'Usunąć szablon „$name”?';
   }
 
   @override
@@ -1068,9 +1072,9 @@ class AppLocalizationsPl extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'Imported $count templates',
-      one: 'Imported 1 template',
-      zero: 'No templates imported',
+      other: 'Zaimportowano $count szablonów',
+      one: 'Zaimportowano 1 szablon',
+      zero: 'Nie zaimportowano szablonów',
     );
     return '$_temp0';
   }
@@ -1080,8 +1084,8 @@ class AppLocalizationsPl extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'Exported $count templates to clipboard',
-      one: 'Exported 1 template to clipboard',
+      other: 'Wyeksportowano $count szablonów do schowka',
+      one: 'Wyeksportowano 1 szablon do schowka',
     );
     return '$_temp0';
   }
@@ -1091,13 +1095,13 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get resetToDefaultsConfirmation =>
-      'This will delete all custom templates and restore the 4 default templates. Continue?';
+      'To usunie wszystkie własne szablony i przywróci 4 domyślne szablony. Kontynuować?';
 
   @override
   String get reset => 'Resetuj';
 
   @override
-  String get resetComplete => 'Templates reset to defaults';
+  String get resetComplete => 'Szablony przywrócono do domyślnych';
 
   @override
   String get noTemplates => 'Brak dostępnych szablonów';
@@ -1118,21 +1122,23 @@ class AppLocalizationsPl extends AppLocalizations {
   String get checking => 'Sprawdzanie...';
 
   @override
-  String get locationPermissionGrantedAlways => 'Granted (Always)';
+  String get locationPermissionGrantedAlways => 'Przyznano (zawsze)';
 
   @override
-  String get locationPermissionGrantedWhileInUse => 'Granted (While In Use)';
+  String get locationPermissionGrantedWhileInUse =>
+      'Przyznano (podczas użycia)';
 
   @override
-  String get locationPermissionDeniedTapToRequest => 'Denied - Tap to request';
+  String get locationPermissionDeniedTapToRequest =>
+      'Odrzucono - dotknij, aby poprosić';
 
   @override
   String get locationPermissionPermanentlyDeniedOpenSettings =>
-      'Permanently Denied - Open Settings';
+      'Trwale odrzucono - otwórz ustawienia';
 
   @override
   String get locationPermissionDialogContent =>
-      'Location permission is permanently denied. Please enable it in your device settings to use GPS tracking and location sharing features.';
+      'Dostęp do lokalizacji został trwale odrzucony. Włącz go w ustawieniach urządzenia, aby używać GPS i udostępniania lokalizacji.';
 
   @override
   String get openSettings => 'Otwórz ustawienia';
@@ -1142,23 +1148,23 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get locationPermissionRequiredForGps =>
-      'Location permission is required for GPS tracking and location sharing.';
+      'Dostęp do lokalizacji jest wymagany do śledzenia GPS i udostępniania lokalizacji.';
 
   @override
   String get locationPermissionAlreadyGranted =>
-      'Location permission is already granted.';
+      'Dostęp do lokalizacji został już przyznany.';
 
   @override
-  String get sarNavyBlue => 'SAR Navy Blue';
+  String get sarNavyBlue => 'SAR Granatowy';
 
   @override
-  String get sarNavyBlueDescription => 'Professional/Operations Mode';
+  String get sarNavyBlueDescription => 'Tryb profesjonalny/operacyjny';
 
   @override
   String get selectRecipient => 'Wybierz odbiorcę';
 
   @override
-  String get broadcastToAllNearby => 'Broadcast to all nearby';
+  String get broadcastToAllNearby => 'Nadaj do wszystkich w pobliżu';
 
   @override
   String get searchRecipients => 'Szukaj odbiorców...';
@@ -1182,28 +1188,28 @@ class AppLocalizationsPl extends AppLocalizations {
   String get channel => 'Kanał';
 
   @override
-  String get samplePoliceLead => 'Police Lead';
+  String get samplePoliceLead => 'Dowódca policji';
 
   @override
-  String get sampleDroneOperator => 'Drone Operator';
+  String get sampleDroneOperator => 'Operator drona';
 
   @override
-  String get sampleFirefighterAlpha => 'Firefighter';
+  String get sampleFirefighterAlpha => 'Strażak';
 
   @override
-  String get sampleMedicCharlie => 'Medic';
+  String get sampleMedicCharlie => 'Ratownik medyczny';
 
   @override
-  String get sampleCommandDelta => 'Command';
+  String get sampleCommandDelta => 'Dowództwo';
 
   @override
-  String get sampleFireEngine => 'Fire Engine';
+  String get sampleFireEngine => 'Wóz strażacki';
 
   @override
-  String get sampleAirSupport => 'Air Support';
+  String get sampleAirSupport => 'Wsparcie lotnicze';
 
   @override
-  String get sampleBaseCoordinator => 'Base Coordinator';
+  String get sampleBaseCoordinator => 'Koordynator bazy';
 
   @override
   String get channelEmergency => 'Alarmowy';
@@ -1215,127 +1221,135 @@ class AppLocalizationsPl extends AppLocalizations {
   String get channelUpdates => 'Aktualizacje';
 
   @override
-  String get sampleTeamMember => 'Sample Team Member';
+  String get sampleTeamMember => 'Przykładowy członek zespołu';
 
   @override
-  String get sampleScout => 'Sample Scout';
+  String get sampleScout => 'Przykładowy zwiadowca';
 
   @override
-  String get sampleBase => 'Sample Base';
+  String get sampleBase => 'Przykładowa baza';
 
   @override
-  String get sampleSearcher => 'Sample Searcher';
+  String get sampleSearcher => 'Przykładowy poszukiwacz';
 
   @override
-  String get sampleObjectBackpack => ' Backpack found - blue color';
+  String get sampleObjectBackpack => ' Znaleziono plecak - kolor niebieski';
 
   @override
-  String get sampleObjectVehicle => ' Vehicle abandoned - check for owner';
+  String get sampleObjectVehicle => ' Porzucony pojazd - sprawdzić właściciela';
 
   @override
-  String get sampleObjectCamping => ' Camping equipment discovered';
+  String get sampleObjectCamping => ' Znaleziono sprzęt kempingowy';
 
   @override
-  String get sampleObjectTrailMarker => ' Trail marker found off-path';
+  String get sampleObjectTrailMarker =>
+      ' Znaleziono znacznik szlaku poza trasą';
 
   @override
-  String get sampleMsgAllTeamsCheckIn => 'All teams check in';
+  String get sampleMsgAllTeamsCheckIn => 'Wszystkie zespoły - meldunek';
 
   @override
-  String get sampleMsgWeatherUpdate => 'Weather update: Clear skies, temp 18°C';
+  String get sampleMsgWeatherUpdate =>
+      'Aktualizacja pogody: bezchmurnie, temp. 18°C';
 
   @override
-  String get sampleMsgBaseCamp => 'Base camp established at staging area';
+  String get sampleMsgBaseCamp => 'Bazę założono w strefie zbiórki';
 
   @override
-  String get sampleMsgTeamAlpha => 'Team moving to sector 2';
+  String get sampleMsgTeamAlpha => 'Zespół przemieszcza się do sektora 2';
 
   @override
-  String get sampleMsgRadioCheck => 'Radio check - all stations respond';
+  String get sampleMsgRadioCheck =>
+      'Kontrola radiowa - wszystkie stacje proszone o odpowiedź';
 
   @override
-  String get sampleMsgWaterSupply => 'Water supply available at checkpoint 3';
+  String get sampleMsgWaterSupply => 'Woda dostępna w punkcie kontrolnym 3';
 
   @override
-  String get sampleMsgTeamBravo => 'Team reporting: sector 1 clear';
+  String get sampleMsgTeamBravo => 'Zespół melduje: sektor 1 czysty';
 
   @override
-  String get sampleMsgEtaRallyPoint => 'ETA to rally point: 15 minutes';
+  String get sampleMsgEtaRallyPoint =>
+      'Szacowany czas dotarcia do punktu zbiórki: 15 minut';
 
   @override
-  String get sampleMsgSupplyDrop => 'Supply drop confirmed for 14:00';
+  String get sampleMsgSupplyDrop => 'Zrzut zaopatrzenia potwierdzony na 14:00';
 
   @override
-  String get sampleMsgDroneSurvey => 'Drone survey completed - no findings';
+  String get sampleMsgDroneSurvey =>
+      'Rozpoznanie dronem zakończone - brak wyników';
 
   @override
-  String get sampleMsgTeamCharlie => 'Team requesting backup';
+  String get sampleMsgTeamCharlie => 'Zespół prosi o wsparcie';
 
   @override
-  String get sampleMsgRadioDiscipline => 'All units: maintain radio discipline';
+  String get sampleMsgRadioDiscipline =>
+      'Wszystkie jednostki: zachować dyscyplinę radiową';
 
   @override
   String get sampleMsgUrgentMedical =>
-      'URGENT: Medical assistance needed at sector 4';
+      'PILNE: potrzebna pomoc medyczna w sektorze 4';
 
   @override
-  String get sampleMsgAdultMale => ' Adult male, conscious';
+  String get sampleMsgAdultMale => ' Dorosły mężczyzna, przytomny';
 
   @override
-  String get sampleMsgFireSpotted => 'Fire spotted - coordinates incoming';
+  String get sampleMsgFireSpotted => 'Wykryto pożar - współrzędne w drodze';
 
   @override
-  String get sampleMsgSpreadingRapidly => ' Spreading rapidly!';
+  String get sampleMsgSpreadingRapidly => ' Szybko się rozprzestrzenia!';
 
   @override
-  String get sampleMsgPriorityHelicopter => 'PRIORITY: Need helicopter support';
+  String get sampleMsgPriorityHelicopter =>
+      'PRIORYTET: potrzebne wsparcie śmigłowca';
 
   @override
   String get sampleMsgMedicalTeamEnRoute =>
-      'Medical team en route to your location';
+      'Zespół medyczny jest w drodze do twojej lokalizacji';
 
   @override
-  String get sampleMsgEvacHelicopter => 'Evac helicopter ETA 10 minutes';
+  String get sampleMsgEvacHelicopter => 'ETA śmigłowca ewakuacyjnego 10 minut';
 
   @override
-  String get sampleMsgEmergencyResolved => 'Emergency resolved - all clear';
+  String get sampleMsgEmergencyResolved =>
+      'Sytuacja opanowana - wszystko jasne';
 
   @override
-  String get sampleMsgEmergencyStagingArea => ' Emergency staging area';
+  String get sampleMsgEmergencyStagingArea => ' Strefa zbiórki awaryjnej';
 
   @override
   String get sampleMsgEmergencyServices =>
-      'Emergency services notified and responding';
+      'Służby ratunkowe zostały powiadomione i jadą na miejsce';
 
   @override
-  String get sampleAlphaTeamLead => 'Team Lead';
+  String get sampleAlphaTeamLead => 'Lider zespołu';
 
   @override
-  String get sampleBravoScout => 'Scout';
+  String get sampleBravoScout => 'Zwiadowca';
 
   @override
-  String get sampleCharlieMedic => 'Medic';
+  String get sampleCharlieMedic => 'Ratownik medyczny';
 
   @override
-  String get sampleDeltaNavigator => 'Navigator';
+  String get sampleDeltaNavigator => 'Nawigator';
 
   @override
-  String get sampleEchoSupport => 'Support';
+  String get sampleEchoSupport => 'Wsparcie';
 
   @override
-  String get sampleBaseCommand => 'Base Command';
+  String get sampleBaseCommand => 'Dowództwo bazy';
 
   @override
-  String get sampleFieldCoordinator => 'Field Coordinator';
+  String get sampleFieldCoordinator => 'Koordynator terenowy';
 
   @override
-  String get sampleMedicalTeam => 'Medical Team';
+  String get sampleMedicalTeam => 'Zespół medyczny';
 
   @override
   String get mapDrawing => 'Rysunek mapy';
 
   @override
-  String get navigateToDrawing => 'Navigate to Drawing';
+  String get navigateToDrawing => 'Nawiguj do rysunku';
 
   @override
   String get copyCoordinates => 'Kopiuj współrzędne';
@@ -1362,34 +1376,34 @@ class AppLocalizationsPl extends AppLocalizations {
   String get longitudeLabel => 'Długość geograficzna';
 
   @override
-  String get exampleCoordinates => 'Example: 46.0569, 14.5058';
+  String get exampleCoordinates => 'Przykład: 46.0569, 14.5058';
 
   @override
   String get shareDrawing => 'Udostępnij rysunek';
 
   @override
-  String get shareWithAllNearbyDevices => 'Share with all nearby devices';
+  String get shareWithAllNearbyDevices =>
+      'Udostępnij wszystkim pobliskim urządzeniom';
 
   @override
-  String get shareToRoom => 'Share to Room';
+  String get shareToRoom => 'Udostępnij do pokoju';
 
   @override
-  String get sendToPersistentStorage => 'Send to persistent room storage';
+  String get sendToPersistentStorage => 'Wyślij do trwałego magazynu pokoju';
 
   @override
-  String get deleteDrawingConfirm =>
-      'Are you sure you want to delete this drawing?';
+  String get deleteDrawingConfirm => 'Czy na pewno chcesz usunąć ten rysunek?';
 
   @override
-  String get drawingDeleted => 'Drawing deleted';
+  String get drawingDeleted => 'Rysunek usunięto';
 
   @override
   String yourDrawingsCount(int count) {
-    return 'Your Drawings ($count)';
+    return 'Twoje rysunki ($count)';
   }
 
   @override
-  String get shared => 'Shared';
+  String get shared => 'Udostępniono';
 
   @override
   String get line => 'Linia';
@@ -1413,43 +1427,43 @@ class AppLocalizationsPl extends AppLocalizations {
   String get updateLater => 'Później';
 
   @override
-  String get cadastralParcels => 'Cadastral Parcels';
+  String get cadastralParcels => 'Działki katastralne';
 
   @override
-  String get forestRoads => 'Forest Roads';
+  String get forestRoads => 'Drogi leśne';
 
   @override
-  String get wmsOverlays => 'WMS Overlays';
+  String get wmsOverlays => 'Nakładki WMS';
 
   @override
-  String get hikingTrails => 'Hiking Trails';
+  String get hikingTrails => 'Szlaki piesze';
 
   @override
-  String get mainRoads => 'Main Roads';
+  String get mainRoads => 'Drogi główne';
 
   @override
-  String get houseNumbers => 'House Numbers';
+  String get houseNumbers => 'Numery budynków';
 
   @override
-  String get fireHazardZones => 'Fire Hazard Zones';
+  String get fireHazardZones => 'Strefy zagrożenia pożarowego';
 
   @override
-  String get historicalFires => 'Historical Fires';
+  String get historicalFires => 'Historyczne pożary';
 
   @override
-  String get firebreaks => 'Firebreaks';
+  String get firebreaks => 'Pasy przeciwpożarowe';
 
   @override
-  String get krasFireZones => 'Kras Fire Zones';
+  String get krasFireZones => 'Strefy pożarowe Krasu';
 
   @override
-  String get placeNames => 'Place Names';
+  String get placeNames => 'Nazwy miejsc';
 
   @override
-  String get municipalityBorders => 'Municipality Borders';
+  String get municipalityBorders => 'Granice gmin';
 
   @override
-  String get topographicMap => 'Topographic Map 1:25000';
+  String get topographicMap => 'Mapa topograficzna 1:25000';
 
   @override
   String get recentMessages => 'Ostatnie wiadomości';
@@ -1471,54 +1485,55 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get channelSecretHelp =>
-      'This secret must be shared with all team members who need access to this channel';
+      'Ten sekret musi być współdzielony ze wszystkimi członkami zespołu, którzy potrzebują dostępu do tego kanału';
 
   @override
   String get channelTypesInfo =>
-      'Hash channels (#team): Secret auto-generated from name. Same name = same channel across devices.\n\nPrivate channels: Use explicit secret. Only those with the secret can join.';
+      'Kanały hash (#team): sekret jest generowany automatycznie z nazwy. Ta sama nazwa = ten sam kanał na wszystkich urządzeniach.\n\nKanały prywatne: użyj jawnego sekretu. Dołączyć mogą tylko osoby znające sekret.';
 
   @override
   String get hashChannelInfo =>
-      'Hash channel: Secret will be auto-generated from the channel name. Anyone using the same name will join the same channel.';
+      'Kanał hash: sekret zostanie wygenerowany automatycznie z nazwy kanału. Każdy używający tej samej nazwy dołączy do tego samego kanału.';
 
   @override
-  String get channelNameRequired => 'Channel name is required';
+  String get channelNameRequired => 'Nazwa kanału jest wymagana';
 
   @override
-  String get channelNameTooLong => 'Channel name must be 31 characters or less';
+  String get channelNameTooLong =>
+      'Nazwa kanału może mieć maksymalnie 31 znaków';
 
   @override
-  String get channelSecretRequired => 'Channel secret is required';
+  String get channelSecretRequired => 'Sekret kanału jest wymagany';
 
   @override
   String get channelSecretTooLong =>
-      'Channel secret must be 32 characters or less';
+      'Sekret kanału może mieć maksymalnie 32 znaki';
 
   @override
-  String get invalidAsciiCharacters => 'Only ASCII characters are allowed';
+  String get invalidAsciiCharacters => 'Dozwolone są tylko znaki ASCII';
 
   @override
-  String get channelCreatedSuccessfully => 'Channel created successfully';
+  String get channelCreatedSuccessfully => 'Kanał utworzono pomyślnie';
 
   @override
   String channelCreationFailed(String error) {
-    return 'Failed to create channel: $error';
+    return 'Nie udało się utworzyć kanału: $error';
   }
 
   @override
-  String get deleteChannel => 'Delete Channel';
+  String get deleteChannel => 'Usuń kanał';
 
   @override
   String deleteChannelConfirmation(String channelName) {
-    return 'Are you sure you want to delete channel \"$channelName\"? This action cannot be undone.';
+    return 'Czy na pewno chcesz usunąć kanał „$channelName”? Tej operacji nie można cofnąć.';
   }
 
   @override
-  String get channelDeletedSuccessfully => 'Channel deleted successfully';
+  String get channelDeletedSuccessfully => 'Kanał usunięto pomyślnie';
 
   @override
   String channelDeletionFailed(String error) {
-    return 'Failed to delete channel: $error';
+    return 'Nie udało się usunąć kanału: $error';
   }
 
   @override
@@ -1541,79 +1556,84 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get wizardWelcomeDescription =>
-      'A powerful off-grid communication tool for search and rescue operations. Connect with your team using mesh radio technology when traditional networks are unavailable.';
+      'Potężne narzędzie komunikacji poza siecią do operacji poszukiwawczo-ratowniczych. Połącz się ze swoim zespołem przy użyciu technologii radia mesh, gdy tradycyjne sieci są niedostępne.';
 
   @override
   String get wizardConnectingTitle => 'Łączenie z radiem';
 
   @override
   String get wizardConnectingDescription =>
-      'Connect your smartphone to a MeshCore radio device via Bluetooth to start communicating off-grid.';
+      'Połącz smartfon z urządzeniem radiowym MeshCore przez Bluetooth, aby rozpocząć komunikację poza siecią.';
 
   @override
-  String get wizardConnectingFeature1 => 'Scan for nearby MeshCore devices';
+  String get wizardConnectingFeature1 => 'Skanuj pobliskie urządzenia MeshCore';
 
   @override
-  String get wizardConnectingFeature2 => 'Pair with your radio via Bluetooth';
+  String get wizardConnectingFeature2 => 'Sparuj radio przez Bluetooth';
 
   @override
   String get wizardConnectingFeature3 =>
-      'Works completely offline - no internet required';
+      'Działa całkowicie offline - internet nie jest wymagany';
 
   @override
   String get wizardChannelTitle => 'Kanały';
 
   @override
   String get wizardChannelDescription =>
-      'Broadcast messages to everyone on a channel, perfect for team-wide announcements and coordination.';
+      'Nadawaj wiadomości do wszystkich na kanale, idealne do ogłoszeń i koordynacji całego zespołu.';
 
   @override
   String get wizardChannelFeature1 =>
-      'Public Channel for general team communication';
+      'Kanał publiczny do ogólnej komunikacji zespołu';
 
   @override
   String get wizardChannelFeature2 =>
-      'Create custom channels for specific groups';
+      'Twórz własne kanały dla konkretnych grup';
 
   @override
   String get wizardChannelFeature3 =>
-      'Messages are automatically relayed by the mesh';
+      'Wiadomości są automatycznie przekazywane przez mesh';
 
   @override
   String get wizardContactsTitle => 'Kontakty';
 
   @override
   String get wizardContactsDescription =>
-      'Your team members appear automatically as they join the mesh network. Send them direct messages or view their location.';
+      'Członkowie zespołu pojawiają się automatycznie, gdy dołączają do sieci mesh. Wyślij im wiadomość bezpośrednią lub zobacz ich lokalizację.';
 
   @override
-  String get wizardContactsFeature1 => 'Contacts discovered automatically';
+  String get wizardContactsFeature1 => 'Kontakty wykrywane automatycznie';
 
   @override
-  String get wizardContactsFeature2 => 'Send private direct messages';
+  String get wizardContactsFeature2 =>
+      'Wysyłaj prywatne wiadomości bezpośrednie';
 
   @override
-  String get wizardContactsFeature3 => 'View battery level and last seen time';
+  String get wizardContactsFeature3 =>
+      'Podgląd poziomu baterii i czasu ostatniej aktywności';
 
   @override
   String get wizardMapTitle => 'Mapa i lokalizacja';
 
   @override
   String get wizardMapDescription =>
-      'Track your team in real-time and mark important locations for search and rescue operations.';
+      'Śledź swój zespół w czasie rzeczywistym i oznaczaj ważne lokalizacje dla działań poszukiwawczo-ratowniczych.';
 
   @override
   String get wizardMapFeature1 =>
-      'SAR markers for found persons, fires, and staging areas';
+      'Znaczniki SAR dla odnalezionych osób, pożarów i stref zbiórki';
 
   @override
-  String get wizardMapFeature2 => 'Real-time GPS tracking of team members';
+  String get wizardMapFeature2 =>
+      'Śledzenie GPS członków zespołu w czasie rzeczywistym';
 
   @override
-  String get wizardMapFeature3 => 'Download offline maps for remote areas';
+  String get wizardMapFeature3 =>
+      'Pobieraj mapy offline dla odległych obszarów';
 
   @override
-  String get wizardMapFeature4 => 'Draw shapes and share tactical information';
+  String get wizardMapFeature4 =>
+      'Rysuj kształty i udostępniaj informacje taktyczne';
 
   @override
   String get viewWelcomeTutorial => 'Pokaż samouczek powitalny';
@@ -1623,12 +1643,12 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String directMessagesInfo(int count) {
-    return 'Direct messages with ACKs. Sent to $count team members.';
+    return 'Wiadomości bezpośrednie z ACK. Wysłano do $count członków zespołu.';
   }
 
   @override
   String sarMarkerSentToContacts(int count) {
-    return 'SAR marker sent to $count contacts';
+    return 'Znacznik SAR wysłano do $count kontaktów';
   }
 
   @override
@@ -1641,72 +1661,72 @@ class AppLocalizationsPl extends AppLocalizations {
   String get technicalDetails => 'Szczegóły techniczne';
 
   @override
-  String get messageTechnicalDetails => 'Message technical details';
+  String get messageTechnicalDetails => 'Szczegóły techniczne wiadomości';
 
   @override
-  String get linkQuality => 'Link quality';
+  String get linkQuality => 'Jakość łącza';
 
   @override
-  String get delivery => 'Delivery';
+  String get delivery => 'Dostarczenie';
 
   @override
   String get status => 'Status';
 
   @override
-  String get expectedAckTag => 'Expected ACK tag';
+  String get expectedAckTag => 'Oczekiwany znacznik ACK';
 
   @override
-  String get roundTrip => 'Round-trip';
+  String get roundTrip => 'Czas podróży w obie strony';
 
   @override
-  String get retryAttempt => 'Retry attempt';
+  String get retryAttempt => 'Próba ponowienia';
 
   @override
-  String get floodFallback => 'Flood fallback';
+  String get floodFallback => 'Awaryjny flooding';
 
   @override
-  String get identity => 'Identity';
+  String get identity => 'Tożsamość';
 
   @override
-  String get messageId => 'Message ID';
+  String get messageId => 'ID wiadomości';
 
   @override
-  String get sender => 'Sender';
+  String get sender => 'Nadawca';
 
   @override
-  String get senderKey => 'Sender key';
+  String get senderKey => 'Klucz nadawcy';
 
   @override
-  String get recipient => 'Recipient';
+  String get recipient => 'Odbiorca';
 
   @override
-  String get recipientKey => 'Recipient key';
+  String get recipientKey => 'Klucz odbiorcy';
 
   @override
   String get voice => 'Głos';
 
   @override
-  String get voiceId => 'Voice ID';
+  String get voiceId => 'ID głosu';
 
   @override
-  String get envelope => 'Envelope';
+  String get envelope => 'Koperta';
 
   @override
-  String get sessionProgress => 'Session progress';
+  String get sessionProgress => 'Postęp sesji';
 
   @override
   String get complete => 'Zakończono';
 
   @override
-  String get rawDump => 'Raw dump';
+  String get rawDump => 'Surowy zrzut';
 
   @override
   String get cannotRetryMissingRecipient =>
-      'Cannot retry: recipient information missing';
+      'Nie można ponowić: brak informacji o odbiorcy';
 
   @override
   String get voiceUnavailable => 'Głos jest obecnie niedostępny';
 
   @override
-  String get requestingVoice => 'Requesting voice';
+  String get requestingVoice => 'Pobieranie głosu';
 }

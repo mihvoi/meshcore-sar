@@ -8,6 +8,8 @@ class RecipientSelectorSheet extends StatefulWidget {
   final List<Contact> contacts;
   final List<Contact> rooms;
   final List<Contact> channels;
+  final int unreadCount;
+  final Map<String, int> unreadCountsByPublicKey;
   final String? currentDestinationType;
   final String? currentRecipientPublicKey;
   final Function(String type, Contact? recipient) onSelect;
@@ -17,6 +19,8 @@ class RecipientSelectorSheet extends StatefulWidget {
     required this.contacts,
     required this.rooms,
     required this.channels,
+    required this.unreadCount,
+    required this.unreadCountsByPublicKey,
     this.currentDestinationType,
     this.currentRecipientPublicKey,
     required this.onSelect,
@@ -143,6 +147,7 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
                   icon: Icons.all_inbox,
                   title: l10n.showAll,
                   subtitle: 'All messages',
+                  unreadCount: widget.unreadCount,
                   isSelected: _isSelected('all', null),
                   onTap: () {
                     widget.onSelect('all', null);
@@ -186,6 +191,9 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
                         subtitle: channel.isPublicChannel
                             ? l10n.broadcastToAllNearby
                             : '${l10n.channel} ${channel.publicKey[1]}', // Show slot number
+                        unreadCount:
+                            widget.unreadCountsByPublicKey[channel.publicKeyHex] ??
+                            0,
                         isSelected: _isSelected('channel', channel),
                         onTap: () {
                           widget.onSelect('channel', channel);
@@ -231,6 +239,9 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
                         contact: contact,
                         title: contact.displayName,
                         subtitle: contact.publicKeyShort,
+                        unreadCount:
+                            widget.unreadCountsByPublicKey[contact.publicKeyHex] ??
+                            0,
                         isSelected: _isSelected('contact', contact),
                         onTap: () {
                           widget.onSelect('contact', contact);
@@ -276,6 +287,8 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
                         contact: room,
                         title: room.displayName,
                         subtitle: room.publicKeyShort,
+                        unreadCount:
+                            widget.unreadCountsByPublicKey[room.publicKeyHex] ?? 0,
                         isSelected: _isSelected('room', room),
                         onTap: () {
                           widget.onSelect('room', room);
@@ -326,6 +339,7 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
     required Contact contact,
     required String title,
     required String subtitle,
+    required int unreadCount,
     required bool isSelected,
     required VoidCallback onTap,
   }) {
@@ -351,12 +365,11 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
           ).textTheme.bodySmall?.color?.withValues(alpha: 0.6),
         ),
       ),
-      trailing: isSelected
-          ? Icon(
-              Icons.check_circle,
-              color: Theme.of(context).colorScheme.primary,
-            )
-          : null,
+      trailing: _buildTrailing(
+        context,
+        unreadCount: unreadCount,
+        isSelected: isSelected,
+      ),
       onTap: onTap,
     );
   }
@@ -366,6 +379,7 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
     required IconData icon,
     required String title,
     required String subtitle,
+    required int unreadCount,
     required bool isSelected,
     required VoidCallback onTap,
   }) {
@@ -395,13 +409,51 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
           ).textTheme.bodySmall?.color?.withValues(alpha: 0.6),
         ),
       ),
-      trailing: isSelected
-          ? Icon(
-              Icons.check_circle,
-              color: Theme.of(context).colorScheme.primary,
-            )
-          : null,
+      trailing: _buildTrailing(
+        context,
+        unreadCount: unreadCount,
+        isSelected: isSelected,
+      ),
       onTap: onTap,
+    );
+  }
+
+  Widget? _buildTrailing(
+    BuildContext context, {
+    required int unreadCount,
+    required bool isSelected,
+  }) {
+    if (unreadCount <= 0 && !isSelected) {
+      return null;
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (unreadCount > 0)
+          Container(
+            key: Key('unread-badge-$unreadCount'),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              unreadCount > 99 ? '99+' : '$unreadCount',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onPrimary,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        if (unreadCount > 0 && isSelected) const SizedBox(width: 8),
+        if (isSelected)
+          Icon(
+            Icons.check_circle,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+      ],
     );
   }
 }

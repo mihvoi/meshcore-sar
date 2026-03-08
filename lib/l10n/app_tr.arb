@@ -177,19 +177,19 @@
   "@appName": {
     "description": "App name label"
   },
-  "aboutMeshCoreSar": "About MeshCore SAR",
+  "aboutMeshCoreSar": "MeshCore SAR hakkında",
   "@aboutMeshCoreSar": {
     "description": "About dialog title"
   },
-  "aboutDescription": "A Search & Rescue application designed for emergency response teams. Features include:\n\n• BLE mesh networking for device-to-device communication\n• Offline maps with multiple layer options\n• Real-time team member tracking\n• SAR tactical markers (found person, fire, staging)\n• Contact management and messaging\n• GPS tracking with compass heading\n• Map tile caching for offline use",
+  "aboutDescription": "Acil durum müdahale ekipleri için tasarlanmış bir Arama ve Kurtarma uygulaması. Özellikler:\n\n• Cihazdan cihaza iletişim için BLE mesh ağı\n• Birden çok katman seçeneğiyle çevrimdışı haritalar\n• Ekip üyelerinin gerçek zamanlı takibi\n• SAR taktik işaretleri (bulunan kişi, yangın, toplanma alanı)\n• Kişi yönetimi ve mesajlaşma\n• Pusula yönüyle GPS takibi\n• Çevrimdışı kullanım için harita karo önbelleği",
   "@aboutDescription": {
     "description": "About dialog description"
   },
-  "technologiesUsed": "Technologies Used:",
+  "technologiesUsed": "Kullanılan teknolojiler:",
   "@technologiesUsed": {
     "description": "Technologies used section title"
   },
-  "technologiesList": "• Flutter for cross-platform development\n• BLE (Bluetooth Low Energy) for mesh networking\n• OpenStreetMap for mapping\n• Provider for state management\n• SharedPreferences for local storage",
+  "technologiesList": "• Çok platformlu geliştirme için Flutter\n• Mesh ağı için BLE (Bluetooth Low Energy)\n• Haritalama için OpenStreetMap\n• Durum yönetimi için Provider\n• Yerel depolama için SharedPreferences",
   "@technologiesList": {
     "description": "List of technologies used"
   },
@@ -197,7 +197,7 @@
   "@moreInfo": {
     "description": "More info button label"
   },
-  "packageName": "Package Name",
+  "packageName": "Paket adı",
   "@packageName": {
     "description": "Package name label"
   },
@@ -205,7 +205,7 @@
   "@sampleData": {
     "description": "Sample data section header"
   },
-  "sampleDataDescription": "Load or clear sample contacts, channel messages, and SAR markers for testing",
+  "sampleDataDescription": "Test için örnek kişiler, kanal mesajları ve SAR işaretleri yükleyin veya temizleyin",
   "@sampleDataDescription": {
     "description": "Sample data section description"
   },
@@ -229,7 +229,7 @@
   "@clear": {
     "description": "Clear button label"
   },
-  "loadedSampleData": "Loaded {teamCount} team members, {channelCount} channels, {sarCount} SAR markers, {messageCount} messages",
+  "loadedSampleData": "{teamCount} ekip üyesi, {channelCount} kanal, {sarCount} SAR işareti, {messageCount} mesaj yüklendi",
   "@loadedSampleData": {
     "description": "Success message after loading sample data",
     "placeholders": {
@@ -260,11 +260,11 @@
   "@allDataCleared": {
     "description": "Success message after clearing all data"
   },
-  "failedToStartBackgroundTracking": "Failed to start background tracking. Check permissions and BLE connection.",
+  "failedToStartBackgroundTracking": "Arka plan takibi başlatılamadı. İzinleri ve BLE bağlantısını kontrol edin.",
   "@failedToStartBackgroundTracking": {
     "description": "Error message when background tracking fails to start"
   },
-  "locationBroadcast": "Location broadcast: {latitude}, {longitude}",
+  "locationBroadcast": "Konum yayını: {latitude}, {longitude}",
   "@locationBroadcast": {
     "description": "Success message for location broadcast",
     "placeholders": {
@@ -276,7 +276,7 @@
       }
     }
   },
-  "defaultPinInfo": "The default pin for devices without a screen is 123456. Trouble pairing? Forget the bluetooth device in system settings.",
+  "defaultPinInfo": "Ekranı olmayan cihazlar için varsayılan PIN 123456’dır. Eşleştirme sorunu mu yaşıyorsunuz? Sistem ayarlarından Bluetooth cihazını unutun.",
   "@defaultPinInfo": {
     "description": "Information about default PIN for pairing"
   },
@@ -304,7 +304,7 @@
   "@refresh": {
     "description": "Refresh button label"
   },
-  "resetPath": "Reset Path (Re-route)",
+  "resetPath": "Yolu sıfırla (yeniden yönlendir)",
   "@resetPath": {
     "description": "Action to reset contact path for re-routing"
   },
@@ -417,15 +417,15 @@
       }
     }
   },
-  "longPressForSecondPoint": "Long press for second point",
+  "longPressForSecondPoint": "İkinci nokta için uzun basın",
   "@longPressForSecondPoint": {
     "description": "Instruction when first measurement point is set"
   },
-  "longPressToStartMeasurement": "Long press to set first point",
+  "longPressToStartMeasurement": "İlk noktayı ayarlamak için uzun basın",
   "@longPressToStartMeasurement": {
     "description": "Instruction to start measurement"
   },
-  "longPressToStartNewMeasurement": "Long press to start new measurement",
+  "longPressToStartNewMeasurement": "Yeni ölçüm başlatmak için uzun basın",
   "@longPressToStartNewMeasurement": {
     "description": "Instruction to restart measurement after completion"
   },
@@ -437,11 +437,11 @@
   "@clearAllDrawings": {
     "description": "Action to clear all local drawings"
   },
-  "completeLine": "Complete Line",
+  "completeLine": "Çizgiyi tamamla",
   "@completeLine": {
     "description": "Tooltip to complete drawing a line"
   },
-  "broadcastDrawingsToTeam": "Broadcast {count} drawing{plural} to team",
+  "broadcastDrawingsToTeam": "{count} çizim{plural} ekibe yayınla",
   "@broadcastDrawingsToTeam": {
     "description": "Subtitle showing how many drawings will be broadcast",
     "placeholders": {
@@ -453,7 +453,7 @@
       }
     }
   },
-  "removeAllDrawings": "Remove all {count} drawing{plural}",
+  "removeAllDrawings": "Tüm {count} çizim{plural} kaldır",
   "@removeAllDrawings": {
     "description": "Subtitle for remove all drawings action",
     "placeholders": {
@@ -465,7 +465,7 @@
       }
     }
   },
-  "deleteAllDrawingsConfirm": "Delete all {count} drawing{plural} from the map?",
+  "deleteAllDrawingsConfirm": "Haritadaki tüm {count} çizim{plural} silinsin mi?",
   "@deleteAllDrawingsConfirm": {
     "description": "Confirmation dialog message for deleting all drawings",
     "placeholders": {
@@ -481,7 +481,7 @@
   "@drawing": {
     "description": "Generic drawing label"
   },
-  "shareDrawingsCount": "Share {count} Drawing{plural}",
+  "shareDrawingsCount": "{count} çizim{plural} paylaş",
   "@shareDrawingsCount": {
     "description": "Title for share drawings dialog",
     "placeholders": {
@@ -525,7 +525,7 @@
   "@publicChannel": {
     "description": "Public channel option for sharing"
   },
-  "broadcastToAll": "Broadcast to all nearby nodes (ephemeral)",
+  "broadcastToAll": "Yakındaki tüm düğümlere yayınla (geçici)",
   "@broadcastToAll": {
     "description": "Description for public channel broadcast"
   },
@@ -561,11 +561,11 @@
   "@selectDestination": {
     "description": "Placeholder for destination dropdown"
   },
-  "ephemeralBroadcastInfo": "Ephemeral: Broadcast over-the-air only. Not stored - nodes must be online.",
+  "ephemeralBroadcastInfo": "Geçici: yalnızca havadan yayınlanır. Saklanmaz; düğümlerin çevrimiçi olması gerekir.",
   "@ephemeralBroadcastInfo": {
     "description": "Information about ephemeral channel broadcasts"
   },
-  "persistentRoomInfo": "Persistent: Stored immutably in room. Synced automatically and preserved offline.",
+  "persistentRoomInfo": "Kalıcı: odada değişmez şekilde saklanır. Otomatik olarak eşitlenir ve çevrimdışı korunur.",
   "@persistentRoomInfo": {
     "description": "Information about persistent room storage"
   },
@@ -610,7 +610,7 @@
   "@addAdditionalInformation": {
     "description": "Placeholder for notes field"
   },
-  "lowAccuracyWarning": "Location accuracy is ±{accuracy}m. This may not be accurate enough for SAR operations.\n\nContinue anyway?",
+  "lowAccuracyWarning": "Konum doğruluğu ±{accuracy}m. Bu, SAR operasyonları için yeterince doğru olmayabilir.\n\nYine de devam edilsin mi?",
   "@lowAccuracyWarning": {
     "description": "Warning dialog content for low GPS accuracy",
     "placeholders": {
@@ -623,7 +623,7 @@
   "@loginToRoom": {
     "description": "Title for room login dialog"
   },
-  "enterPasswordInfo": "Enter the password to access this room. The password will be saved for future use.",
+  "enterPasswordInfo": "Bu odaya erişmek için parolayı girin. Parola daha sonra kullanılmak üzere kaydedilecektir.",
   "@enterPasswordInfo": {
     "description": "Information about room password"
   },
@@ -643,7 +643,7 @@
   "@login": {
     "description": "Login button label"
   },
-  "failedToAddRoom": "Failed to add room to device: {error}\n\nThe room may not have advertised yet.\nTry waiting for the room to broadcast.",
+  "failedToAddRoom": "Oda cihaza eklenemedi: {error}\n\nOda henüz yayın yapmamış olabilir.\nYayın yapmasını beklemeyi deneyin.",
   "@failedToAddRoom": {
     "description": "Error message when adding room fails",
     "placeholders": {
@@ -656,7 +656,7 @@
   "@direct": {
     "description": "Direct routing indicator"
   },
-  "flood": "Flood",
+  "flood": "Yayılım",
   "@flood": {
     "description": "Flood routing indicator"
   },
@@ -672,7 +672,7 @@
   "@distance": {
     "description": "Distance label"
   },
-  "directPingTimeout": "Direct ping timeout - retrying {name} with flooding...",
+  "directPingTimeout": "Doğrudan ping zaman aşımına uğradı - {name} flooding ile yeniden deneniyor...",
   "@directPingTimeout": {
     "description": "Warning when direct ping times out",
     "placeholders": {
@@ -690,7 +690,7 @@
       }
     }
   },
-  "deleteContactConfirmation": "Are you sure you want to delete \"{name}\"?\n\nThis will remove the contact from both the app and the companion radio device.",
+  "deleteContactConfirmation": "\"{name}\" kişisini silmek istediğinizden emin misiniz?\n\nBu işlem kişiyi hem uygulamadan hem de bağlı radyo cihazından kaldıracaktır.",
   "@deleteContactConfirmation": {
     "description": "Confirmation message for deleting contact",
     "placeholders": {
@@ -788,7 +788,7 @@
   "@updated": {
     "description": "Updated timestamp label"
   },
-  "pathResetInfo": "Path reset for {name}. Next message will find a new route.",
+  "pathResetInfo": "{name} için yol sıfırlandı. Sonraki mesaj yeni bir rota bulacak.",
   "@pathResetInfo": {
     "description": "Info message after path reset",
     "placeholders": {
@@ -825,7 +825,7 @@
   "@filterMarkers": {
     "description": "Title for filter markers dialog"
   },
-  "filterMarkersTooltip": "Filter markers",
+  "filterMarkersTooltip": "İşaretleri filtrele",
   "@filterMarkersTooltip": {
     "description": "Tooltip for filter button"
   },
@@ -883,7 +883,7 @@
       }
     }
   },
-  "latLonFormat": "Lat: {latitude} Lon: {longitude}",
+  "latLonFormat": "Enl: {latitude} Boy: {longitude}",
   "@latLonFormat": {
     "description": "Latitude and longitude display format",
     "placeholders": {
@@ -971,11 +971,11 @@
   "@textCopiedToClipboard": {
     "description": "Success message when text is copied"
   },
-  "cannotReplySenderMissing": "Cannot reply: sender information missing",
+  "cannotReplySenderMissing": "Yanıtlanamıyor: gönderen bilgisi eksik",
   "@cannotReplySenderMissing": {
     "description": "Error when sender info is missing for reply"
   },
-  "cannotReplyContactNotFound": "Cannot reply: contact not found",
+  "cannotReplyContactNotFound": "Yanıtlanamıyor: kişi bulunamadı",
   "@cannotReplyContactNotFound": {
     "description": "Error when contact not found for reply"
   },
@@ -983,15 +983,15 @@
   "@copyText": {
     "description": "Option to copy message text to clipboard"
   },
-  "saveAsTemplate": "Save as Template",
+  "saveAsTemplate": "Şablon olarak kaydet",
   "@saveAsTemplate": {
     "description": "Option to save SAR message as a reusable template"
   },
-  "templateSaved": "Template saved successfully",
+  "templateSaved": "Şablon başarıyla kaydedildi",
   "@templateSaved": {
     "description": "Success message when SAR template is saved"
   },
-  "templateAlreadyExists": "Template with this emoji already exists",
+  "templateAlreadyExists": "Bu emoji ile bir şablon zaten var",
   "@templateAlreadyExists": {
     "description": "Error message when trying to save duplicate template"
   },
@@ -1007,7 +1007,7 @@
   "@shareLocation": {
     "description": "Option to share SAR marker location"
   },
-  "shareLocationText": "{markerInfo}\n\nCoordinates: {lat}, {lon}\n\nGoogle Maps: {url}",
+  "shareLocationText": "{markerInfo}\n\nKoordinatlar: {lat}, {lon}\n\nGoogle Maps: {url}",
   "@shareLocationText": {
     "description": "Formatted text for sharing SAR marker location",
     "placeholders": {
@@ -1098,7 +1098,7 @@
   "@broadcast": {
     "description": "Delivery status for channel messages (no echoes yet)"
   },
-  "deliveredToContacts": "Delivered to {delivered}/{total} contacts",
+  "deliveredToContacts": "{delivered}/{total} kişiye teslim edildi",
   "@deliveredToContacts": {
     "description": "Grouped message delivery count",
     "placeholders": {
@@ -1110,11 +1110,11 @@
       }
     }
   },
-  "allDelivered": "All delivered",
+  "allDelivered": "Hepsi teslim edildi",
   "@allDelivered": {
     "description": "Status when all recipients received the message"
   },
-  "recipientDetails": "Recipient Details",
+  "recipientDetails": "Alıcı ayrıntıları",
   "@recipientDetails": {
     "description": "Header for expandable recipient list"
   },
@@ -1122,19 +1122,19 @@
   "@pending": {
     "description": "Delivery status: pending/waiting"
   },
-  "sarMarkerFoundPerson": "Found Person",
+  "sarMarkerFoundPerson": "Bulunan kişi",
   "@sarMarkerFoundPerson": {
     "description": "SAR marker type: found person"
   },
-  "sarMarkerFire": "Fire Location",
+  "sarMarkerFire": "Yangın konumu",
   "@sarMarkerFire": {
     "description": "SAR marker type: fire"
   },
-  "sarMarkerStagingArea": "Staging Area",
+  "sarMarkerStagingArea": "Toplanma alanı",
   "@sarMarkerStagingArea": {
     "description": "SAR marker type: staging area"
   },
-  "sarMarkerObject": "Object Found",
+  "sarMarkerObject": "Bulunan nesne",
   "@sarMarkerObject": {
     "description": "SAR marker type: object"
   },
@@ -1158,7 +1158,7 @@
   "@frequencyMHz": {
     "description": "Label for radio frequency field"
   },
-  "frequencyExample": "e.g., 869.618",
+  "frequencyExample": "örn. 869.618",
   "@frequencyExample": {
     "description": "Helper text example for frequency"
   },
@@ -1249,7 +1249,7 @@
   "@clearTrailQuestion": {
     "description": "Confirmation dialog title"
   },
-  "clearTrailConfirmation": "Are you sure you want to clear the current location trail? This action cannot be undone.",
+  "clearTrailConfirmation": "Geçerli konum izini temizlemek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
   "@clearTrailConfirmation": {
     "description": "Confirmation dialog message"
   },
@@ -1277,7 +1277,7 @@
   "@noContactsWithLocationHistory": {
     "description": "Subtitle when no contacts have trails"
   },
-  "showingTrailsForContacts": "Showing trails for {count} contacts",
+  "showingTrailsForContacts": "{count} kişi için izler gösteriliyor",
   "@showingTrailsForContacts": {
     "description": "Subtitle showing number of contacts with trails",
     "placeholders": {
@@ -1286,7 +1286,7 @@
       }
     }
   },
-  "individualContactTrails": "Individual Contact Trails",
+  "individualContactTrails": "Tek tek kişi izleri",
   "@individualContactTrails": {
     "description": "Expansion tile title for individual contact trails"
   },
@@ -1338,7 +1338,7 @@
   "@meshNetworkName": {
     "description": "Mesh network name field label"
   },
-  "nameBroadcastInMesh": "Name broadcast in mesh advertisements",
+  "nameBroadcastInMesh": "Mesh duyurularında yayınlanan ad",
   "@nameBroadcastInMesh": {
     "description": "Helper text for mesh network name field"
   },
@@ -1374,7 +1374,7 @@
   "@roomChannel": {
     "description": "Device type: room or channel"
   },
-  "typeNumber": "Type {number}",
+  "typeNumber": "Tür {number}",
   "@typeNumber": {
     "description": "Generic device type with number",
     "placeholders": {
@@ -1383,7 +1383,7 @@
       }
     }
   },
-  "copiedToClipboardShort": "Copied {label} to clipboard",
+  "copiedToClipboardShort": "{label} panoya kopyalandı",
   "@copiedToClipboardShort": {
     "description": "Short success message when copying to clipboard",
     "placeholders": {
@@ -1414,7 +1414,7 @@
   "@sarTemplates": {
     "description": "SAR templates menu title"
   },
-  "manageSarTemplates": "Manage cursor on target templates",
+  "manageSarTemplates": "SAR şablonlarını yönet",
   "@manageSarTemplates": {
     "description": "Subtitle for SAR templates settings"
   },
@@ -1495,7 +1495,7 @@
   "@templateDeleted": {
     "description": "Success message when template is deleted"
   },
-  "templatesImported": "{count, plural, =0{No templates imported} =1{Imported 1 template} other{Imported {count} templates}}",
+  "templatesImported": "{count, plural, =0{Şablon içe aktarılmadı} =1{1 şablon içe aktarıldı} other{{count} şablon içe aktarıldı}}",
   "@templatesImported": {
     "description": "Success message after importing templates",
     "placeholders": {
@@ -1504,7 +1504,7 @@
       }
     }
   },
-  "templatesExported": "{count, plural, =1{Exported 1 template to clipboard} other{Exported {count} templates to clipboard}}",
+  "templatesExported": "{count, plural, =1{1 şablon panoya aktarıldı} other{{count} şablon panoya aktarıldı}}",
   "@templatesExported": {
     "description": "Success message after exporting templates",
     "placeholders": {
@@ -1517,7 +1517,7 @@
   "@resetToDefaults": {
     "description": "Action to reset templates to defaults"
   },
-  "resetToDefaultsConfirmation": "This will delete all custom templates and restore the 4 default templates. Continue?",
+  "resetToDefaultsConfirmation": "Bu işlem tüm özel şablonları silecek ve 4 varsayılan şablonu geri yükleyecek. Devam edilsin mi?",
   "@resetToDefaultsConfirmation": {
     "description": "Confirmation message for reset to defaults"
   },
@@ -1569,7 +1569,7 @@
   "@locationPermissionPermanentlyDeniedOpenSettings": {
     "description": "Location permission status: permanently denied"
   },
-  "locationPermissionDialogContent": "Location permission is permanently denied. Please enable it in your device settings to use GPS tracking and location sharing features.",
+  "locationPermissionDialogContent": "Konum izni kalıcı olarak reddedildi. GPS takibi ve konum paylaşımını kullanmak için lütfen cihaz ayarlarından etkinleştirin.",
   "@locationPermissionDialogContent": {
     "description": "Content for location permission dialog when permanently denied"
   },
@@ -1589,11 +1589,11 @@
   "@locationPermissionAlreadyGranted": {
     "description": "Info message when permission is already granted"
   },
-  "sarNavyBlue": "SAR Navy Blue",
+  "sarNavyBlue": "SAR Lacivert",
   "@sarNavyBlue": {
     "description": "SAR Navy Blue theme name"
   },
-  "sarNavyBlueDescription": "Professional/Operations Mode",
+  "sarNavyBlueDescription": "Profesyonel/Operasyon modu",
   "@sarNavyBlueDescription": {
     "description": "Description for SAR Navy Blue theme"
   },
@@ -1601,7 +1601,7 @@
   "@selectRecipient": {
     "description": "Title for recipient selector sheet"
   },
-  "broadcastToAllNearby": "Broadcast to all nearby",
+  "broadcastToAllNearby": "Yakındaki herkese yayınla",
   "@broadcastToAllNearby": {
     "description": "Subtitle for public channel option"
   },
@@ -1633,35 +1633,35 @@
   "@channel": {
     "description": "Channel label in notifications"
   },
-  "samplePoliceLead": "Police Lead",
+  "samplePoliceLead": "Polis lideri",
   "@samplePoliceLead": {
     "description": "Sample team member name"
   },
-  "sampleDroneOperator": "Drone Operator",
+  "sampleDroneOperator": "Drone operatörü",
   "@sampleDroneOperator": {
     "description": "Sample team member name"
   },
-  "sampleFirefighterAlpha": "Firefighter",
+  "sampleFirefighterAlpha": "İtfaiyeci",
   "@sampleFirefighterAlpha": {
     "description": "Sample team member name"
   },
-  "sampleMedicCharlie": "Medic",
+  "sampleMedicCharlie": "Sağlık görevlisi",
   "@sampleMedicCharlie": {
     "description": "Sample team member name"
   },
-  "sampleCommandDelta": "Command",
+  "sampleCommandDelta": "Komuta",
   "@sampleCommandDelta": {
     "description": "Sample team member name"
   },
-  "sampleFireEngine": "Fire Engine",
+  "sampleFireEngine": "İtfaiye aracı",
   "@sampleFireEngine": {
     "description": "Sample team member name"
   },
-  "sampleAirSupport": "Air Support",
+  "sampleAirSupport": "Hava desteği",
   "@sampleAirSupport": {
     "description": "Sample team member name"
   },
-  "sampleBaseCoordinator": "Base Coordinator",
+  "sampleBaseCoordinator": "Üs koordinatörü",
   "@sampleBaseCoordinator": {
     "description": "Sample team member name"
   },
@@ -1677,155 +1677,155 @@
   "@channelUpdates": {
     "description": "Updates channel name"
   },
-  "sampleTeamMember": "Sample Team Member",
+  "sampleTeamMember": "Örnek ekip üyesi",
   "@sampleTeamMember": {
     "description": "Sample sender name"
   },
-  "sampleScout": "Sample Scout",
+  "sampleScout": "Örnek keşifçi",
   "@sampleScout": {
     "description": "Sample sender name"
   },
-  "sampleBase": "Sample Base",
+  "sampleBase": "Örnek üs",
   "@sampleBase": {
     "description": "Sample sender name"
   },
-  "sampleSearcher": "Sample Searcher",
+  "sampleSearcher": "Örnek arayıcı",
   "@sampleSearcher": {
     "description": "Sample sender name"
   },
-  "sampleObjectBackpack": " Backpack found - blue color",
+  "sampleObjectBackpack": " Sırt çantası bulundu - mavi renk",
   "@sampleObjectBackpack": {
     "description": "Sample object note"
   },
-  "sampleObjectVehicle": " Vehicle abandoned - check for owner",
+  "sampleObjectVehicle": " Terk edilmiş araç - sahibi kontrol edin",
   "@sampleObjectVehicle": {
     "description": "Sample object note"
   },
-  "sampleObjectCamping": " Camping equipment discovered",
+  "sampleObjectCamping": " Kamp ekipmanı bulundu",
   "@sampleObjectCamping": {
     "description": "Sample object note"
   },
-  "sampleObjectTrailMarker": " Trail marker found off-path",
+  "sampleObjectTrailMarker": " Yol dışında patika işareti bulundu",
   "@sampleObjectTrailMarker": {
     "description": "Sample object note"
   },
-  "sampleMsgAllTeamsCheckIn": "All teams check in",
+  "sampleMsgAllTeamsCheckIn": "Tüm ekipler durum bildirimi yapsın",
   "@sampleMsgAllTeamsCheckIn": {
     "description": "Sample channel message"
   },
-  "sampleMsgWeatherUpdate": "Weather update: Clear skies, temp 18°C",
+  "sampleMsgWeatherUpdate": "Hava durumu: açık gökyüzü, sıcaklık 18°C",
   "@sampleMsgWeatherUpdate": {
     "description": "Sample channel message"
   },
-  "sampleMsgBaseCamp": "Base camp established at staging area",
+  "sampleMsgBaseCamp": "Üs kampı toplanma alanında kuruldu",
   "@sampleMsgBaseCamp": {
     "description": "Sample channel message"
   },
-  "sampleMsgTeamAlpha": "Team moving to sector 2",
+  "sampleMsgTeamAlpha": "Ekip sektör 2’ye ilerliyor",
   "@sampleMsgTeamAlpha": {
     "description": "Sample channel message"
   },
-  "sampleMsgRadioCheck": "Radio check - all stations respond",
+  "sampleMsgRadioCheck": "Telsiz kontrolü - tüm istasyonlar yanıt versin",
   "@sampleMsgRadioCheck": {
     "description": "Sample channel message"
   },
-  "sampleMsgWaterSupply": "Water supply available at checkpoint 3",
+  "sampleMsgWaterSupply": "Su ikmali 3 numaralı kontrol noktasında mevcut",
   "@sampleMsgWaterSupply": {
     "description": "Sample channel message"
   },
-  "sampleMsgTeamBravo": "Team reporting: sector 1 clear",
+  "sampleMsgTeamBravo": "Ekip raporu: sektör 1 temiz",
   "@sampleMsgTeamBravo": {
     "description": "Sample channel message"
   },
-  "sampleMsgEtaRallyPoint": "ETA to rally point: 15 minutes",
+  "sampleMsgEtaRallyPoint": "Toplanma noktasına tahmini varış: 15 dakika",
   "@sampleMsgEtaRallyPoint": {
     "description": "Sample channel message"
   },
-  "sampleMsgSupplyDrop": "Supply drop confirmed for 14:00",
+  "sampleMsgSupplyDrop": "İkmal bırakma 14:00 için onaylandı",
   "@sampleMsgSupplyDrop": {
     "description": "Sample channel message"
   },
-  "sampleMsgDroneSurvey": "Drone survey completed - no findings",
+  "sampleMsgDroneSurvey": "Drone taraması tamamlandı - bulgu yok",
   "@sampleMsgDroneSurvey": {
     "description": "Sample channel message"
   },
-  "sampleMsgTeamCharlie": "Team requesting backup",
+  "sampleMsgTeamCharlie": "Ekip takviye istiyor",
   "@sampleMsgTeamCharlie": {
     "description": "Sample channel message"
   },
-  "sampleMsgRadioDiscipline": "All units: maintain radio discipline",
+  "sampleMsgRadioDiscipline": "Tüm birimler: telsiz disiplinini koruyun",
   "@sampleMsgRadioDiscipline": {
     "description": "Sample channel message"
   },
-  "sampleMsgUrgentMedical": "URGENT: Medical assistance needed at sector 4",
+  "sampleMsgUrgentMedical": "ACİL: sektör 4’te tıbbi yardım gerekli",
   "@sampleMsgUrgentMedical": {
     "description": "Sample emergency message"
   },
-  "sampleMsgAdultMale": " Adult male, conscious",
+  "sampleMsgAdultMale": " Yetişkin erkek, bilinci açık",
   "@sampleMsgAdultMale": {
     "description": "Sample emergency message note"
   },
-  "sampleMsgFireSpotted": "Fire spotted - coordinates incoming",
+  "sampleMsgFireSpotted": "Yangın görüldü - koordinatlar geliyor",
   "@sampleMsgFireSpotted": {
     "description": "Sample emergency message"
   },
-  "sampleMsgSpreadingRapidly": " Spreading rapidly!",
+  "sampleMsgSpreadingRapidly": " Hızla yayılıyor!",
   "@sampleMsgSpreadingRapidly": {
     "description": "Sample emergency message note"
   },
-  "sampleMsgPriorityHelicopter": "PRIORITY: Need helicopter support",
+  "sampleMsgPriorityHelicopter": "ÖNCELİK: helikopter desteği gerekli",
   "@sampleMsgPriorityHelicopter": {
     "description": "Sample emergency message"
   },
-  "sampleMsgMedicalTeamEnRoute": "Medical team en route to your location",
+  "sampleMsgMedicalTeamEnRoute": "Tıbbi ekip konumunuza geliyor",
   "@sampleMsgMedicalTeamEnRoute": {
     "description": "Sample emergency message"
   },
-  "sampleMsgEvacHelicopter": "Evac helicopter ETA 10 minutes",
+  "sampleMsgEvacHelicopter": "Tahliye helikopteri ETA 10 dakika",
   "@sampleMsgEvacHelicopter": {
     "description": "Sample emergency message"
   },
-  "sampleMsgEmergencyResolved": "Emergency resolved - all clear",
+  "sampleMsgEmergencyResolved": "Acil durum çözüldü - tehlike yok",
   "@sampleMsgEmergencyResolved": {
     "description": "Sample emergency message"
   },
-  "sampleMsgEmergencyStagingArea": " Emergency staging area",
+  "sampleMsgEmergencyStagingArea": " Acil durum toplanma alanı",
   "@sampleMsgEmergencyStagingArea": {
     "description": "Sample emergency message note"
   },
-  "sampleMsgEmergencyServices": "Emergency services notified and responding",
+  "sampleMsgEmergencyServices": "Acil servisler bilgilendirildi ve müdahale ediyor",
   "@sampleMsgEmergencyServices": {
     "description": "Sample emergency message"
   },
-  "sampleAlphaTeamLead": "Team Lead",
+  "sampleAlphaTeamLead": "Ekip lideri",
   "@sampleAlphaTeamLead": {
     "description": "Sample team name"
   },
-  "sampleBravoScout": "Scout",
+  "sampleBravoScout": "Keşifçi",
   "@sampleBravoScout": {
     "description": "Sample team name"
   },
-  "sampleCharlieMedic": "Medic",
+  "sampleCharlieMedic": "Sağlık görevlisi",
   "@sampleCharlieMedic": {
     "description": "Sample team name"
   },
-  "sampleDeltaNavigator": "Navigator",
+  "sampleDeltaNavigator": "Navigatör",
   "@sampleDeltaNavigator": {
     "description": "Sample team name"
   },
-  "sampleEchoSupport": "Support",
+  "sampleEchoSupport": "Destek",
   "@sampleEchoSupport": {
     "description": "Sample team name"
   },
-  "sampleBaseCommand": "Base Command",
+  "sampleBaseCommand": "Üs komutası",
   "@sampleBaseCommand": {
     "description": "Sample team name"
   },
-  "sampleFieldCoordinator": "Field Coordinator",
+  "sampleFieldCoordinator": "Saha koordinatörü",
   "@sampleFieldCoordinator": {
     "description": "Sample team name"
   },
-  "sampleMedicalTeam": "Medical Team",
+  "sampleMedicalTeam": "Tıbbi ekip",
   "@sampleMedicalTeam": {
     "description": "Sample team name"
   },
@@ -1833,7 +1833,7 @@
   "@mapDrawing": {
     "description": "Label for map drawing messages"
   },
-  "navigateToDrawing": "Navigate to Drawing",
+  "navigateToDrawing": "Çizime git",
   "@navigateToDrawing": {
     "description": "Option to navigate to drawing on map"
   },
@@ -1869,7 +1869,7 @@
   "@longitudeLabel": {
     "description": "Label for longitude input field"
   },
-  "exampleCoordinates": "Example: 46.0569, 14.5058",
+  "exampleCoordinates": "Örnek: 46.0569, 14.5058",
   "@exampleCoordinates": {
     "description": "Example coordinate format hint"
   },
@@ -1889,7 +1889,7 @@
   "@sendToPersistentStorage": {
     "description": "Subtitle for room sharing option"
   },
-  "deleteDrawingConfirm": "Are you sure you want to delete this drawing?",
+  "deleteDrawingConfirm": "Bu çizimi silmek istediğinizden emin misiniz?",
   "@deleteDrawingConfirm": {
     "description": "Confirmation message for deleting a single drawing"
   },
@@ -1897,7 +1897,7 @@
   "@drawingDeleted": {
     "description": "Success message after deleting a drawing"
   },
-  "yourDrawingsCount": "Your Drawings ({count})",
+  "yourDrawingsCount": "Çizimleriniz ({count})",
   "@yourDrawingsCount": {
     "description": "Header showing count of user's drawings",
     "placeholders": {
@@ -1938,55 +1938,55 @@
   "@updateLater": {
     "description": "Button to dismiss update dialog"
   },
-  "cadastralParcels": "Cadastral Parcels",
+  "cadastralParcels": "Kadastro parselleri",
   "@cadastralParcels": {
     "description": "Label for cadastral parcels WMS overlay layer"
   },
-  "forestRoads": "Forest Roads",
+  "forestRoads": "Orman yolları",
   "@forestRoads": {
     "description": "Label for forest roads WMS overlay layer"
   },
-  "wmsOverlays": "WMS Overlays",
+  "wmsOverlays": "WMS katmanları",
   "@wmsOverlays": {
     "description": "Section header for WMS overlay layers in layer selector"
   },
-  "hikingTrails": "Hiking Trails",
+  "hikingTrails": "Yürüyüş parkurları",
   "@hikingTrails": {
     "description": "Label for hiking/mountain trails WMS overlay layer"
   },
-  "mainRoads": "Main Roads",
+  "mainRoads": "Ana yollar",
   "@mainRoads": {
     "description": "Label for main roads WMS overlay layer"
   },
-  "houseNumbers": "House Numbers",
+  "houseNumbers": "Kapı numaraları",
   "@houseNumbers": {
     "description": "Label for house numbers WMS overlay layer"
   },
-  "fireHazardZones": "Fire Hazard Zones",
+  "fireHazardZones": "Yangın tehlike bölgeleri",
   "@fireHazardZones": {
     "description": "Label for fire hazard risk zones WMS overlay layer"
   },
-  "historicalFires": "Historical Fires",
+  "historicalFires": "Geçmiş yangınlar",
   "@historicalFires": {
     "description": "Label for historical forest fires WMS overlay layer"
   },
-  "firebreaks": "Firebreaks",
+  "firebreaks": "Yangın şeritleri",
   "@firebreaks": {
     "description": "Label for firebreaks WMS overlay layer"
   },
-  "krasFireZones": "Kras Fire Zones",
+  "krasFireZones": "Kras yangın bölgeleri",
   "@krasFireZones": {
     "description": "Label for Kras fire zones WMS overlay layer"
   },
-  "placeNames": "Place Names",
+  "placeNames": "Yer adları",
   "@placeNames": {
     "description": "Label for geographic place names WMS overlay layer"
   },
-  "municipalityBorders": "Municipality Borders",
+  "municipalityBorders": "Belediye sınırları",
   "@municipalityBorders": {
     "description": "Label for municipality borders WMS overlay layer"
   },
-  "topographicMap": "Topographic Map 1:25000",
+  "topographicMap": "Topoğrafik harita 1:25000",
   "@topographicMap": {
     "description": "Label for DTK25 topographic base map layer"
   },
@@ -2014,15 +2014,15 @@
   "@channelSecretHint": {
     "description": "Hint for channel secret field"
   },
-  "channelSecretHelp": "This secret must be shared with all team members who need access to this channel",
+  "channelSecretHelp": "Bu sır, bu kanala erişmesi gereken tüm ekip üyeleriyle paylaşılmalıdır",
   "@channelSecretHelp": {
     "description": "Help text explaining channel secret"
   },
-  "channelTypesInfo": "Hash channels (#team): Secret auto-generated from name. Same name = same channel across devices.\n\nPrivate channels: Use explicit secret. Only those with the secret can join.",
+  "channelTypesInfo": "Hash kanallar (#team): sır, isimden otomatik üretilir. Aynı isim = tüm cihazlarda aynı kanal.\n\nÖzel kanallar: açık bir sır kullanın. Yalnızca sırrı bilenler katılabilir.",
   "@channelTypesInfo": {
     "description": "Information banner explaining hash and private channel types"
   },
-  "hashChannelInfo": "Hash channel: Secret will be auto-generated from the channel name. Anyone using the same name will join the same channel.",
+  "hashChannelInfo": "Hash kanal: sır kanal adından otomatik üretilecektir. Aynı adı kullanan herkes aynı kanala katılır.",
   "@hashChannelInfo": {
     "description": "Help text for hash channels (# prefix)"
   },
@@ -2030,7 +2030,7 @@
   "@channelNameRequired": {
     "description": "Validation error for empty channel name"
   },
-  "channelNameTooLong": "Channel name must be 31 characters or less",
+  "channelNameTooLong": "Kanal adı en fazla 31 karakter olabilir",
   "@channelNameTooLong": {
     "description": "Validation error for channel name too long"
   },
@@ -2038,7 +2038,7 @@
   "@channelSecretRequired": {
     "description": "Validation error for empty channel secret"
   },
-  "channelSecretTooLong": "Channel secret must be 32 characters or less",
+  "channelSecretTooLong": "Kanal sırrı en fazla 32 karakter olabilir",
   "@channelSecretTooLong": {
     "description": "Validation error for channel secret too long"
   },
@@ -2063,7 +2063,7 @@
   "@deleteChannel": {
     "description": "Delete channel button/menu item"
   },
-  "deleteChannelConfirmation": "Are you sure you want to delete channel \"{channelName}\"? This action cannot be undone.",
+  "deleteChannelConfirmation": "\"{channelName}\" kanalını silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
   "@deleteChannelConfirmation": {
     "description": "Confirmation dialog when deleting a channel",
     "placeholders": {
@@ -2109,7 +2109,7 @@
   "@wizardWelcomeTitle": {
     "description": "Welcome wizard first page title"
   },
-  "wizardWelcomeDescription": "A powerful off-grid communication tool for search and rescue operations. Connect with your team using mesh radio technology when traditional networks are unavailable.",
+  "wizardWelcomeDescription": "Arama ve kurtarma operasyonları için güçlü bir şebeke dışı iletişim aracı. Geleneksel ağlar kullanılamadığında ekibinizle mesh radyo teknolojisi üzerinden bağlantı kurun.",
   "@wizardWelcomeDescription": {
     "description": "Welcome wizard first page description"
   },
@@ -2117,19 +2117,19 @@
   "@wizardConnectingTitle": {
     "description": "Wizard connecting page title"
   },
-  "wizardConnectingDescription": "Connect your smartphone to a MeshCore radio device via Bluetooth to start communicating off-grid.",
+  "wizardConnectingDescription": "Şebeke dışı iletişime başlamak için akıllı telefonunuzu Bluetooth üzerinden bir MeshCore radyo cihazına bağlayın.",
   "@wizardConnectingDescription": {
     "description": "Wizard connecting page description"
   },
-  "wizardConnectingFeature1": "Scan for nearby MeshCore devices",
+  "wizardConnectingFeature1": "Yakındaki MeshCore cihazlarını tarayın",
   "@wizardConnectingFeature1": {
     "description": "Wizard connecting feature 1"
   },
-  "wizardConnectingFeature2": "Pair with your radio via Bluetooth",
+  "wizardConnectingFeature2": "Radyonuzla Bluetooth üzerinden eşleşin",
   "@wizardConnectingFeature2": {
     "description": "Wizard connecting feature 2"
   },
-  "wizardConnectingFeature3": "Works completely offline - no internet required",
+  "wizardConnectingFeature3": "Tamamen çevrimdışı çalışır - internet gerekmez",
   "@wizardConnectingFeature3": {
     "description": "Wizard connecting feature 3"
   },
@@ -2137,19 +2137,19 @@
   "@wizardChannelTitle": {
     "description": "Wizard channel page title"
   },
-  "wizardChannelDescription": "Broadcast messages to everyone on a channel, perfect for team-wide announcements and coordination.",
+  "wizardChannelDescription": "Bir kanaldaki herkese mesaj yayınlayın; ekip genelindeki duyurular ve koordinasyon için idealdir.",
   "@wizardChannelDescription": {
     "description": "Wizard channel page description"
   },
-  "wizardChannelFeature1": "Public Channel for general team communication",
+  "wizardChannelFeature1": "Genel ekip iletişimi için herkese açık kanal",
   "@wizardChannelFeature1": {
     "description": "Wizard channel feature 1"
   },
-  "wizardChannelFeature2": "Create custom channels for specific groups",
+  "wizardChannelFeature2": "Belirli gruplar için özel kanallar oluşturun",
   "@wizardChannelFeature2": {
     "description": "Wizard channel feature 2"
   },
-  "wizardChannelFeature3": "Messages are automatically relayed by the mesh",
+  "wizardChannelFeature3": "Mesajlar mesh tarafından otomatik iletilir",
   "@wizardChannelFeature3": {
     "description": "Wizard channel feature 3"
   },
@@ -2157,19 +2157,19 @@
   "@wizardContactsTitle": {
     "description": "Wizard contacts page title"
   },
-  "wizardContactsDescription": "Your team members appear automatically as they join the mesh network. Send them direct messages or view their location.",
+  "wizardContactsDescription": "Ekip üyeleriniz mesh ağına katıldıkça otomatik olarak görünür. Onlara doğrudan mesaj gönderin veya konumlarını görüntüleyin.",
   "@wizardContactsDescription": {
     "description": "Wizard contacts page description"
   },
-  "wizardContactsFeature1": "Contacts discovered automatically",
+  "wizardContactsFeature1": "Kişiler otomatik bulunur",
   "@wizardContactsFeature1": {
     "description": "Wizard contacts feature 1"
   },
-  "wizardContactsFeature2": "Send private direct messages",
+  "wizardContactsFeature2": "Özel doğrudan mesaj gönderin",
   "@wizardContactsFeature2": {
     "description": "Wizard contacts feature 2"
   },
-  "wizardContactsFeature3": "View battery level and last seen time",
+  "wizardContactsFeature3": "Pil seviyesini ve son görülme zamanını görüntüleyin",
   "@wizardContactsFeature3": {
     "description": "Wizard contacts feature 3"
   },
@@ -2177,23 +2177,23 @@
   "@wizardMapTitle": {
     "description": "Wizard map page title"
   },
-  "wizardMapDescription": "Track your team in real-time and mark important locations for search and rescue operations.",
+  "wizardMapDescription": "Ekibinizi gerçek zamanlı izleyin ve arama kurtarma operasyonları için önemli konumları işaretleyin.",
   "@wizardMapDescription": {
     "description": "Wizard map page description"
   },
-  "wizardMapFeature1": "SAR markers for found persons, fires, and staging areas",
+  "wizardMapFeature1": "Bulunan kişiler, yangınlar ve toplanma alanları için SAR işaretleri",
   "@wizardMapFeature1": {
     "description": "Wizard map feature 1"
   },
-  "wizardMapFeature2": "Real-time GPS tracking of team members",
+  "wizardMapFeature2": "Ekip üyelerinin gerçek zamanlı GPS takibi",
   "@wizardMapFeature2": {
     "description": "Wizard map feature 2"
   },
-  "wizardMapFeature3": "Download offline maps for remote areas",
+  "wizardMapFeature3": "Uzak bölgeler için çevrimdışı haritalar indirin",
   "@wizardMapFeature3": {
     "description": "Wizard map feature 3"
   },
-  "wizardMapFeature4": "Draw shapes and share tactical information",
+  "wizardMapFeature4": "Şekiller çizin ve taktik bilgileri paylaşın",
   "@wizardMapFeature4": {
     "description": "Wizard map feature 4"
   },
@@ -2205,7 +2205,7 @@
   "@allTeamContacts": {
     "description": "Destination option to send SAR marker to all team contacts"
   },
-  "directMessagesInfo": "Direct messages with ACKs. Sent to {count} team members.",
+  "directMessagesInfo": "ACK’li doğrudan mesajlar. {count} ekip üyesine gönderildi.",
   "@directMessagesInfo": {
     "description": "Information about sending to all contacts",
     "placeholders": {
@@ -2214,7 +2214,7 @@
       }
     }
   },
-  "sarMarkerSentToContacts": "SAR marker sent to {count} contacts",
+  "sarMarkerSentToContacts": "SAR işareti {count} kişiye gönderildi",
   "@sarMarkerSentToContacts": {
     "description": "Success message after sending SAR marker to all contacts",
     "placeholders": {
@@ -2231,50 +2231,50 @@
   "@reply": {},
   "technicalDetails": "Teknik ayrıntılar",
   "@technicalDetails": {},
-  "messageTechnicalDetails": "Message technical details",
+  "messageTechnicalDetails": "Mesaj teknik ayrıntıları",
   "@messageTechnicalDetails": {},
-  "linkQuality": "Link quality",
+  "linkQuality": "Bağlantı kalitesi",
   "@linkQuality": {},
-  "delivery": "Delivery",
+  "delivery": "Teslimat",
   "@delivery": {},
   "status": "Durum",
   "@status": {},
-  "expectedAckTag": "Expected ACK tag",
+  "expectedAckTag": "Beklenen ACK etiketi",
   "@expectedAckTag": {},
-  "roundTrip": "Round-trip",
+  "roundTrip": "Gidiş dönüş",
   "@roundTrip": {},
-  "retryAttempt": "Retry attempt",
+  "retryAttempt": "Yeniden deneme sayısı",
   "@retryAttempt": {},
-  "floodFallback": "Flood fallback",
+  "floodFallback": "Flood yedeği",
   "@floodFallback": {},
-  "identity": "Identity",
+  "identity": "Kimlik",
   "@identity": {},
-  "messageId": "Message ID",
+  "messageId": "Mesaj kimliği",
   "@messageId": {},
-  "sender": "Sender",
+  "sender": "Gönderen",
   "@sender": {},
-  "senderKey": "Sender key",
+  "senderKey": "Gönderen anahtarı",
   "@senderKey": {},
-  "recipient": "Recipient",
+  "recipient": "Alıcı",
   "@recipient": {},
-  "recipientKey": "Recipient key",
+  "recipientKey": "Alıcı anahtarı",
   "@recipientKey": {},
   "voice": "Ses",
   "@voice": {},
-  "voiceId": "Voice ID",
+  "voiceId": "Ses kimliği",
   "@voiceId": {},
-  "envelope": "Envelope",
+  "envelope": "Zarf",
   "@envelope": {},
-  "sessionProgress": "Session progress",
+  "sessionProgress": "Oturum ilerlemesi",
   "@sessionProgress": {},
   "complete": "Tamamlandı",
   "@complete": {},
-  "rawDump": "Raw dump",
+  "rawDump": "Ham döküm",
   "@rawDump": {},
-  "cannotRetryMissingRecipient": "Cannot retry: recipient information missing",
+  "cannotRetryMissingRecipient": "Yeniden denenemiyor: alıcı bilgisi eksik",
   "@cannotRetryMissingRecipient": {},
   "voiceUnavailable": "Ses şu anda kullanılamıyor",
   "@voiceUnavailable": {},
-  "requestingVoice": "Requesting voice",
+  "requestingVoice": "Ses isteniyor",
   "@requestingVoice": {}
 }

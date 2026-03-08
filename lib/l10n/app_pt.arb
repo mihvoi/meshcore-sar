@@ -177,19 +177,19 @@
   "@appName": {
     "description": "App name label"
   },
-  "aboutMeshCoreSar": "About MeshCore SAR",
+  "aboutMeshCoreSar": "Sobre o MeshCore SAR",
   "@aboutMeshCoreSar": {
     "description": "About dialog title"
   },
-  "aboutDescription": "A Search & Rescue application designed for emergency response teams. Features include:\n\n• BLE mesh networking for device-to-device communication\n• Offline maps with multiple layer options\n• Real-time team member tracking\n• SAR tactical markers (found person, fire, staging)\n• Contact management and messaging\n• GPS tracking with compass heading\n• Map tile caching for offline use",
+  "aboutDescription": "Um aplicativo de Busca e Resgate projetado para equipes de resposta a emergências. Os recursos incluem:\n\n• Rede mesh BLE para comunicação entre dispositivos\n• Mapas offline com múltiplas opções de camadas\n• Rastreamento em tempo real dos membros da equipe\n• Marcadores táticos SAR (pessoa encontrada, incêndio, área de apoio)\n• Gerenciamento de contatos e mensagens\n• Rastreamento GPS com rumo da bússola\n• Cache de blocos de mapa para uso offline",
   "@aboutDescription": {
     "description": "About dialog description"
   },
-  "technologiesUsed": "Technologies Used:",
+  "technologiesUsed": "Tecnologias utilizadas:",
   "@technologiesUsed": {
     "description": "Technologies used section title"
   },
-  "technologiesList": "• Flutter for cross-platform development\n• BLE (Bluetooth Low Energy) for mesh networking\n• OpenStreetMap for mapping\n• Provider for state management\n• SharedPreferences for local storage",
+  "technologiesList": "• Flutter para desenvolvimento multiplataforma\n• BLE (Bluetooth Low Energy) para rede mesh\n• OpenStreetMap para mapas\n• Provider para gerenciamento de estado\n• SharedPreferences para armazenamento local",
   "@technologiesList": {
     "description": "List of technologies used"
   },
@@ -197,7 +197,7 @@
   "@moreInfo": {
     "description": "More info button label"
   },
-  "packageName": "Package Name",
+  "packageName": "Nome do pacote",
   "@packageName": {
     "description": "Package name label"
   },
@@ -229,7 +229,7 @@
   "@clear": {
     "description": "Clear button label"
   },
-  "loadedSampleData": "Loaded {teamCount} team members, {channelCount} channels, {sarCount} SAR markers, {messageCount} messages",
+  "loadedSampleData": "Carregados {teamCount} membros da equipe, {channelCount} canais, {sarCount} marcadores SAR, {messageCount} mensagens",
   "@loadedSampleData": {
     "description": "Success message after loading sample data",
     "placeholders": {
@@ -276,7 +276,7 @@
       }
     }
   },
-  "defaultPinInfo": "The default pin for devices without a screen is 123456. Trouble pairing? Forget the bluetooth device in system settings.",
+  "defaultPinInfo": "O PIN padrão para dispositivos sem tela é 123456. Problemas ao parear? Esqueça o dispositivo Bluetooth nas configurações do sistema.",
   "@defaultPinInfo": {
     "description": "Information about default PIN for pairing"
   },
@@ -425,7 +425,7 @@
   "@longPressToStartMeasurement": {
     "description": "Instruction to start measurement"
   },
-  "longPressToStartNewMeasurement": "Long press to start new measurement",
+  "longPressToStartNewMeasurement": "Pressione e segure para iniciar uma nova medição",
   "@longPressToStartNewMeasurement": {
     "description": "Instruction to restart measurement after completion"
   },
@@ -441,7 +441,7 @@
   "@completeLine": {
     "description": "Tooltip to complete drawing a line"
   },
-  "broadcastDrawingsToTeam": "Broadcast {count} drawing{plural} to team",
+  "broadcastDrawingsToTeam": "Transmitir {count} desenho{plural} para a equipe",
   "@broadcastDrawingsToTeam": {
     "description": "Subtitle showing how many drawings will be broadcast",
     "placeholders": {
@@ -453,7 +453,7 @@
       }
     }
   },
-  "removeAllDrawings": "Remove all {count} drawing{plural}",
+  "removeAllDrawings": "Remover todos os {count} desenho{plural}",
   "@removeAllDrawings": {
     "description": "Subtitle for remove all drawings action",
     "placeholders": {
@@ -465,7 +465,7 @@
       }
     }
   },
-  "deleteAllDrawingsConfirm": "Delete all {count} drawing{plural} from the map?",
+  "deleteAllDrawingsConfirm": "Excluir todos os {count} desenho{plural} do mapa?",
   "@deleteAllDrawingsConfirm": {
     "description": "Confirmation dialog message for deleting all drawings",
     "placeholders": {
@@ -481,7 +481,7 @@
   "@drawing": {
     "description": "Generic drawing label"
   },
-  "shareDrawingsCount": "Share {count} Drawing{plural}",
+  "shareDrawingsCount": "Compartilhar {count} desenho{plural}",
   "@shareDrawingsCount": {
     "description": "Title for share drawings dialog",
     "placeholders": {
@@ -561,11 +561,11 @@
   "@selectDestination": {
     "description": "Placeholder for destination dropdown"
   },
-  "ephemeralBroadcastInfo": "Ephemeral: Broadcast over-the-air only. Not stored - nodes must be online.",
+  "ephemeralBroadcastInfo": "Efêmero: transmitido apenas pelo ar. Não é armazenado; os nós precisam estar online.",
   "@ephemeralBroadcastInfo": {
     "description": "Information about ephemeral channel broadcasts"
   },
-  "persistentRoomInfo": "Persistent: Stored immutably in room. Synced automatically and preserved offline.",
+  "persistentRoomInfo": "Persistente: armazenado de forma imutável na sala. Sincronizado automaticamente e preservado offline.",
   "@persistentRoomInfo": {
     "description": "Information about persistent room storage"
   },
@@ -610,7 +610,7 @@
   "@addAdditionalInformation": {
     "description": "Placeholder for notes field"
   },
-  "lowAccuracyWarning": "Location accuracy is ±{accuracy}m. This may not be accurate enough for SAR operations.\n\nContinue anyway?",
+  "lowAccuracyWarning": "A precisão da localização é ±{accuracy}m. Isso pode não ser preciso o suficiente para operações SAR.\n\nDeseja continuar mesmo assim?",
   "@lowAccuracyWarning": {
     "description": "Warning dialog content for low GPS accuracy",
     "placeholders": {
@@ -623,7 +623,7 @@
   "@loginToRoom": {
     "description": "Title for room login dialog"
   },
-  "enterPasswordInfo": "Enter the password to access this room. The password will be saved for future use.",
+  "enterPasswordInfo": "Digite a senha para acessar esta sala. A senha será salva para uso futuro.",
   "@enterPasswordInfo": {
     "description": "Information about room password"
   },
@@ -643,7 +643,7 @@
   "@login": {
     "description": "Login button label"
   },
-  "failedToAddRoom": "Failed to add room to device: {error}\n\nThe room may not have advertised yet.\nTry waiting for the room to broadcast.",
+  "failedToAddRoom": "Falha ao adicionar a sala ao dispositivo: {error}\n\nA sala talvez ainda não tenha sido anunciada.\nTente esperar a sala começar a transmitir.",
   "@failedToAddRoom": {
     "description": "Error message when adding room fails",
     "placeholders": {
@@ -672,7 +672,7 @@
   "@distance": {
     "description": "Distance label"
   },
-  "directPingTimeout": "Direct ping timeout - retrying {name} with flooding...",
+  "directPingTimeout": "Tempo limite do ping direto - tentando novamente {name} com flooding...",
   "@directPingTimeout": {
     "description": "Warning when direct ping times out",
     "placeholders": {
@@ -690,7 +690,7 @@
       }
     }
   },
-  "deleteContactConfirmation": "Are you sure you want to delete \"{name}\"?\n\nThis will remove the contact from both the app and the companion radio device.",
+  "deleteContactConfirmation": "Tem certeza de que deseja excluir \"{name}\"?\n\nIsso removerá o contato tanto do aplicativo quanto do dispositivo de rádio associado.",
   "@deleteContactConfirmation": {
     "description": "Confirmation message for deleting contact",
     "placeholders": {
@@ -788,7 +788,7 @@
   "@updated": {
     "description": "Updated timestamp label"
   },
-  "pathResetInfo": "Path reset for {name}. Next message will find a new route.",
+  "pathResetInfo": "Rota redefinida para {name}. A próxima mensagem encontrará um novo caminho.",
   "@pathResetInfo": {
     "description": "Info message after path reset",
     "placeholders": {
@@ -825,7 +825,7 @@
   "@filterMarkers": {
     "description": "Title for filter markers dialog"
   },
-  "filterMarkersTooltip": "Filter markers",
+  "filterMarkersTooltip": "Filtrar marcadores",
   "@filterMarkersTooltip": {
     "description": "Tooltip for filter button"
   },
@@ -883,7 +883,7 @@
       }
     }
   },
-  "latLonFormat": "Lat: {latitude} Lon: {longitude}",
+  "latLonFormat": "Lat.: {latitude} Lon.: {longitude}",
   "@latLonFormat": {
     "description": "Latitude and longitude display format",
     "placeholders": {
@@ -971,11 +971,11 @@
   "@textCopiedToClipboard": {
     "description": "Success message when text is copied"
   },
-  "cannotReplySenderMissing": "Cannot reply: sender information missing",
+  "cannotReplySenderMissing": "Não é possível responder: faltam informações do remetente",
   "@cannotReplySenderMissing": {
     "description": "Error when sender info is missing for reply"
   },
-  "cannotReplyContactNotFound": "Cannot reply: contact not found",
+  "cannotReplyContactNotFound": "Não é possível responder: contato não encontrado",
   "@cannotReplyContactNotFound": {
     "description": "Error when contact not found for reply"
   },
@@ -983,15 +983,15 @@
   "@copyText": {
     "description": "Option to copy message text to clipboard"
   },
-  "saveAsTemplate": "Save as Template",
+  "saveAsTemplate": "Salvar como modelo",
   "@saveAsTemplate": {
     "description": "Option to save SAR message as a reusable template"
   },
-  "templateSaved": "Template saved successfully",
+  "templateSaved": "Modelo salvo com sucesso",
   "@templateSaved": {
     "description": "Success message when SAR template is saved"
   },
-  "templateAlreadyExists": "Template with this emoji already exists",
+  "templateAlreadyExists": "Já existe um modelo com este emoji",
   "@templateAlreadyExists": {
     "description": "Error message when trying to save duplicate template"
   },
@@ -1007,7 +1007,7 @@
   "@shareLocation": {
     "description": "Option to share SAR marker location"
   },
-  "shareLocationText": "{markerInfo}\n\nCoordinates: {lat}, {lon}\n\nGoogle Maps: {url}",
+  "shareLocationText": "{markerInfo}\n\nCoordenadas: {lat}, {lon}\n\nGoogle Maps: {url}",
   "@shareLocationText": {
     "description": "Formatted text for sharing SAR marker location",
     "placeholders": {
@@ -1098,7 +1098,7 @@
   "@broadcast": {
     "description": "Delivery status for channel messages (no echoes yet)"
   },
-  "deliveredToContacts": "Delivered to {delivered}/{total} contacts",
+  "deliveredToContacts": "Entregue a {delivered}/{total} contatos",
   "@deliveredToContacts": {
     "description": "Grouped message delivery count",
     "placeholders": {
@@ -1110,11 +1110,11 @@
       }
     }
   },
-  "allDelivered": "All delivered",
+  "allDelivered": "Todos entregues",
   "@allDelivered": {
     "description": "Status when all recipients received the message"
   },
-  "recipientDetails": "Recipient Details",
+  "recipientDetails": "Detalhes do destinatário",
   "@recipientDetails": {
     "description": "Header for expandable recipient list"
   },
@@ -1122,19 +1122,19 @@
   "@pending": {
     "description": "Delivery status: pending/waiting"
   },
-  "sarMarkerFoundPerson": "Found Person",
+  "sarMarkerFoundPerson": "Pessoa encontrada",
   "@sarMarkerFoundPerson": {
     "description": "SAR marker type: found person"
   },
-  "sarMarkerFire": "Fire Location",
+  "sarMarkerFire": "Local do incêndio",
   "@sarMarkerFire": {
     "description": "SAR marker type: fire"
   },
-  "sarMarkerStagingArea": "Staging Area",
+  "sarMarkerStagingArea": "Área de apoio",
   "@sarMarkerStagingArea": {
     "description": "SAR marker type: staging area"
   },
-  "sarMarkerObject": "Object Found",
+  "sarMarkerObject": "Objeto encontrado",
   "@sarMarkerObject": {
     "description": "SAR marker type: object"
   },
@@ -1158,7 +1158,7 @@
   "@frequencyMHz": {
     "description": "Label for radio frequency field"
   },
-  "frequencyExample": "e.g., 869.618",
+  "frequencyExample": "ex.: 869.618",
   "@frequencyExample": {
     "description": "Helper text example for frequency"
   },
@@ -1277,7 +1277,7 @@
   "@noContactsWithLocationHistory": {
     "description": "Subtitle when no contacts have trails"
   },
-  "showingTrailsForContacts": "Showing trails for {count} contacts",
+  "showingTrailsForContacts": "Mostrando trilhas de {count} contatos",
   "@showingTrailsForContacts": {
     "description": "Subtitle showing number of contacts with trails",
     "placeholders": {
@@ -1346,11 +1346,11 @@
   "@telemetryAndLocationSharing": {
     "description": "Telemetry and location sharing toggle label"
   },
-  "lat": "Lat",
+  "lat": "Lat.",
   "@lat": {
     "description": "Latitude field label (short form)"
   },
-  "lon": "Lon",
+  "lon": "Lon.",
   "@lon": {
     "description": "Longitude field label (short form)"
   },
@@ -1374,7 +1374,7 @@
   "@roomChannel": {
     "description": "Device type: room or channel"
   },
-  "typeNumber": "Type {number}",
+  "typeNumber": "Tipo {number}",
   "@typeNumber": {
     "description": "Generic device type with number",
     "placeholders": {
@@ -1414,7 +1414,7 @@
   "@sarTemplates": {
     "description": "SAR templates menu title"
   },
-  "manageSarTemplates": "Manage cursor on target templates",
+  "manageSarTemplates": "Gerenciar modelos SAR",
   "@manageSarTemplates": {
     "description": "Subtitle for SAR templates settings"
   },
@@ -1495,7 +1495,7 @@
   "@templateDeleted": {
     "description": "Success message when template is deleted"
   },
-  "templatesImported": "{count, plural, =0{No templates imported} =1{Imported 1 template} other{Imported {count} templates}}",
+  "templatesImported": "{count, plural, =0{Nenhum modelo importado} =1{1 modelo importado} other{{count} modelos importados}}",
   "@templatesImported": {
     "description": "Success message after importing templates",
     "placeholders": {
@@ -1504,7 +1504,7 @@
       }
     }
   },
-  "templatesExported": "{count, plural, =1{Exported 1 template to clipboard} other{Exported {count} templates to clipboard}}",
+  "templatesExported": "{count, plural, =1{1 modelo exportado para a área de transferência} other{{count} modelos exportados para a área de transferência}}",
   "@templatesExported": {
     "description": "Success message after exporting templates",
     "placeholders": {
@@ -1633,35 +1633,35 @@
   "@channel": {
     "description": "Channel label in notifications"
   },
-  "samplePoliceLead": "Police Lead",
+  "samplePoliceLead": "Chefe da polícia",
   "@samplePoliceLead": {
     "description": "Sample team member name"
   },
-  "sampleDroneOperator": "Drone Operator",
+  "sampleDroneOperator": "Operador de drone",
   "@sampleDroneOperator": {
     "description": "Sample team member name"
   },
-  "sampleFirefighterAlpha": "Firefighter",
+  "sampleFirefighterAlpha": "Bombeiro",
   "@sampleFirefighterAlpha": {
     "description": "Sample team member name"
   },
-  "sampleMedicCharlie": "Medic",
+  "sampleMedicCharlie": "Paramédico",
   "@sampleMedicCharlie": {
     "description": "Sample team member name"
   },
-  "sampleCommandDelta": "Command",
+  "sampleCommandDelta": "Comando",
   "@sampleCommandDelta": {
     "description": "Sample team member name"
   },
-  "sampleFireEngine": "Fire Engine",
+  "sampleFireEngine": "Caminhão de bombeiros",
   "@sampleFireEngine": {
     "description": "Sample team member name"
   },
-  "sampleAirSupport": "Air Support",
+  "sampleAirSupport": "Apoio aéreo",
   "@sampleAirSupport": {
     "description": "Sample team member name"
   },
-  "sampleBaseCoordinator": "Base Coordinator",
+  "sampleBaseCoordinator": "Coordenador da base",
   "@sampleBaseCoordinator": {
     "description": "Sample team member name"
   },
@@ -1677,155 +1677,155 @@
   "@channelUpdates": {
     "description": "Updates channel name"
   },
-  "sampleTeamMember": "Sample Team Member",
+  "sampleTeamMember": "Membro de equipe de exemplo",
   "@sampleTeamMember": {
     "description": "Sample sender name"
   },
-  "sampleScout": "Sample Scout",
+  "sampleScout": "Batedor de exemplo",
   "@sampleScout": {
     "description": "Sample sender name"
   },
-  "sampleBase": "Sample Base",
+  "sampleBase": "Base de exemplo",
   "@sampleBase": {
     "description": "Sample sender name"
   },
-  "sampleSearcher": "Sample Searcher",
+  "sampleSearcher": "Buscador de exemplo",
   "@sampleSearcher": {
     "description": "Sample sender name"
   },
-  "sampleObjectBackpack": " Backpack found - blue color",
+  "sampleObjectBackpack": " Mochila encontrada - cor azul",
   "@sampleObjectBackpack": {
     "description": "Sample object note"
   },
-  "sampleObjectVehicle": " Vehicle abandoned - check for owner",
+  "sampleObjectVehicle": " Veículo abandonado - verificar proprietário",
   "@sampleObjectVehicle": {
     "description": "Sample object note"
   },
-  "sampleObjectCamping": " Camping equipment discovered",
+  "sampleObjectCamping": " Equipamento de camping encontrado",
   "@sampleObjectCamping": {
     "description": "Sample object note"
   },
-  "sampleObjectTrailMarker": " Trail marker found off-path",
+  "sampleObjectTrailMarker": " Marco de trilha encontrado fora da rota",
   "@sampleObjectTrailMarker": {
     "description": "Sample object note"
   },
-  "sampleMsgAllTeamsCheckIn": "All teams check in",
+  "sampleMsgAllTeamsCheckIn": "Todas as equipes, façam check-in",
   "@sampleMsgAllTeamsCheckIn": {
     "description": "Sample channel message"
   },
-  "sampleMsgWeatherUpdate": "Weather update: Clear skies, temp 18°C",
+  "sampleMsgWeatherUpdate": "Atualização do tempo: céu limpo, temp. 18°C",
   "@sampleMsgWeatherUpdate": {
     "description": "Sample channel message"
   },
-  "sampleMsgBaseCamp": "Base camp established at staging area",
+  "sampleMsgBaseCamp": "Base estabelecida na área de apoio",
   "@sampleMsgBaseCamp": {
     "description": "Sample channel message"
   },
-  "sampleMsgTeamAlpha": "Team moving to sector 2",
+  "sampleMsgTeamAlpha": "Equipe deslocando-se para o setor 2",
   "@sampleMsgTeamAlpha": {
     "description": "Sample channel message"
   },
-  "sampleMsgRadioCheck": "Radio check - all stations respond",
+  "sampleMsgRadioCheck": "Teste de rádio - todas as estações respondam",
   "@sampleMsgRadioCheck": {
     "description": "Sample channel message"
   },
-  "sampleMsgWaterSupply": "Water supply available at checkpoint 3",
+  "sampleMsgWaterSupply": "Abastecimento de água disponível no ponto de controle 3",
   "@sampleMsgWaterSupply": {
     "description": "Sample channel message"
   },
-  "sampleMsgTeamBravo": "Team reporting: sector 1 clear",
+  "sampleMsgTeamBravo": "Equipe informa: setor 1 livre",
   "@sampleMsgTeamBravo": {
     "description": "Sample channel message"
   },
-  "sampleMsgEtaRallyPoint": "ETA to rally point: 15 minutes",
+  "sampleMsgEtaRallyPoint": "ETA para o ponto de reunião: 15 minutos",
   "@sampleMsgEtaRallyPoint": {
     "description": "Sample channel message"
   },
-  "sampleMsgSupplyDrop": "Supply drop confirmed for 14:00",
+  "sampleMsgSupplyDrop": "Entrega de suprimentos confirmada para 14:00",
   "@sampleMsgSupplyDrop": {
     "description": "Sample channel message"
   },
-  "sampleMsgDroneSurvey": "Drone survey completed - no findings",
+  "sampleMsgDroneSurvey": "Levantamento com drone concluído - nada encontrado",
   "@sampleMsgDroneSurvey": {
     "description": "Sample channel message"
   },
-  "sampleMsgTeamCharlie": "Team requesting backup",
+  "sampleMsgTeamCharlie": "Equipe solicitando reforço",
   "@sampleMsgTeamCharlie": {
     "description": "Sample channel message"
   },
-  "sampleMsgRadioDiscipline": "All units: maintain radio discipline",
+  "sampleMsgRadioDiscipline": "Todas as unidades: mantenham disciplina de rádio",
   "@sampleMsgRadioDiscipline": {
     "description": "Sample channel message"
   },
-  "sampleMsgUrgentMedical": "URGENT: Medical assistance needed at sector 4",
+  "sampleMsgUrgentMedical": "URGENTE: assistência médica necessária no setor 4",
   "@sampleMsgUrgentMedical": {
     "description": "Sample emergency message"
   },
-  "sampleMsgAdultMale": " Adult male, conscious",
+  "sampleMsgAdultMale": " Homem adulto, consciente",
   "@sampleMsgAdultMale": {
     "description": "Sample emergency message note"
   },
-  "sampleMsgFireSpotted": "Fire spotted - coordinates incoming",
+  "sampleMsgFireSpotted": "Incêndio avistado - coordenadas a seguir",
   "@sampleMsgFireSpotted": {
     "description": "Sample emergency message"
   },
-  "sampleMsgSpreadingRapidly": " Spreading rapidly!",
+  "sampleMsgSpreadingRapidly": " Se espalhando rapidamente!",
   "@sampleMsgSpreadingRapidly": {
     "description": "Sample emergency message note"
   },
-  "sampleMsgPriorityHelicopter": "PRIORITY: Need helicopter support",
+  "sampleMsgPriorityHelicopter": "PRIORIDADE: necessidade de apoio de helicóptero",
   "@sampleMsgPriorityHelicopter": {
     "description": "Sample emergency message"
   },
-  "sampleMsgMedicalTeamEnRoute": "Medical team en route to your location",
+  "sampleMsgMedicalTeamEnRoute": "Equipe médica a caminho da sua localização",
   "@sampleMsgMedicalTeamEnRoute": {
     "description": "Sample emergency message"
   },
-  "sampleMsgEvacHelicopter": "Evac helicopter ETA 10 minutes",
+  "sampleMsgEvacHelicopter": "ETA do helicóptero de evacuação: 10 minutos",
   "@sampleMsgEvacHelicopter": {
     "description": "Sample emergency message"
   },
-  "sampleMsgEmergencyResolved": "Emergency resolved - all clear",
+  "sampleMsgEmergencyResolved": "Emergência resolvida - tudo limpo",
   "@sampleMsgEmergencyResolved": {
     "description": "Sample emergency message"
   },
-  "sampleMsgEmergencyStagingArea": " Emergency staging area",
+  "sampleMsgEmergencyStagingArea": " Área de apoio de emergência",
   "@sampleMsgEmergencyStagingArea": {
     "description": "Sample emergency message note"
   },
-  "sampleMsgEmergencyServices": "Emergency services notified and responding",
+  "sampleMsgEmergencyServices": "Serviços de emergência notificados e em deslocamento",
   "@sampleMsgEmergencyServices": {
     "description": "Sample emergency message"
   },
-  "sampleAlphaTeamLead": "Team Lead",
+  "sampleAlphaTeamLead": "Líder da equipe",
   "@sampleAlphaTeamLead": {
     "description": "Sample team name"
   },
-  "sampleBravoScout": "Scout",
+  "sampleBravoScout": "Batedor",
   "@sampleBravoScout": {
     "description": "Sample team name"
   },
-  "sampleCharlieMedic": "Medic",
+  "sampleCharlieMedic": "Paramédico",
   "@sampleCharlieMedic": {
     "description": "Sample team name"
   },
-  "sampleDeltaNavigator": "Navigator",
+  "sampleDeltaNavigator": "Navegador",
   "@sampleDeltaNavigator": {
     "description": "Sample team name"
   },
-  "sampleEchoSupport": "Support",
+  "sampleEchoSupport": "Apoio",
   "@sampleEchoSupport": {
     "description": "Sample team name"
   },
-  "sampleBaseCommand": "Base Command",
+  "sampleBaseCommand": "Comando da base",
   "@sampleBaseCommand": {
     "description": "Sample team name"
   },
-  "sampleFieldCoordinator": "Field Coordinator",
+  "sampleFieldCoordinator": "Coordenador de campo",
   "@sampleFieldCoordinator": {
     "description": "Sample team name"
   },
-  "sampleMedicalTeam": "Medical Team",
+  "sampleMedicalTeam": "Equipe médica",
   "@sampleMedicalTeam": {
     "description": "Sample team name"
   },
@@ -1833,7 +1833,7 @@
   "@mapDrawing": {
     "description": "Label for map drawing messages"
   },
-  "navigateToDrawing": "Navigate to Drawing",
+  "navigateToDrawing": "Navegar até o desenho",
   "@navigateToDrawing": {
     "description": "Option to navigate to drawing on map"
   },
@@ -1869,7 +1869,7 @@
   "@longitudeLabel": {
     "description": "Label for longitude input field"
   },
-  "exampleCoordinates": "Example: 46.0569, 14.5058",
+  "exampleCoordinates": "Exemplo: 46.0569, 14.5058",
   "@exampleCoordinates": {
     "description": "Example coordinate format hint"
   },
@@ -1897,7 +1897,7 @@
   "@drawingDeleted": {
     "description": "Success message after deleting a drawing"
   },
-  "yourDrawingsCount": "Your Drawings ({count})",
+  "yourDrawingsCount": "Seus desenhos ({count})",
   "@yourDrawingsCount": {
     "description": "Header showing count of user's drawings",
     "placeholders": {
@@ -1938,55 +1938,55 @@
   "@updateLater": {
     "description": "Button to dismiss update dialog"
   },
-  "cadastralParcels": "Cadastral Parcels",
+  "cadastralParcels": "Parcelas cadastrais",
   "@cadastralParcels": {
     "description": "Label for cadastral parcels WMS overlay layer"
   },
-  "forestRoads": "Forest Roads",
+  "forestRoads": "Estradas florestais",
   "@forestRoads": {
     "description": "Label for forest roads WMS overlay layer"
   },
-  "wmsOverlays": "WMS Overlays",
+  "wmsOverlays": "Sobreposições WMS",
   "@wmsOverlays": {
     "description": "Section header for WMS overlay layers in layer selector"
   },
-  "hikingTrails": "Hiking Trails",
+  "hikingTrails": "Trilhas de caminhada",
   "@hikingTrails": {
     "description": "Label for hiking/mountain trails WMS overlay layer"
   },
-  "mainRoads": "Main Roads",
+  "mainRoads": "Estradas principais",
   "@mainRoads": {
     "description": "Label for main roads WMS overlay layer"
   },
-  "houseNumbers": "House Numbers",
+  "houseNumbers": "Números de porta",
   "@houseNumbers": {
     "description": "Label for house numbers WMS overlay layer"
   },
-  "fireHazardZones": "Fire Hazard Zones",
+  "fireHazardZones": "Zonas de risco de incêndio",
   "@fireHazardZones": {
     "description": "Label for fire hazard risk zones WMS overlay layer"
   },
-  "historicalFires": "Historical Fires",
+  "historicalFires": "Incêndios históricos",
   "@historicalFires": {
     "description": "Label for historical forest fires WMS overlay layer"
   },
-  "firebreaks": "Firebreaks",
+  "firebreaks": "Aceiros",
   "@firebreaks": {
     "description": "Label for firebreaks WMS overlay layer"
   },
-  "krasFireZones": "Kras Fire Zones",
+  "krasFireZones": "Zonas de incêndio do Karst",
   "@krasFireZones": {
     "description": "Label for Kras fire zones WMS overlay layer"
   },
-  "placeNames": "Place Names",
+  "placeNames": "Topônimos",
   "@placeNames": {
     "description": "Label for geographic place names WMS overlay layer"
   },
-  "municipalityBorders": "Municipality Borders",
+  "municipalityBorders": "Limites municipais",
   "@municipalityBorders": {
     "description": "Label for municipality borders WMS overlay layer"
   },
-  "topographicMap": "Topographic Map 1:25000",
+  "topographicMap": "Mapa topográfico 1:25000",
   "@topographicMap": {
     "description": "Label for DTK25 topographic base map layer"
   },
@@ -2014,15 +2014,15 @@
   "@channelSecretHint": {
     "description": "Hint for channel secret field"
   },
-  "channelSecretHelp": "This secret must be shared with all team members who need access to this channel",
+  "channelSecretHelp": "Este segredo deve ser compartilhado com todos os membros da equipe que precisam de acesso a este canal",
   "@channelSecretHelp": {
     "description": "Help text explaining channel secret"
   },
-  "channelTypesInfo": "Hash channels (#team): Secret auto-generated from name. Same name = same channel across devices.\n\nPrivate channels: Use explicit secret. Only those with the secret can join.",
+  "channelTypesInfo": "Canais hash (#team): o segredo é gerado automaticamente a partir do nome. Mesmo nome = mesmo canal em todos os dispositivos.\n\nCanais privados: use um segredo explícito. Somente quem tiver o segredo poderá entrar.",
   "@channelTypesInfo": {
     "description": "Information banner explaining hash and private channel types"
   },
-  "hashChannelInfo": "Hash channel: Secret will be auto-generated from the channel name. Anyone using the same name will join the same channel.",
+  "hashChannelInfo": "Canal hash: o segredo será gerado automaticamente a partir do nome do canal. Qualquer pessoa usando o mesmo nome entrará no mesmo canal.",
   "@hashChannelInfo": {
     "description": "Help text for hash channels (# prefix)"
   },
@@ -2030,7 +2030,7 @@
   "@channelNameRequired": {
     "description": "Validation error for empty channel name"
   },
-  "channelNameTooLong": "Channel name must be 31 characters or less",
+  "channelNameTooLong": "O nome do canal deve ter no máximo 31 caracteres",
   "@channelNameTooLong": {
     "description": "Validation error for channel name too long"
   },
@@ -2038,7 +2038,7 @@
   "@channelSecretRequired": {
     "description": "Validation error for empty channel secret"
   },
-  "channelSecretTooLong": "Channel secret must be 32 characters or less",
+  "channelSecretTooLong": "O segredo do canal deve ter no máximo 32 caracteres",
   "@channelSecretTooLong": {
     "description": "Validation error for channel secret too long"
   },
@@ -2063,7 +2063,7 @@
   "@deleteChannel": {
     "description": "Delete channel button/menu item"
   },
-  "deleteChannelConfirmation": "Are you sure you want to delete channel \"{channelName}\"? This action cannot be undone.",
+  "deleteChannelConfirmation": "Tem certeza de que deseja excluir o canal \"{channelName}\"? Esta ação não pode ser desfeita.",
   "@deleteChannelConfirmation": {
     "description": "Confirmation dialog when deleting a channel",
     "placeholders": {
@@ -2109,7 +2109,7 @@
   "@wizardWelcomeTitle": {
     "description": "Welcome wizard first page title"
   },
-  "wizardWelcomeDescription": "A powerful off-grid communication tool for search and rescue operations. Connect with your team using mesh radio technology when traditional networks are unavailable.",
+  "wizardWelcomeDescription": "Uma poderosa ferramenta de comunicação off-grid para operações de busca e resgate. Conecte-se com sua equipe usando tecnologia de rádio mesh quando as redes tradicionais não estiverem disponíveis.",
   "@wizardWelcomeDescription": {
     "description": "Welcome wizard first page description"
   },
@@ -2117,19 +2117,19 @@
   "@wizardConnectingTitle": {
     "description": "Wizard connecting page title"
   },
-  "wizardConnectingDescription": "Connect your smartphone to a MeshCore radio device via Bluetooth to start communicating off-grid.",
+  "wizardConnectingDescription": "Conecte seu smartphone a um dispositivo de rádio MeshCore via Bluetooth para começar a se comunicar off-grid.",
   "@wizardConnectingDescription": {
     "description": "Wizard connecting page description"
   },
-  "wizardConnectingFeature1": "Scan for nearby MeshCore devices",
+  "wizardConnectingFeature1": "Procure dispositivos MeshCore próximos",
   "@wizardConnectingFeature1": {
     "description": "Wizard connecting feature 1"
   },
-  "wizardConnectingFeature2": "Pair with your radio via Bluetooth",
+  "wizardConnectingFeature2": "Emparelhe com seu rádio via Bluetooth",
   "@wizardConnectingFeature2": {
     "description": "Wizard connecting feature 2"
   },
-  "wizardConnectingFeature3": "Works completely offline - no internet required",
+  "wizardConnectingFeature3": "Funciona totalmente offline - internet não é necessária",
   "@wizardConnectingFeature3": {
     "description": "Wizard connecting feature 3"
   },
@@ -2137,19 +2137,19 @@
   "@wizardChannelTitle": {
     "description": "Wizard channel page title"
   },
-  "wizardChannelDescription": "Broadcast messages to everyone on a channel, perfect for team-wide announcements and coordination.",
+  "wizardChannelDescription": "Transmita mensagens para todos em um canal, ideal para anúncios e coordenação de toda a equipe.",
   "@wizardChannelDescription": {
     "description": "Wizard channel page description"
   },
-  "wizardChannelFeature1": "Public Channel for general team communication",
+  "wizardChannelFeature1": "Canal público para comunicação geral da equipe",
   "@wizardChannelFeature1": {
     "description": "Wizard channel feature 1"
   },
-  "wizardChannelFeature2": "Create custom channels for specific groups",
+  "wizardChannelFeature2": "Crie canais personalizados para grupos específicos",
   "@wizardChannelFeature2": {
     "description": "Wizard channel feature 2"
   },
-  "wizardChannelFeature3": "Messages are automatically relayed by the mesh",
+  "wizardChannelFeature3": "As mensagens são retransmitidas automaticamente pela malha",
   "@wizardChannelFeature3": {
     "description": "Wizard channel feature 3"
   },
@@ -2157,19 +2157,19 @@
   "@wizardContactsTitle": {
     "description": "Wizard contacts page title"
   },
-  "wizardContactsDescription": "Your team members appear automatically as they join the mesh network. Send them direct messages or view their location.",
+  "wizardContactsDescription": "Os membros da sua equipe aparecem automaticamente à medida que entram na rede mesh. Envie mensagens diretas ou veja a localização deles.",
   "@wizardContactsDescription": {
     "description": "Wizard contacts page description"
   },
-  "wizardContactsFeature1": "Contacts discovered automatically",
+  "wizardContactsFeature1": "Contatos descobertos automaticamente",
   "@wizardContactsFeature1": {
     "description": "Wizard contacts feature 1"
   },
-  "wizardContactsFeature2": "Send private direct messages",
+  "wizardContactsFeature2": "Envie mensagens diretas privadas",
   "@wizardContactsFeature2": {
     "description": "Wizard contacts feature 2"
   },
-  "wizardContactsFeature3": "View battery level and last seen time",
+  "wizardContactsFeature3": "Veja o nível de bateria e o horário da última visualização",
   "@wizardContactsFeature3": {
     "description": "Wizard contacts feature 3"
   },
@@ -2177,23 +2177,23 @@
   "@wizardMapTitle": {
     "description": "Wizard map page title"
   },
-  "wizardMapDescription": "Track your team in real-time and mark important locations for search and rescue operations.",
+  "wizardMapDescription": "Acompanhe sua equipe em tempo real e marque locais importantes para operações de busca e resgate.",
   "@wizardMapDescription": {
     "description": "Wizard map page description"
   },
-  "wizardMapFeature1": "SAR markers for found persons, fires, and staging areas",
+  "wizardMapFeature1": "Marcadores SAR para pessoas encontradas, incêndios e áreas de apoio",
   "@wizardMapFeature1": {
     "description": "Wizard map feature 1"
   },
-  "wizardMapFeature2": "Real-time GPS tracking of team members",
+  "wizardMapFeature2": "Rastreamento GPS em tempo real dos membros da equipe",
   "@wizardMapFeature2": {
     "description": "Wizard map feature 2"
   },
-  "wizardMapFeature3": "Download offline maps for remote areas",
+  "wizardMapFeature3": "Baixe mapas offline para áreas remotas",
   "@wizardMapFeature3": {
     "description": "Wizard map feature 3"
   },
-  "wizardMapFeature4": "Draw shapes and share tactical information",
+  "wizardMapFeature4": "Desenhe formas e compartilhe informações táticas",
   "@wizardMapFeature4": {
     "description": "Wizard map feature 4"
   },
@@ -2205,7 +2205,7 @@
   "@allTeamContacts": {
     "description": "Destination option to send SAR marker to all team contacts"
   },
-  "directMessagesInfo": "Direct messages with ACKs. Sent to {count} team members.",
+  "directMessagesInfo": "Mensagens diretas com ACKs. Enviadas para {count} membros da equipe.",
   "@directMessagesInfo": {
     "description": "Information about sending to all contacts",
     "placeholders": {
@@ -2214,7 +2214,7 @@
       }
     }
   },
-  "sarMarkerSentToContacts": "SAR marker sent to {count} contacts",
+  "sarMarkerSentToContacts": "Marcador SAR enviado para {count} contatos",
   "@sarMarkerSentToContacts": {
     "description": "Success message after sending SAR marker to all contacts",
     "placeholders": {
@@ -2231,50 +2231,50 @@
   "@reply": {},
   "technicalDetails": "Detalhes técnicos",
   "@technicalDetails": {},
-  "messageTechnicalDetails": "Message technical details",
+  "messageTechnicalDetails": "Detalhes técnicos da mensagem",
   "@messageTechnicalDetails": {},
-  "linkQuality": "Link quality",
+  "linkQuality": "Qualidade do link",
   "@linkQuality": {},
-  "delivery": "Delivery",
+  "delivery": "Entrega",
   "@delivery": {},
   "status": "Status",
   "@status": {},
-  "expectedAckTag": "Expected ACK tag",
+  "expectedAckTag": "Tag ACK esperada",
   "@expectedAckTag": {},
-  "roundTrip": "Round-trip",
+  "roundTrip": "Ida e volta",
   "@roundTrip": {},
-  "retryAttempt": "Retry attempt",
+  "retryAttempt": "Tentativa de repetição",
   "@retryAttempt": {},
-  "floodFallback": "Flood fallback",
+  "floodFallback": "Fallback de flooding",
   "@floodFallback": {},
-  "identity": "Identity",
+  "identity": "Identidade",
   "@identity": {},
-  "messageId": "Message ID",
+  "messageId": "ID da mensagem",
   "@messageId": {},
-  "sender": "Sender",
+  "sender": "Remetente",
   "@sender": {},
-  "senderKey": "Sender key",
+  "senderKey": "Chave do remetente",
   "@senderKey": {},
-  "recipient": "Recipient",
+  "recipient": "Destinatário",
   "@recipient": {},
-  "recipientKey": "Recipient key",
+  "recipientKey": "Chave do destinatário",
   "@recipientKey": {},
   "voice": "Voz",
   "@voice": {},
-  "voiceId": "Voice ID",
+  "voiceId": "ID de voz",
   "@voiceId": {},
   "envelope": "Envelope",
   "@envelope": {},
-  "sessionProgress": "Session progress",
+  "sessionProgress": "Progresso da sessão",
   "@sessionProgress": {},
   "complete": "Concluído",
   "@complete": {},
-  "rawDump": "Raw dump",
+  "rawDump": "Dump bruto",
   "@rawDump": {},
-  "cannotRetryMissingRecipient": "Cannot retry: recipient information missing",
+  "cannotRetryMissingRecipient": "Não é possível repetir: faltam informações do destinatário",
   "@cannotRetryMissingRecipient": {},
   "voiceUnavailable": "A voz não está disponível no momento",
   "@voiceUnavailable": {},
-  "requestingVoice": "Requesting voice",
+  "requestingVoice": "Solicitando voz",
   "@requestingVoice": {}
 }
