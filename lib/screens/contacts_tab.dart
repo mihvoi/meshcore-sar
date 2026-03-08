@@ -217,11 +217,12 @@ class _ContactsTabState extends State<ContactsTab> {
           final channels = _sortContactsByDistance(contactsProvider.channels);
           final pendingAdverts = contactsProvider.pendingAdverts;
 
-          // Check if there are any displayable contacts (excluding channels)
+          // Check if there are any displayable contacts
           final hasDisplayableContacts =
               chatContacts.isNotEmpty ||
               repeaters.isNotEmpty ||
               rooms.isNotEmpty ||
+              channels.isNotEmpty ||
               pendingAdverts.isNotEmpty;
 
           if (!hasDisplayableContacts) {

@@ -638,7 +638,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String latLonFormat(String latitude, String longitude) {
-    return 'Lat: $latitude Lon: $longitude';
+    return 'Breite: $latitude Lange: $longitude';
   }
 
   @override
@@ -784,7 +784,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get failed => 'Fehlgeschlagen';
 
   @override
-  String get broadcast => 'Broadcast';
+  String get broadcast => 'Rundspruch';
 
   @override
   String deliveredToContacts(int delivered, int total) {
@@ -844,7 +844,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String maxPowerDbm(int power) {
-    return 'Max: $power dBm';
+    return 'Max.: $power dBm';
   }
 
   @override
@@ -852,12 +852,12 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String exportFailed(String error) {
-    return 'Export failed: $error';
+    return 'Export fehlgeschlagen: $error';
   }
 
   @override
   String importFailed(String error) {
-    return 'Import failed: $error';
+    return 'Import fehlgeschlagen: $error';
   }
 
   @override
@@ -967,10 +967,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get telemetryAndLocationSharing => 'Telemetrie & Standortfreigabe';
 
   @override
-  String get lat => 'Lat';
+  String get lat => 'Breite';
 
   @override
-  String get lon => 'Lon';
+  String get lon => 'Lange';
 
   @override
   String get useCurrentLocation => 'Aktuellen Standort verwenden';
@@ -982,7 +982,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get chatNode => 'Chat-Knoten';
 
   @override
-  String get repeater => 'Repeater';
+  String get repeater => 'Relais';
 
   @override
   String get roomChannel => 'Raum/Kanal';
@@ -1026,7 +1026,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get templateName => 'Vorlagenname';
 
   @override
-  String get templateNameHint => 'e.g. Found Person';
+  String get templateNameHint => 'z. B. Gefundene Person';
 
   @override
   String get templateEmoji => 'Emoji';
@@ -1038,16 +1038,16 @@ class AppLocalizationsDe extends AppLocalizations {
   String get nameRequired => 'Name ist erforderlich';
 
   @override
-  String get templateDescription => 'Description (Optional)';
+  String get templateDescription => 'Beschreibung (optional)';
 
   @override
-  String get templateDescriptionHint => 'Add additional context...';
+  String get templateDescriptionHint => 'Zusatzlichen Kontext hinzufugen...';
 
   @override
-  String get templateColor => 'Color';
+  String get templateColor => 'Farbe';
 
   @override
-  String get previewFormat => 'Preview (SAR Message Format)';
+  String get previewFormat => 'Vorschau (SAR-Nachrichtenformat)';
 
   @override
   String get importFromClipboard => 'Importieren';
@@ -1057,26 +1057,26 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String deleteTemplateConfirmation(String name) {
-    return 'Delete template \'$name\'?';
+    return 'Vorlage \'$name\' loschen?';
   }
 
   @override
-  String get templateAdded => 'Template added';
+  String get templateAdded => 'Vorlage hinzugefugt';
 
   @override
-  String get templateUpdated => 'Template updated';
+  String get templateUpdated => 'Vorlage aktualisiert';
 
   @override
-  String get templateDeleted => 'Template deleted';
+  String get templateDeleted => 'Vorlage geloscht';
 
   @override
   String templatesImported(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'Imported $count templates',
-      one: 'Imported 1 template',
-      zero: 'No templates imported',
+      other: '$count Vorlagen importiert',
+      one: '1 Vorlage importiert',
+      zero: 'Keine Vorlagen importiert',
     );
     return '$_temp0';
   }
@@ -1086,8 +1086,8 @@ class AppLocalizationsDe extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'Exported $count templates to clipboard',
-      one: 'Exported 1 template to clipboard',
+      other: '$count Vorlagen in die Zwischenablage exportiert',
+      one: '1 Vorlage in die Zwischenablage exportiert',
     );
     return '$_temp0';
   }
@@ -1106,10 +1106,11 @@ class AppLocalizationsDe extends AppLocalizations {
   String get resetComplete => 'Vorlagen auf Standard zurückgesetzt';
 
   @override
-  String get noTemplates => 'No templates available';
+  String get noTemplates => 'Keine Vorlagen verfugbar';
 
   @override
-  String get tapAddToCreate => 'Tap + to create your first template';
+  String get tapAddToCreate =>
+      'Tippen Sie auf +, um Ihre erste Vorlage zu erstellen';
 
   @override
   String get ok => 'OK';

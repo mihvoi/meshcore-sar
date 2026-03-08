@@ -883,7 +883,7 @@
       }
     }
   },
-  "latLonFormat": "Lat: {latitude} Lon: {longitude}",
+  "latLonFormat": "Breite: {latitude} Lange: {longitude}",
   "@latLonFormat": {
     "description": "Anzeigenformat für Breiten- und Längengrad",
     "placeholders": {
@@ -1050,7 +1050,7 @@
   "@failed": {
     "description": "Zustellungsstatus: fehlgeschlagen"
   },
-  "broadcast": "Broadcast",
+  "broadcast": "Rundspruch",
   "@broadcast": {
     "description": "Zustellstatus für Kanalnachrichten (noch keine Echos)"
   },
@@ -1134,7 +1134,7 @@
   "@txPowerDbm": {
     "description": "Beschriftung für TX-Leistungsfeld"
   },
-  "maxPowerDbm": "Max: {power} dBm",
+  "maxPowerDbm": "Max.: {power} dBm",
   "@maxPowerDbm": {
     "description": "Hilfetext zur maximalen TX-Leistung",
     "placeholders": {
@@ -1147,7 +1147,7 @@
   "@you": {
     "description": "Beschriftung für den aktuellen Benutzer in Nachrichtenblasen"
   },
-  "exportFailed": "Export failed: {error}",
+  "exportFailed": "Export fehlgeschlagen: {error}",
   "@exportFailed": {
     "description": "Fehlermeldung bei Export-Fehler",
     "placeholders": {
@@ -1156,7 +1156,7 @@
       }
     }
   },
-  "importFailed": "Import failed: {error}",
+  "importFailed": "Import fehlgeschlagen: {error}",
   "@importFailed": {
     "description": "Fehlermeldung bei Import-Fehler",
     "placeholders": {
@@ -1302,11 +1302,11 @@
   "@telemetryAndLocationSharing": {
     "description": "Beschriftung des Telemetrie- und Standortfreigabe-Umschalters"
   },
-  "lat": "Lat",
+  "lat": "Breite",
   "@lat": {
     "description": "Beschriftung des Breitengradfelds (Kurzform)"
   },
-  "lon": "Lon",
+  "lon": "Lange",
   "@lon": {
     "description": "Beschriftung des Längengradfelds (Kurzform)"
   },
@@ -1322,7 +1322,7 @@
   "@chatNode": {
     "description": "Gerätetyp: Chat-Knoten"
   },
-  "repeater": "Repeater",
+  "repeater": "Relais",
   "@repeater": {
     "description": "Gerätetyp: Repeater"
   },
@@ -1372,28 +1372,28 @@
   "editTemplate": "Vorlage bearbeiten",
   "deleteTemplate": "Vorlage löschen",
   "templateName": "Vorlagenname",
-  "templateNameHint": "e.g. Found Person",
+  "templateNameHint": "z. B. Gefundene Person",
   "templateEmoji": "Emoji",
   "emojiRequired": "Emoji ist erforderlich",
   "nameRequired": "Name ist erforderlich",
-  "templateDescription": "Description (Optional)",
-  "templateDescriptionHint": "Add additional context...",
-  "templateColor": "Color",
-  "previewFormat": "Preview (SAR Message Format)",
+  "templateDescription": "Beschreibung (optional)",
+  "templateDescriptionHint": "Zusatzlichen Kontext hinzufugen...",
+  "templateColor": "Farbe",
+  "previewFormat": "Vorschau (SAR-Nachrichtenformat)",
   "importFromClipboard": "Importieren",
   "exportToClipboard": "Exportieren",
-  "deleteTemplateConfirmation": "Delete template '{name}'?",
-  "templateAdded": "Template added",
-  "templateUpdated": "Template updated",
-  "templateDeleted": "Template deleted",
-  "templatesImported": "{count, plural, =0{No templates imported} =1{Imported 1 template} other{Imported {count} templates}}",
-  "templatesExported": "{count, plural, =1{Exported 1 template to clipboard} other{Exported {count} templates to clipboard}}",
+  "deleteTemplateConfirmation": "Vorlage '{name}' loschen?",
+  "templateAdded": "Vorlage hinzugefugt",
+  "templateUpdated": "Vorlage aktualisiert",
+  "templateDeleted": "Vorlage geloscht",
+  "templatesImported": "{count, plural, =0{Keine Vorlagen importiert} =1{1 Vorlage importiert} other{{count} Vorlagen importiert}}",
+  "templatesExported": "{count, plural, =1{1 Vorlage in die Zwischenablage exportiert} other{{count} Vorlagen in die Zwischenablage exportiert}}",
   "resetToDefaults": "Auf Standard zurücksetzen",
   "resetToDefaultsConfirmation": "Dadurch werden alle benutzerdefinierten Vorlagen gelöscht und die 4 Standardvorlagen wiederhergestellt. Fortfahren?",
   "reset": "Zurücksetzen",
   "resetComplete": "Vorlagen auf Standard zurückgesetzt",
-  "noTemplates": "No templates available",
-  "tapAddToCreate": "Tap + to create your first template",
+  "noTemplates": "Keine Vorlagen verfugbar",
+  "tapAddToCreate": "Tippen Sie auf +, um Ihre erste Vorlage zu erstellen",
   "ok": "OK",
   "permissionsSection": "Berechtigungen",
   "locationPermission": "Standortberechtigung",

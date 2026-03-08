@@ -1104,7 +1104,7 @@ class AppLocalizationsSl extends AppLocalizations {
   String get tapAddToCreate => 'Tapnite + za ustvarjanje prve predloge';
 
   @override
-  String get ok => 'OK';
+  String get ok => 'V redu';
 
   @override
   String get permissionsSection => 'Dovoljenja';
@@ -1659,7 +1659,7 @@ class AppLocalizationsSl extends AppLocalizations {
   String get delivery => 'Dostava';
 
   @override
-  String get status => 'Status';
+  String get status => 'Stanje';
 
   @override
   String get expectedAckTag => 'Pričakovana oznaka ACK';

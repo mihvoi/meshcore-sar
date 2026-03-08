@@ -938,7 +938,7 @@ class AppLocalizationsHr extends AppLocalizations {
   String get buildDate => 'Datum izgradnje';
 
   @override
-  String get firmware => 'Firmware';
+  String get firmware => 'Firmver';
 
   @override
   String get maxContacts => 'Maks. kontakata';
@@ -1104,7 +1104,7 @@ class AppLocalizationsHr extends AppLocalizations {
   String get tapAddToCreate => 'Dodirnite + za izradu prvog predloška';
 
   @override
-  String get ok => 'OK';
+  String get ok => 'U redu';
 
   @override
   String get permissionsSection => 'Dozvole';

@@ -1147,7 +1147,7 @@
   "@you": {
     "description": "Etiqueta para el usuario actual en burbujas de mensaje"
   },
-  "exportFailed": "Export failed: {error}",
+  "exportFailed": "Error al exportar: {error}",
   "@exportFailed": {
     "description": "Mensaje de error cuando falla exportación",
     "placeholders": {
@@ -1156,7 +1156,7 @@
       }
     }
   },
-  "importFailed": "Import failed: {error}",
+  "importFailed": "Error al importar: {error}",
   "@importFailed": {
     "description": "Mensaje de error cuando falla importación",
     "placeholders": {
@@ -1372,28 +1372,28 @@
   "editTemplate": "Editar plantilla",
   "deleteTemplate": "Eliminar plantilla",
   "templateName": "Nombre de plantilla",
-  "templateNameHint": "e.g. Found Person",
+  "templateNameHint": "p. ej., Persona encontrada",
   "templateEmoji": "Emoji",
   "emojiRequired": "Se requiere emoji",
   "nameRequired": "Se requiere nombre",
-  "templateDescription": "Description (Optional)",
-  "templateDescriptionHint": "Add additional context...",
+  "templateDescription": "Descripcion (opcional)",
+  "templateDescriptionHint": "Anade contexto adicional...",
   "templateColor": "Color",
-  "previewFormat": "Preview (SAR Message Format)",
+  "previewFormat": "Vista previa (formato de mensaje SAR)",
   "importFromClipboard": "Importar",
   "exportToClipboard": "Exportar",
-  "deleteTemplateConfirmation": "Delete template '{name}'?",
-  "templateAdded": "Template added",
-  "templateUpdated": "Template updated",
-  "templateDeleted": "Template deleted",
-  "templatesImported": "{count, plural, =0{No templates imported} =1{Imported 1 template} other{Imported {count} templates}}",
-  "templatesExported": "{count, plural, =1{Exported 1 template to clipboard} other{Exported {count} templates to clipboard}}",
+  "deleteTemplateConfirmation": "¿Eliminar la plantilla '{name}'?",
+  "templateAdded": "Plantilla anadida",
+  "templateUpdated": "Plantilla actualizada",
+  "templateDeleted": "Plantilla eliminada",
+  "templatesImported": "{count, plural, =0{No se importaron plantillas} =1{Se importo 1 plantilla} other{Se importaron {count} plantillas}}",
+  "templatesExported": "{count, plural, =1{Se exporto 1 plantilla al portapapeles} other{Se exportaron {count} plantillas al portapapeles}}",
   "resetToDefaults": "Restablecer valores predeterminados",
   "resetToDefaultsConfirmation": "Esto eliminará todas las plantillas personalizadas y restaurará las 4 plantillas predeterminadas. ¿Continuar?",
   "reset": "Restablecer",
   "resetComplete": "Plantillas restablecidas a valores predeterminados",
-  "noTemplates": "No templates available",
-  "tapAddToCreate": "Tap + to create your first template",
+  "noTemplates": "No hay plantillas disponibles",
+  "tapAddToCreate": "Toca + para crear tu primera plantilla",
   "ok": "OK",
   "permissionsSection": "Permisos",
   "locationPermission": "Permiso de ubicación",

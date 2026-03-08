@@ -851,12 +851,12 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String exportFailed(String error) {
-    return 'Export failed: $error';
+    return 'Error al exportar: $error';
   }
 
   @override
   String importFailed(String error) {
-    return 'Import failed: $error';
+    return 'Error al importar: $error';
   }
 
   @override
@@ -1023,7 +1023,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get templateName => 'Nombre de plantilla';
 
   @override
-  String get templateNameHint => 'e.g. Found Person';
+  String get templateNameHint => 'p. ej., Persona encontrada';
 
   @override
   String get templateEmoji => 'Emoji';
@@ -1035,16 +1035,16 @@ class AppLocalizationsEs extends AppLocalizations {
   String get nameRequired => 'Se requiere nombre';
 
   @override
-  String get templateDescription => 'Description (Optional)';
+  String get templateDescription => 'Descripcion (opcional)';
 
   @override
-  String get templateDescriptionHint => 'Add additional context...';
+  String get templateDescriptionHint => 'Anade contexto adicional...';
 
   @override
   String get templateColor => 'Color';
 
   @override
-  String get previewFormat => 'Preview (SAR Message Format)';
+  String get previewFormat => 'Vista previa (formato de mensaje SAR)';
 
   @override
   String get importFromClipboard => 'Importar';
@@ -1054,26 +1054,26 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String deleteTemplateConfirmation(String name) {
-    return 'Delete template \'$name\'?';
+    return '¿Eliminar la plantilla \'$name\'?';
   }
 
   @override
-  String get templateAdded => 'Template added';
+  String get templateAdded => 'Plantilla anadida';
 
   @override
-  String get templateUpdated => 'Template updated';
+  String get templateUpdated => 'Plantilla actualizada';
 
   @override
-  String get templateDeleted => 'Template deleted';
+  String get templateDeleted => 'Plantilla eliminada';
 
   @override
   String templatesImported(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'Imported $count templates',
-      one: 'Imported 1 template',
-      zero: 'No templates imported',
+      other: 'Se importaron $count plantillas',
+      one: 'Se importo 1 plantilla',
+      zero: 'No se importaron plantillas',
     );
     return '$_temp0';
   }
@@ -1083,8 +1083,8 @@ class AppLocalizationsEs extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'Exported $count templates to clipboard',
-      one: 'Exported 1 template to clipboard',
+      other: 'Se exportaron $count plantillas al portapapeles',
+      one: 'Se exporto 1 plantilla al portapapeles',
     );
     return '$_temp0';
   }
@@ -1104,10 +1104,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'Plantillas restablecidas a valores predeterminados';
 
   @override
-  String get noTemplates => 'No templates available';
+  String get noTemplates => 'No hay plantillas disponibles';
 
   @override
-  String get tapAddToCreate => 'Tap + to create your first template';
+  String get tapAddToCreate => 'Toca + para crear tu primera plantilla';
 
   @override
   String get ok => 'OK';
