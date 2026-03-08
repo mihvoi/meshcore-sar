@@ -7,6 +7,7 @@ import '../models/contact.dart';
 import '../providers/contacts_provider.dart';
 import '../providers/app_provider.dart';
 import '../providers/connection_provider.dart';
+import '../providers/messages_provider.dart';
 import '../widgets/contacts/contact_tile.dart';
 import '../widgets/contacts/add_channel_dialog.dart';
 
@@ -201,8 +202,8 @@ class _ContactsTabState extends State<ContactsTab> {
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
-      body: Consumer<ContactsProvider>(
-        builder: (context, contactsProvider, child) {
+      body: Consumer2<ContactsProvider, MessagesProvider>(
+        builder: (context, contactsProvider, messagesProvider, child) {
           final chatContacts = _sortContactsByDistance(
             contactsProvider.chatContacts,
           );
@@ -284,6 +285,10 @@ class _ContactsTabState extends State<ContactsTab> {
                       calculateDistance: _calculateDistanceInMeters,
                       formatDistance: _formatDistance,
                       onNavigateToMap: widget.onNavigateToMap,
+                      messageCount: messagesProvider
+                          .getMessageCountForDestination(contact),
+                      unreadMessageCount: messagesProvider
+                          .getUnreadCountForDestination(contact),
                     ),
                   ),
                   const Divider(height: 32),
@@ -303,6 +308,10 @@ class _ContactsTabState extends State<ContactsTab> {
                       calculateDistance: _calculateDistanceInMeters,
                       formatDistance: _formatDistance,
                       onNavigateToMap: widget.onNavigateToMap,
+                      messageCount: messagesProvider
+                          .getMessageCountForDestination(contact),
+                      unreadMessageCount: messagesProvider
+                          .getUnreadCountForDestination(contact),
                     ),
                   ),
                   const Divider(height: 32),
@@ -322,6 +331,10 @@ class _ContactsTabState extends State<ContactsTab> {
                       calculateDistance: _calculateDistanceInMeters,
                       formatDistance: _formatDistance,
                       onNavigateToMap: widget.onNavigateToMap,
+                      messageCount: messagesProvider
+                          .getMessageCountForDestination(contact),
+                      unreadMessageCount: messagesProvider
+                          .getUnreadCountForDestination(contact),
                     ),
                   ),
                   const Divider(height: 32),
@@ -341,6 +354,10 @@ class _ContactsTabState extends State<ContactsTab> {
                       calculateDistance: _calculateDistanceInMeters,
                       formatDistance: _formatDistance,
                       onNavigateToMap: widget.onNavigateToMap,
+                      messageCount: messagesProvider
+                          .getMessageCountForDestination(contact),
+                      unreadMessageCount: messagesProvider
+                          .getUnreadCountForDestination(contact),
                     ),
                   ),
                 ],

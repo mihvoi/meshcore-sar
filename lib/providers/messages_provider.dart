@@ -193,6 +193,59 @@ class MessagesProvider with ChangeNotifier {
       .where((m) => !m.isRead && !m.isSentMessage && !m.isSystemMessage)
       .length;
 
+  int getMessageCountForDestination(Contact contact) => _messages
+      .where((message) => _isMessageForDestination(message, contact))
+      .length;
+
+  int getUnreadCountForDestination(Contact contact) => _messages
+      .where(
+        (message) =>
+            _isMessageForDestination(message, contact) &&
+            !message.isRead &&
+            !message.isSentMessage &&
+            !message.isSystemMessage,
+      )
+      .length;
+
+  bool _isMessageForDestination(Message message, Contact contact) {
+    if (message.isSystemMessage) return false;
+
+    if (contact.isChannel) {
+      final channelIdx = contact.publicKey.length > 1
+          ? contact.publicKey[1]
+          : 0;
+      return message.isChannelMessage &&
+          (message.channelIdx ?? 0) == channelIdx;
+    }
+
+    if (!message.isContactMessage || contact.publicKey.length < 6) {
+      return false;
+    }
+
+    final selectedPrefix = contact.publicKey.sublist(0, 6);
+
+    if (message.recipientPublicKey != null &&
+        message.recipientPublicKey!.length >= 6 &&
+        _matchesPrefix(message.recipientPublicKey!, selectedPrefix)) {
+      return true;
+    }
+
+    if (message.senderPublicKeyPrefix != null &&
+        message.senderPublicKeyPrefix!.length >= 6 &&
+        _matchesPrefix(message.senderPublicKeyPrefix!, selectedPrefix)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  bool _matchesPrefix(Uint8List key, Uint8List prefix) {
+    for (var i = 0; i < 6; i++) {
+      if (key[i] != prefix[i]) return false;
+    }
+    return true;
+  }
+
   /// Initialize and load persisted messages
   Future<void> initialize() async {
     if (_isInitialized) return;

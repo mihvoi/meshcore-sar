@@ -21,6 +21,8 @@ class ContactTile extends StatelessWidget {
   final double Function(double, double, double, double)? calculateDistance;
   final String Function(double)? formatDistance;
   final VoidCallback? onNavigateToMap;
+  final int messageCount;
+  final int unreadMessageCount;
 
   const ContactTile({
     super.key,
@@ -29,6 +31,8 @@ class ContactTile extends StatelessWidget {
     this.calculateDistance,
     this.formatDistance,
     this.onNavigateToMap,
+    this.messageCount = 0,
+    this.unreadMessageCount = 0,
   });
 
   /// Get localized time since last seen
@@ -263,6 +267,13 @@ class ContactTile extends StatelessWidget {
                               ],
                             ),
                           ),
+                          if (messageCount > 0) ...[
+                            const SizedBox(width: 8),
+                            _MessageCountBadge(
+                              totalCount: messageCount,
+                              unreadCount: unreadMessageCount,
+                            ),
+                          ],
                           const SizedBox(width: 8),
                           Text(timeAgoText, style: timeAgoStyle),
                           if (isPingInProgress) ...[
@@ -1294,6 +1305,62 @@ class ContactTile extends StatelessWidget {
                 context,
               ).textTheme.labelSmall?.color?.withValues(alpha: 0.82),
               fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MessageCountBadge extends StatelessWidget {
+  final int totalCount;
+  final int unreadCount;
+
+  const _MessageCountBadge({
+    required this.totalCount,
+    required this.unreadCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final hasUnread = unreadCount > 0;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: hasUnread
+            ? colorScheme.primaryContainer
+            : colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: hasUnread
+              ? colorScheme.primary.withValues(alpha: 0.35)
+              : colorScheme.outlineVariant.withValues(alpha: 0.45),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (hasUnread) ...[
+            Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: colorScheme.primary,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 5),
+          ],
+          Text(
+            hasUnread ? '$unreadCount/$totalCount' : '$totalCount',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: hasUnread
+                  ? colorScheme.onPrimaryContainer
+                  : colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w800,
             ),
           ),
         ],
