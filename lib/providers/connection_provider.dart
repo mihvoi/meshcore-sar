@@ -486,6 +486,14 @@ class ConnectionProvider with ChangeNotifier {
   /// Start scanning for MeshCore devices
   Future<void> startScan() async {
     debugPrint('🔍 [Provider] startScan() called');
+    if (_deviceInfo.connectionState == ConnectionState.connecting ||
+        _deviceInfo.connectionState == ConnectionState.connected) {
+      debugPrint(
+        '⏭️ [Provider] Ignoring scan request while connection is active: ${_deviceInfo.connectionState}',
+      );
+      return;
+    }
+
     _isScanning = true;
     _scannedDevices.clear();
     _error = null;
@@ -558,6 +566,11 @@ class ConnectionProvider with ChangeNotifier {
     debugPrint(
       '🔵 [Provider] connect() called for device: ${device.platformName}',
     );
+
+    if (_isScanning) {
+      debugPrint('🔵 [Provider] Stopping active scan before connect()');
+      await stopScan();
+    }
 
     _deviceInfo = _deviceInfo.copyWith(
       deviceId: device.remoteId.toString(),
