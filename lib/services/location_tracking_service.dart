@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -148,6 +149,10 @@ class LocationTrackingService {
   /// Check if location permissions are granted
   Future<bool> checkPermissions() async {
     final permission = await Geolocator.checkPermission();
+    if (Platform.isIOS) {
+      return permission == LocationPermission.always;
+    }
+
     return permission == LocationPermission.always ||
         permission == LocationPermission.whileInUse;
   }
@@ -181,6 +186,16 @@ class LocationTrackingService {
       return false;
     }
 
+    if (Platform.isIOS && permission != LocationPermission.always) {
+      permission = await Geolocator.requestPermission();
+      if (permission != LocationPermission.always) {
+        onError?.call(
+          'Background tracking on iOS requires "Always" location access. Enable it in Settings.',
+        );
+        return false;
+      }
+    }
+
     debugPrint('✅ [LocationTracking] Location permissions granted');
     return true;
   }
@@ -209,9 +224,9 @@ class LocationTrackingService {
         }
 
         final position = await Geolocator.getCurrentPosition(
-          locationSettings: LocationSettings(
-            accuracy: LocationAccuracy.best,
+          locationSettings: _buildLocationSettings(
             timeLimit: timeLimit,
+            distanceFilter: 0,
           ),
         );
 
@@ -255,10 +270,32 @@ class LocationTrackingService {
   /// [distanceFilter] - Minimum distance in meters between position updates
   Stream<Position> getPositionStream({double distanceFilter = 10.0}) {
     return Geolocator.getPositionStream(
-      locationSettings: LocationSettings(
-        accuracy: LocationAccuracy.best,
+      locationSettings: _buildLocationSettings(
         distanceFilter: distanceFilter.toInt(),
       ),
+    );
+  }
+
+  LocationSettings _buildLocationSettings({
+    int distanceFilter = 10,
+    Duration? timeLimit,
+  }) {
+    if (Platform.isIOS) {
+      return AppleSettings(
+        accuracy: LocationAccuracy.best,
+        activityType: ActivityType.fitness,
+        allowBackgroundLocationUpdates: true,
+        distanceFilter: distanceFilter,
+        pauseLocationUpdatesAutomatically: false,
+        showBackgroundLocationIndicator: true,
+        timeLimit: timeLimit,
+      );
+    }
+
+    return LocationSettings(
+      accuracy: LocationAccuracy.best,
+      distanceFilter: distanceFilter,
+      timeLimit: timeLimit,
     );
   }
 

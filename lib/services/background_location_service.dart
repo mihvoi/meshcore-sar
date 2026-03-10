@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/widgets.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -58,6 +59,16 @@ class BackgroundLocationService {
       return false;
     }
 
+    if (Platform.isIOS && permission != LocationPermission.always) {
+      permission = await Geolocator.requestPermission();
+      if (permission != LocationPermission.always) {
+        debugPrint(
+          '⚠️ [BackgroundLocation] iOS background tracking requires Always permission',
+        );
+        return false;
+      }
+    }
+
     // Save settings
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_prefKeyEnabled, true);
@@ -68,8 +79,7 @@ class BackgroundLocationService {
     try {
       _positionSubscription =
           Geolocator.getPositionStream(
-            locationSettings: LocationSettings(
-              accuracy: LocationAccuracy.best,
+            locationSettings: _buildLocationSettings(
               distanceFilter: distanceThreshold.toInt(),
             ),
           ).listen((Position position) async {
@@ -170,5 +180,23 @@ class BackgroundLocationService {
       await stopTracking();
       await startTracking(distanceThreshold: distance);
     }
+  }
+
+  LocationSettings _buildLocationSettings({int distanceFilter = 10}) {
+    if (Platform.isIOS) {
+      return AppleSettings(
+        accuracy: LocationAccuracy.best,
+        activityType: ActivityType.fitness,
+        allowBackgroundLocationUpdates: true,
+        distanceFilter: distanceFilter,
+        pauseLocationUpdatesAutomatically: false,
+        showBackgroundLocationIndicator: true,
+      );
+    }
+
+    return LocationSettings(
+      accuracy: LocationAccuracy.best,
+      distanceFilter: distanceFilter,
+    );
   }
 }
