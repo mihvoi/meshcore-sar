@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:meshcore_sar_app/models/contact.dart';
 import 'package:meshcore_sar_app/models/message.dart';
 import 'package:meshcore_sar_app/models/message_contact_location.dart';
 import 'package:meshcore_sar_app/providers/messages_provider.dart';
@@ -10,6 +11,30 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  Contact _buildContact({
+    required List<int> prefix,
+    required ContactType type,
+    String name = 'Test Contact',
+  }) {
+    final key = Uint8List.fromList([
+      ...prefix,
+      ...List<int>.generate(26, (index) => index),
+    ]);
+
+    return Contact(
+      publicKey: key,
+      type: type,
+      flags: 0,
+      outPathLen: 0,
+      outPath: Uint8List(64),
+      advName: name,
+      lastAdvert: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      advLat: 0,
+      advLon: 0,
+      lastMod: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+    );
+  }
 
   group('MessagesProvider voice detection', () {
     setUp(() {
@@ -189,6 +214,61 @@ void main() {
       expect(restoredVoice?.totalTransfers, equals(2));
       expect(restoredVoice?.downloaders.single.requesterKey6, '112233445566');
       expect(restoredImage?.downloaders.single.requesterName, equals('Bob'));
+    });
+
+    test('marks only the selected contact destination as read', () {
+      final provider = MessagesProvider();
+      final alice = _buildContact(
+        prefix: [0x10, 0x11, 0x12, 0x13, 0x14, 0x15],
+        type: ContactType.chat,
+        name: 'Alice',
+      );
+      final bob = _buildContact(
+        prefix: [0x20, 0x21, 0x22, 0x23, 0x24, 0x25],
+        type: ContactType.chat,
+        name: 'Bob',
+      );
+
+      provider.addMessage(
+        Message(
+          id: 'alice-incoming',
+          messageType: MessageType.contact,
+          pathLen: 1,
+          textType: MessageTextType.plain,
+          senderTimestamp: 1700000100,
+          text: 'Alice unread',
+          receivedAt: DateTime.now(),
+          senderPublicKeyPrefix: alice.publicKey.sublist(0, 6),
+        ),
+      );
+      provider.addMessage(
+        Message(
+          id: 'bob-incoming',
+          messageType: MessageType.contact,
+          pathLen: 1,
+          textType: MessageTextType.plain,
+          senderTimestamp: 1700000101,
+          text: 'Bob unread',
+          receivedAt: DateTime.now(),
+          senderPublicKeyPrefix: bob.publicKey.sublist(0, 6),
+        ),
+      );
+
+      provider.markDestinationAsRead(
+        destinationType: 'contact',
+        contact: alice,
+      );
+
+      final aliceMessage = provider.messages.firstWhere(
+        (message) => message.id == 'alice-incoming',
+      );
+      final bobMessage = provider.messages.firstWhere(
+        (message) => message.id == 'bob-incoming',
+      );
+
+      expect(aliceMessage.isRead, isTrue);
+      expect(bobMessage.isRead, isFalse);
+      expect(provider.unreadCount, equals(1));
     });
   });
 }

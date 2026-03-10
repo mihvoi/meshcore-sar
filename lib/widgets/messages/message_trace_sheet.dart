@@ -516,13 +516,10 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
     for (final log in logs) {
       if (log.responseCode != 0x88) continue; // pushLogRxData
       if (log.rawData.length < 6) continue;
-      final raw = log.rawData;
-      final header = raw[3];
-      final payloadType = (header >> 2) & 0x0F;
-      final pathLen = raw[4];
-      if (payloadType != expectedPayloadType) continue;
-      if (pathLen != message.pathLen) continue;
-      if (raw.length < 5 + pathLen) continue;
+      final decoded = LogRxRouteDecoder.decode(log.rawData);
+      if (decoded == null) continue;
+      if (decoded.payloadType != expectedPayloadType) continue;
+      if (decoded.hopCount != message.pathLen) continue;
 
       final deltaMs =
           (log.timestamp.difference(message.receivedAt).inMilliseconds).abs();
@@ -533,9 +530,11 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
     }
 
     if (bestLog == null || bestDeltaMs > 30000) return null;
-    final raw = bestLog.rawData;
-    final pathLen = raw[4];
-    return raw.sublist(5, 5 + pathLen);
+    final decoded = LogRxRouteDecoder.decode(bestLog.rawData);
+    if (decoded == null || decoded.pathBytes.isEmpty) {
+      return null;
+    }
+    return decoded.pathBytes;
   }
 
   List<MeshMapNode?> _matchNodesFromPathHashes({

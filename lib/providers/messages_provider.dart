@@ -885,6 +885,54 @@ class MessagesProvider with ChangeNotifier {
     }
   }
 
+  /// Mark unread messages for a specific destination as read.
+  void markDestinationAsRead({
+    required String destinationType,
+    Contact? contact,
+  }) {
+    if (destinationType == 'all') {
+      markAllAsRead();
+      return;
+    }
+
+    bool hasChanges = false;
+    for (int i = 0; i < _messages.length; i++) {
+      final message = _messages[i];
+      if (message.isRead || message.isSentMessage || message.isSystemMessage) {
+        continue;
+      }
+
+      final matchesDestination = switch (destinationType) {
+        'channel' => _isChannelMessageForContact(message, contact),
+        'contact' || 'room' => contact != null && _isMessageForDestination(message, contact),
+        _ => false,
+      };
+
+      if (!matchesDestination) {
+        continue;
+      }
+
+      _messages[i] = message.copyWith(isRead: true);
+      hasChanges = true;
+    }
+
+    if (hasChanges) {
+      _persistMessages();
+      notifyListeners();
+    }
+  }
+
+  bool _isChannelMessageForContact(Message message, Contact? contact) {
+    if (!message.isChannelMessage) {
+      return false;
+    }
+
+    final selectedChannelIdx = contact != null && contact.publicKey.length > 1
+        ? contact.publicKey[1]
+        : 0;
+    return (message.channelIdx ?? 0) == selectedChannelIdx;
+  }
+
   /// Mark a specific message as read
   void markAsRead(String messageId) {
     final index = _messages.indexWhere((m) => m.id == messageId);

@@ -29,6 +29,7 @@ import '../utils/image_message_parser.dart';
 import '../utils/media_swarm_protocol.dart';
 import '../utils/message_airtime_estimator.dart';
 import '../utils/fast_gps_packet.dart';
+import '../utils/log_rx_route_decoder.dart';
 
 class _DirectMessageRouteSession {
   final PathSelection currentSelection;
@@ -2573,12 +2574,10 @@ class AppProvider with ChangeNotifier {
       if (log.responseCode != 0x88) continue;
       if (log.rawData.length < 6) continue;
 
-      final raw = log.rawData;
-      final payloadType = (raw[3] >> 2) & 0x0F;
-      final pathLen = raw[4];
-      if (payloadType != expectedPayloadType) continue;
-      if (pathLen != message.pathLen) continue;
-      if (raw.length < 5 + pathLen) continue;
+      final decoded = LogRxRouteDecoder.decode(log.rawData);
+      if (decoded == null) continue;
+      if (decoded.payloadType != expectedPayloadType) continue;
+      if (decoded.hopCount != message.pathLen) continue;
 
       final deltaMs =
           (log.timestamp.difference(message.receivedAt).inMilliseconds).abs();
@@ -2594,11 +2593,9 @@ class AppProvider with ChangeNotifier {
 
   List<int>? _extractPathBytesFromLog(BlePacketLog? log) {
     if (log == null) return null;
-    final raw = log.rawData;
-    if (raw.length < 6) return null;
-    final pathLen = raw[4];
-    if (pathLen <= 0 || raw.length < 5 + pathLen) return null;
-    return raw.sublist(5, 5 + pathLen);
+    final decoded = LogRxRouteDecoder.decode(log.rawData);
+    if (decoded == null || decoded.pathBytes.isEmpty) return null;
+    return decoded.pathBytes;
   }
 
   // Removed _syncMessages() - messages are automatically synced via PUSH_CODE_MSG_WAITING events

@@ -195,7 +195,6 @@ class _HomeScreenState extends State<HomeScreen>
 
       switch (tab) {
         case _HomeTab.messages:
-          context.read<MessagesProvider>().markAllAsRead();
           break;
         case _HomeTab.contacts:
           context.read<ContactsProvider>().markAllAsViewed();

@@ -4,11 +4,13 @@ import '../models/contact.dart';
 
 class DecodedLogRxRoute {
   final int payloadType;
+  final int pathDescriptor;
   final List<int> pathBytes;
   final int hashSize;
 
   const DecodedLogRxRoute({
     required this.payloadType,
+    required this.pathDescriptor,
     required this.pathBytes,
     required this.hashSize,
   });
@@ -63,19 +65,47 @@ class LogRxRouteDecoder {
     }
 
     if (rawPacketData.length <= index) return null;
-    final pathLen = rawPacketData[index++];
-    if (rawPacketData.length < index + pathLen) return null;
-    final pathBytes = rawPacketData.sublist(index, index + pathLen);
-    final hashSize = inferHashSize(
-      pathBytes,
-      preferredHashSize: preferredHashSize,
-    );
+    final pathDescriptor = rawPacketData[index++];
+    final pathMode = (pathDescriptor & 0xFF) >> 6;
+    final pathByteLen = pathMode == 0
+        ? pathDescriptor
+        : descriptorByteLength(pathDescriptor);
+    if (pathByteLen == null || rawPacketData.length < index + pathByteLen) {
+      return null;
+    }
+    final pathBytes = rawPacketData.sublist(index, index + pathByteLen);
+    final hashSize = pathMode == 0
+        ? inferHashSize(pathBytes, preferredHashSize: preferredHashSize)
+        : (descriptorHashSize(pathDescriptor) ??
+              inferHashSize(pathBytes, preferredHashSize: preferredHashSize));
 
     return DecodedLogRxRoute(
       payloadType: payloadType,
+      pathDescriptor: pathDescriptor,
       pathBytes: pathBytes,
       hashSize: hashSize,
     );
+  }
+
+  static int? descriptorHashSize(int pathDescriptor) {
+    final normalized = pathDescriptor & 0xFF;
+    final mode = normalized >> 6;
+    if (mode == 3) return null;
+    return mode + 1;
+  }
+
+  static int? descriptorHopCount(int pathDescriptor) {
+    final hashSize = descriptorHashSize(pathDescriptor);
+    if (hashSize == null) return null;
+    return (pathDescriptor & 0xFF) & 0x3F;
+  }
+
+  static int? descriptorByteLength(int pathDescriptor) {
+    final hashSize = descriptorHashSize(pathDescriptor);
+    final hopCount = descriptorHopCount(pathDescriptor);
+    if (hashSize == null || hopCount == null) return null;
+    final byteLen = hopCount * hashSize;
+    return byteLen <= 64 ? byteLen : null;
   }
 
   static int inferHashSize(List<int> pathBytes, {int? preferredHashSize}) {

@@ -89,9 +89,7 @@ class _MessagesTabState extends State<MessagesTab> {
     // Load saved message destination
     _loadSavedDestination();
     _loadVoiceBitrate();
-    // Mark all messages as read when tab is opened
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<MessagesProvider>().markAllAsRead();
       _checkForNavigationRequest();
     });
   }
@@ -309,6 +307,8 @@ class _MessagesTabState extends State<MessagesTab> {
       _selectedRecipient = recipient;
     });
 
+    _markCurrentDestinationAsRead();
+
     _enforceMessageByteLimit();
 
     // Save to preferences
@@ -465,6 +465,7 @@ class _MessagesTabState extends State<MessagesTab> {
 
       _textController.clear();
       _focusNode.unfocus();
+      _markCurrentDestinationAsRead();
 
       if (!mounted) return;
     } catch (e) {
@@ -1639,6 +1640,13 @@ class _MessagesTabState extends State<MessagesTab> {
       if (!mounted) return;
       ToastLogger.error(context, 'Sync failed: $e');
     }
+  }
+
+  void _markCurrentDestinationAsRead() {
+    context.read<MessagesProvider>().markDestinationAsRead(
+      destinationType: _destinationType,
+      contact: _selectedRecipient,
+    );
   }
 
   List<Message> _getFilteredMessages(MessagesProvider messagesProvider) {

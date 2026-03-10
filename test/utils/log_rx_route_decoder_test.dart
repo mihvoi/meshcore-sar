@@ -24,10 +24,35 @@ void main() {
 
       expect(decoded, isNotNull);
       expect(decoded!.payloadType, 0x01);
+      expect(decoded.pathDescriptor, 0x04);
       expect(decoded.pathBytes, [0xc2, 0xba, 0x5f, 0xde]);
       expect(decoded.hashSize, 2);
       expect(decoded.hopHashes, ['c2ba', '5fde']);
       expect(decoded.originalSenderHashHex, 'c2ba');
+    });
+
+    test('parses encoded descriptor with 2-byte hashes', () {
+      final packet = Uint8List.fromList([
+        0x88,
+        0x37,
+        0xae,
+        0x05,
+        0x42,
+        0xc2,
+        0xba,
+        0x5f,
+        0xde,
+        0x5c,
+      ]);
+
+      final decoded = LogRxRouteDecoder.decode(packet);
+
+      expect(decoded, isNotNull);
+      expect(decoded!.pathDescriptor, 0x42);
+      expect(decoded.pathBytes, [0xc2, 0xba, 0x5f, 0xde]);
+      expect(decoded.hashSize, 2);
+      expect(decoded.hopCount, 2);
+      expect(decoded.hopHashes, ['c2ba', '5fde']);
     });
 
     test('uses preferred hash size when packet length is ambiguous', () {

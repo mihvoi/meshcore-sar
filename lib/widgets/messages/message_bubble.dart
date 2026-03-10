@@ -27,6 +27,7 @@ import '../../utils/tictactoe_message_parser.dart';
 import '../../utils/location_formats.dart';
 import '../../l10n/app_localizations.dart';
 import '../../utils/message_extensions.dart';
+import '../../utils/log_rx_route_decoder.dart';
 import '../../models/message_transfer_details.dart';
 import 'voice_message_bubble.dart';
 import 'image_message_bubble.dart';
@@ -1269,12 +1270,10 @@ class _MessageBubbleState extends State<MessageBubble> {
 
       // Logged frame format:
       // [0]=response code 0x88, [1]=snrRaw, [2]=rssi, [3]=packet header, [4]=pathLen
-      final raw = log.rawData;
-      final payloadType = (raw[3] >> 2) & 0x0F;
-      final pathLen = raw[4];
-      if (payloadType != expectedPayloadType) continue;
-      if (pathLen != message.pathLen) continue;
-      if (raw.length < 5 + pathLen) continue;
+      final decoded = LogRxRouteDecoder.decode(log.rawData);
+      if (decoded == null) continue;
+      if (decoded.payloadType != expectedPayloadType) continue;
+      if (decoded.hopCount != message.pathLen) continue;
 
       final deltaMs =
           (log.timestamp.difference(message.receivedAt).inMilliseconds).abs();
@@ -1290,11 +1289,9 @@ class _MessageBubbleState extends State<MessageBubble> {
 
   List<int>? _extractPathBytesFromLog(BlePacketLog? log) {
     if (log == null) return null;
-    final raw = log.rawData;
-    if (raw.length < 6) return null;
-    final pathLen = raw[4];
-    if (pathLen <= 0 || raw.length < 5 + pathLen) return null;
-    return raw.sublist(5, 5 + pathLen);
+    final decoded = LogRxRouteDecoder.decode(log.rawData);
+    if (decoded == null || decoded.pathBytes.isEmpty) return null;
+    return decoded.pathBytes;
   }
 
   void _showDeleteConfirmation(BuildContext context) {
