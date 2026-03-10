@@ -36,10 +36,9 @@ class ContactTile extends StatelessWidget {
     this.onNavigateToMessages,
   });
 
-  /// Get localized time since last seen
-  String _getLocalizedTimeSinceLastSeen(BuildContext context) {
+  String _getLocalizedRelativeTime(BuildContext context, DateTime when) {
     final l10n = AppLocalizations.of(context)!;
-    final diff = DateTime.now().difference(contact.lastSeenTime);
+    final diff = DateTime.now().difference(when);
 
     if (diff.inMinutes < 1) return l10n.justNow;
     if (diff.inMinutes < 60) return l10n.minutesAgo(diff.inMinutes);
@@ -50,6 +49,8 @@ class ContactTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isChannel = contact.type == ContactType.channel;
+    final isRoom = contact.type == ContactType.room;
+    final isRoomOrChannel = isRoom || isChannel;
     final location = contact.displayLocation;
     // Calculate distance if both positions are available
     String? distanceText;
@@ -68,6 +69,7 @@ class ContactTile extends StatelessWidget {
 
     // Get room login state if this is a room
     final connectionProvider = context.watch<ConnectionProvider>();
+    final messagesProvider = context.watch<MessagesProvider>();
     final isPingInProgress = connectionProvider.isPingInProgress(
       contact.publicKey,
     );
@@ -109,40 +111,44 @@ class ContactTile extends StatelessWidget {
       fontWeight: FontWeight.w800,
       letterSpacing: -0.3,
     );
-    final timeAgoText = _getLocalizedTimeSinceLastSeen(context);
+    final lastActivityAt = isRoomOrChannel
+        ? messagesProvider.getLastActivityForDestination(contact)
+        : null;
+    final timeAgoText = _getLocalizedRelativeTime(
+      context,
+      lastActivityAt ?? contact.lastSeenTime,
+    );
     final timeAgoStyle = Theme.of(context).textTheme.labelSmall?.copyWith(
       color: contact.isRecentlySeen
           ? colorScheme.primary
           : colorScheme.onSurfaceVariant,
       fontWeight: FontWeight.w600,
     );
-    final Widget? subtitleWidget = isChannel
-        ? null
-        : Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (location != null) ...[
-                const SizedBox(height: 2),
-                _buildLocationLine(
-                  context,
-                  latitude: location.latitude,
-                  longitude: location.longitude,
-                  distanceText: distanceText,
-                ),
-                const SizedBox(height: 6),
-                Row(children: [_buildRoutePill(context, contact)]),
-              ] else
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    AppLocalizations.of(context)!.noGpsData,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.labelSmall?.copyWith(color: Colors.grey),
-                  ),
-                ),
-            ],
-          );
+    final Widget subtitleWidget = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (location != null) ...[
+          const SizedBox(height: 2),
+          _buildLocationLine(
+            context,
+            latitude: location.latitude,
+            longitude: location.longitude,
+            distanceText: distanceText,
+          ),
+          const SizedBox(height: 6),
+          Row(children: [_buildRoutePill(context, contact)]),
+        ] else
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              AppLocalizations.of(context)!.noGpsData,
+              style: Theme.of(
+                context,
+              ).textTheme.labelSmall?.copyWith(color: Colors.grey),
+            ),
+          ),
+      ],
+    );
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -239,7 +245,7 @@ class ContactTile extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          if (!isChannel)
+                          if (!isRoomOrChannel || lastActivityAt != null)
                             Text(timeAgoText, style: timeAgoStyle),
                           if (isPingInProgress) ...[
                             const SizedBox(width: 6),
@@ -254,7 +260,7 @@ class ContactTile extends StatelessWidget {
                           ],
                         ],
                       ),
-                      ?subtitleWidget,
+                      subtitleWidget,
                     ],
                   ),
                 ),

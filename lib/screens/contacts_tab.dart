@@ -665,12 +665,32 @@ class _ChannelActivityCard extends StatelessWidget {
     required this.onNavigateToMessages,
   });
 
+  String _formatRelativeTime(BuildContext context, DateTime when) {
+    final l10n = AppLocalizations.of(context)!;
+    final diff = DateTime.now().difference(when);
+
+    if (diff.inMinutes < 1) return l10n.justNow;
+    if (diff.inMinutes < 60) return l10n.minutesAgo(diff.inMinutes);
+    if (diff.inHours < 24) return l10n.hoursAgo(diff.inHours);
+    return l10n.daysAgo(diff.inDays);
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final titleStyle = Theme.of(context).textTheme.titleMedium?.copyWith(
+      fontWeight: FontWeight.w800,
+      letterSpacing: -0.3,
+    );
     final channelIdx = channel.publicKey.length > 1 ? channel.publicKey[1] : 0;
     final channelMessages = messagesProvider.getMessagesForChannel(channelIdx)
       ..sort((a, b) => b.sentAt.compareTo(a.sentAt));
+    final lastActivityAt = messagesProvider.getLastActivityForDestination(
+      channel,
+    );
+    final activityLabel = lastActivityAt == null
+        ? null
+        : _formatRelativeTime(context, lastActivityAt);
     final participantNames = <String>[];
     for (final message in channelMessages) {
       final senderName = message.senderName?.trim();
@@ -688,12 +708,19 @@ class _ChannelActivityCard extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [
             colorScheme.surfaceContainerLow,
-            colorScheme.tertiaryContainer.withValues(alpha: 0.45),
+            colorScheme.surfaceContainerHighest.withValues(alpha: 0.9),
           ],
         ),
         border: Border.all(
           color: colorScheme.outlineVariant.withValues(alpha: 0.35),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.045),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Material(
         color: Colors.transparent,
@@ -715,22 +742,34 @@ class _ChannelActivityCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                ContactAvatar(contact: channel, radius: 20),
+                ContactAvatar(contact: channel, radius: 24),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        channel.displayName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 15,
-                              height: 1.05,
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              channel.displayName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: titleStyle,
                             ),
+                          ),
+                          const SizedBox(width: 8),
+                          if (activityLabel != null)
+                            Text(
+                              activityLabel,
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(
+                                    color: colorScheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                        ],
                       ),
                       const SizedBox(height: 8),
                       if (participantNames.isNotEmpty)

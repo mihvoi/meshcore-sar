@@ -213,6 +213,22 @@ class MessagesProvider with ChangeNotifier {
       .where((message) => _isMessageForDestination(message, contact))
       .length;
 
+  DateTime? getLastActivityForDestination(Contact contact) {
+    DateTime? latest;
+
+    for (final message in _messages) {
+      if (!_isMessageForDestination(message, contact)) {
+        continue;
+      }
+
+      if (latest == null || message.sentAt.isAfter(latest)) {
+        latest = message.sentAt;
+      }
+    }
+
+    return latest;
+  }
+
   int getUnreadCountForDestination(Contact contact) => _messages
       .where(
         (message) =>
@@ -904,7 +920,8 @@ class MessagesProvider with ChangeNotifier {
 
       final matchesDestination = switch (destinationType) {
         'channel' => _isChannelMessageForContact(message, contact),
-        'contact' || 'room' => contact != null && _isMessageForDestination(message, contact),
+        'contact' ||
+        'room' => contact != null && _isMessageForDestination(message, contact),
         _ => false,
       };
 

@@ -772,7 +772,7 @@ class _HomeScreenState extends State<HomeScreen>
                               Icons.message,
                               unreadCount,
                             ),
-                            text: AppLocalizations.of(context)!.messages,
+                            text: 'Chat',
                           );
                         case _HomeTab.contacts:
                           return Tab(

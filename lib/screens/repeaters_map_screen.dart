@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart' as flutter_map;
 import 'package:geolocator/geolocator.dart';
@@ -5,6 +7,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
 import '../models/contact.dart';
+import '../providers/connection_provider.dart';
 import '../providers/contacts_provider.dart';
 import '../services/mesh_map_nodes_service.dart';
 
@@ -28,6 +31,7 @@ class _RepeatersMapScreenState extends State<RepeatersMapScreen> {
   String? _error;
   double _currentZoom = _fallbackZoom;
   LatLng? _myLocation;
+  final Set<String> _addingRepeaters = <String>{};
 
   @override
   void initState() {
@@ -164,6 +168,13 @@ class _RepeatersMapScreenState extends State<RepeatersMapScreen> {
   }
 
   void _showRepeaterDetails(_MapRepeater repeater) {
+    final isAdding = _addingRepeaters.contains(repeater.publicKey);
+    final canAdd = !repeater.isFromContacts;
+    final isConnected = context
+        .read<ConnectionProvider>()
+        .deviceInfo
+        .isConnected;
+
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -192,8 +203,95 @@ class _RepeatersMapScreenState extends State<RepeatersMapScreen> {
                     '${repeater.latitude.toStringAsFixed(5)}, ${repeater.longitude.toStringAsFixed(5)}',
               ),
               _InfoLine(label: 'Source', value: repeater.sourceLabel),
+              const SizedBox(height: 12),
+              if (canAdd)
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: !isConnected || isAdding
+                        ? null
+                        : () async {
+                            Navigator.of(context).pop();
+                            await _addRepeaterToContacts(repeater);
+                          },
+                    icon: isAdding
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.person_add_alt_1),
+                    label: Text(
+                      !isConnected
+                          ? 'Connect device to add'
+                          : 'Add to contacts',
+                    ),
+                  ),
+                )
+              else
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: null,
+                    icon: const Icon(Icons.check_circle),
+                    label: const Text('Already in contacts'),
+                  ),
+                ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _addRepeaterToContacts(_MapRepeater repeater) async {
+    if (_addingRepeaters.contains(repeater.publicKey)) {
+      return;
+    }
+
+    final connectionProvider = context.read<ConnectionProvider>();
+    if (!connectionProvider.deviceInfo.isConnected) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Connect to a device before adding contacts'),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _addingRepeaters.add(repeater.publicKey);
+    });
+
+    try {
+      await connectionProvider.getContact(_hexToBytes(repeater.publicKey));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${repeater.name} added to contacts')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to add ${repeater.name}: $error')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _addingRepeaters.remove(repeater.publicKey);
+        });
+      }
+    }
+  }
+
+  Uint8List _hexToBytes(String hex) {
+    final normalized = hex.replaceAll(':', '').trim().toLowerCase();
+    return Uint8List.fromList(
+      List<int>.generate(
+        normalized.length ~/ 2,
+        (index) => int.parse(
+          normalized.substring(index * 2, index * 2 + 2),
+          radix: 16,
         ),
       ),
     );
