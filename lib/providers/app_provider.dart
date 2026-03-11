@@ -775,7 +775,6 @@ class AppProvider with ChangeNotifier {
       final receivedPathBytes = receptionDetailsSnapshot?.pathBytes;
       if (senderContact != null &&
           enrichedMessage.isChannelMessage &&
-          (enrichedMessage.channelIdx ?? 0) == 0 &&
           receivedPathBytes != null &&
           receivedPathBytes.isNotEmpty) {
         unawaited(
@@ -1180,6 +1179,7 @@ class AppProvider with ChangeNotifier {
       debugPrint(
         '📡 [AppProvider] Advertisement received: ${publicKey.sublist(0, 6).map((b) => b.toRadixString(16).padLeft(2, '0')).join(':')}...',
       );
+      unawaited(_retainAdvertRxPath(publicKey));
       // Check if this is an existing contact that might have updated location
       final contact = contactsProvider.findContactByKey(publicKey);
       if (contact != null) {
@@ -1580,6 +1580,29 @@ class AppProvider with ChangeNotifier {
       contact.publicKeyHex,
       pathBytes,
       inferredHashSize,
+    );
+  }
+
+  Future<void> _retainAdvertRxPath(Uint8List publicKey) async {
+    final decoded = _findBestMatchingAdvertRxRoute(publicKey);
+    if (decoded == null || decoded.pathBytes.isEmpty) {
+      return;
+    }
+
+    final parsedRoute = ContactRouteCodec.parse(
+      decoded.hopHashes.join(','),
+      expectedHashSize: decoded.hashSize,
+    );
+    contactsProvider.retainReceivedRoute(
+      publicKey,
+      signedEncodedPathLen: parsedRoute.signedEncodedPathLen,
+      paddedPathBytes: parsedRoute.paddedPathBytes,
+      devicePublicKey: connectionProvider.deviceInfo.publicKey,
+    );
+    await _pathHistoryService.recordReceivedBytePath(
+      publicKey.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join(),
+      decoded.pathBytes,
+      decoded.hashSize,
     );
   }
 
@@ -2627,6 +2650,37 @@ class AppProvider with ChangeNotifier {
 
     if (bestDeltaMs > 30000) return null;
     return bestLog;
+  }
+
+  DecodedLogRxRoute? _findBestMatchingAdvertRxRoute(Uint8List publicKey) {
+    final publicKeyHex = publicKey
+        .map((byte) => byte.toRadixString(16).padLeft(2, '0'))
+        .join()
+        .toLowerCase();
+
+    DecodedLogRxRoute? bestRoute;
+    var bestDeltaMs = 999999999;
+    final now = DateTime.now();
+
+    for (final log in connectionProvider.bleService.packetLogs) {
+      if (log.responseCode != 0x88) continue;
+      if (log.rawData.length < 6) continue;
+
+      final decoded = LogRxRouteDecoder.decode(log.rawData);
+      if (decoded == null) continue;
+      if (decoded.payloadType != 0x04) continue;
+      final senderHash = decoded.originalSenderHashHex;
+      if (senderHash == null || !publicKeyHex.startsWith(senderHash)) continue;
+
+      final deltaMs = (log.timestamp.difference(now).inMilliseconds).abs();
+      if (deltaMs < bestDeltaMs) {
+        bestDeltaMs = deltaMs;
+        bestRoute = decoded;
+      }
+    }
+
+    if (bestDeltaMs > 30000) return null;
+    return bestRoute;
   }
 
   List<int>? _extractPathBytesFromLog(BlePacketLog? log) {

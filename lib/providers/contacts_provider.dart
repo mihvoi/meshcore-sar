@@ -10,8 +10,15 @@ import '../utils/key_comparison.dart';
 class PendingAdvert {
   final Uint8List publicKey;
   final DateTime receivedAt;
+  final int? signedEncodedPathLen;
+  final Uint8List? paddedPathBytes;
 
-  const PendingAdvert({required this.publicKey, required this.receivedAt});
+  const PendingAdvert({
+    required this.publicKey,
+    required this.receivedAt,
+    this.signedEncodedPathLen,
+    this.paddedPathBytes,
+  });
 
   String get publicKeyHex =>
       publicKey.map((b) => b.toRadixString(16).padLeft(2, '0')).join('');
@@ -21,12 +28,29 @@ class PendingAdvert {
     return prefix.map((b) => b.toRadixString(16).padLeft(2, '0')).join(':');
   }
 
-  PendingAdvert copyWith({Uint8List? publicKey, DateTime? receivedAt}) {
+  PendingAdvert copyWith({
+    Uint8List? publicKey,
+    DateTime? receivedAt,
+    int? signedEncodedPathLen,
+    Uint8List? paddedPathBytes,
+  }) {
     return PendingAdvert(
       publicKey: publicKey ?? this.publicKey,
       receivedAt: receivedAt ?? this.receivedAt,
+      signedEncodedPathLen: signedEncodedPathLen ?? this.signedEncodedPathLen,
+      paddedPathBytes: paddedPathBytes ?? this.paddedPathBytes,
     );
   }
+}
+
+class _RetainedRoute {
+  final int signedEncodedPathLen;
+  final Uint8List paddedPathBytes;
+
+  const _RetainedRoute({
+    required this.signedEncodedPathLen,
+    required this.paddedPathBytes,
+  });
 }
 
 /// Contacts Provider - manages contact list and telemetry
@@ -338,8 +362,19 @@ class ContactsProvider with ChangeNotifier {
     required Contact incomingContact,
     Contact? existingContact,
   }) {
+    final retainedRoute = _retainedRouteForContact(
+      keyHex: incomingContact.publicKeyHex,
+      incomingContact: incomingContact,
+      existingContact: existingContact,
+    );
+
     if (existingContact == null) {
-      var newContact = incomingContact.copyWith(isNew: true);
+      var newContact = incomingContact.copyWith(
+        isNew: true,
+        outPathLen:
+            retainedRoute?.signedEncodedPathLen ?? incomingContact.outPathLen,
+        outPath: retainedRoute?.paddedPathBytes ?? incomingContact.outPath,
+      );
       if (incomingContact.advertLocation != null) {
         final timestamp = DateTime.fromMillisecondsSinceEpoch(
           incomingContact.lastAdvert * 1000,
@@ -363,6 +398,9 @@ class ContactsProvider with ChangeNotifier {
       isNew: existingContact.isNew,
       advertHistory: existingContact.advertHistory,
       telemetry: mergedTelemetry,
+      outPathLen:
+          retainedRoute?.signedEncodedPathLen ?? incomingContact.outPathLen,
+      outPath: retainedRoute?.paddedPathBytes ?? incomingContact.outPath,
       advLat: incomingAdvertLocation != null
           ? incomingContact.advLat
           : existingAdvertLocation != null
@@ -386,6 +424,37 @@ class ContactsProvider with ChangeNotifier {
     }
 
     return updatedContact;
+  }
+
+  _RetainedRoute? _retainedRouteForContact({
+    required String keyHex,
+    required Contact incomingContact,
+    required Contact? existingContact,
+  }) {
+    if (incomingContact.routeHasPath) {
+      return null;
+    }
+
+    final pendingAdvert = _pendingAdverts[keyHex];
+    final pendingPathBytes = pendingAdvert?.paddedPathBytes;
+    final pendingPathLen = pendingAdvert?.signedEncodedPathLen;
+    if (pendingPathLen != null &&
+        pendingPathBytes != null &&
+        pendingPathBytes.isNotEmpty) {
+      return _RetainedRoute(
+        signedEncodedPathLen: pendingPathLen,
+        paddedPathBytes: Uint8List.fromList(pendingPathBytes),
+      );
+    }
+
+    if (existingContact != null && existingContact.routeHasPath) {
+      return _RetainedRoute(
+        signedEncodedPathLen: existingContact.outPathLen,
+        paddedPathBytes: Uint8List.fromList(existingContact.outPath),
+      );
+    }
+
+    return null;
   }
 
   /// Update contact telemetry
@@ -657,6 +726,46 @@ class ContactsProvider with ChangeNotifier {
       outPath: Uint8List.fromList(paddedPathBytes),
     );
     _persistContacts();
+    notifyListeners();
+  }
+
+  void retainReceivedRoute(
+    Uint8List publicKey, {
+    required int signedEncodedPathLen,
+    required Uint8List paddedPathBytes,
+    Uint8List? devicePublicKey,
+  }) {
+    if (devicePublicKey != null && publicKey.matches(devicePublicKey)) {
+      return;
+    }
+
+    final keyHex = publicKey
+        .map((b) => b.toRadixString(16).padLeft(2, '0'))
+        .join('');
+    final contact = _contacts[keyHex];
+    if (contact != null) {
+      _contacts[keyHex] = contact.copyWith(
+        outPathLen: signedEncodedPathLen,
+        outPath: Uint8List.fromList(paddedPathBytes),
+      );
+      _persistContacts();
+      notifyListeners();
+      return;
+    }
+
+    final now = DateTime.now();
+    final existing = _pendingAdverts[keyHex];
+    _pendingAdverts[keyHex] =
+        (existing ??
+                PendingAdvert(
+                  publicKey: Uint8List.fromList(publicKey),
+                  receivedAt: now,
+                ))
+            .copyWith(
+              receivedAt: now,
+              signedEncodedPathLen: signedEncodedPathLen,
+              paddedPathBytes: Uint8List.fromList(paddedPathBytes),
+            );
     notifyListeners();
   }
 

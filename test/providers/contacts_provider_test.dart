@@ -471,6 +471,57 @@ void main() {
       expect(updated.routeHasPath, isFalse);
       expect(updated.routeSummary, 'Flood/Unknown');
     });
+
+    test('retains existing route when contact refresh omits path', () {
+      final retainedRoute = ContactRouteCodec.parse('AABB,CCDD');
+      provider.setContactRouteLocal(
+        publicKey,
+        signedEncodedPathLen: retainedRoute.signedEncodedPathLen,
+        paddedPathBytes: retainedRoute.paddedPathBytes,
+      );
+
+      provider.addOrUpdateContact(
+        createContact(
+          key: publicKey,
+          type: ContactType.chat,
+          name: 'Routey',
+        ).copyWith(outPathLen: -1, outPath: Uint8List(0)),
+      );
+
+      final updated = provider.findContactByKey(publicKey)!;
+      expect(updated.routeHasPath, isTrue);
+      expect(updated.routeCanonicalText, 'AABB,CCDD');
+    });
+
+    test('applies retained pending advert route when contact is resolved', () {
+      final pendingKey = createPublicKey(96);
+      final retainedRoute = ContactRouteCodec.parse('1122,3344');
+
+      provider.retainReceivedRoute(
+        pendingKey,
+        signedEncodedPathLen: retainedRoute.signedEncodedPathLen,
+        paddedPathBytes: retainedRoute.paddedPathBytes,
+      );
+      provider.addPendingAdvert(pendingKey);
+
+      provider.addOrUpdateContact(
+        createContact(
+          key: pendingKey,
+          type: ContactType.chat,
+          name: 'Pending Routey',
+        ).copyWith(outPathLen: -1, outPath: Uint8List(0)),
+      );
+
+      final updated = provider.findContactByKey(pendingKey)!;
+      expect(updated.routeHasPath, isTrue);
+      expect(updated.routeCanonicalText, '1122,3344');
+      expect(
+        provider.pendingAdverts.where(
+          (advert) => advert.publicKeyHex == updated.publicKeyHex,
+        ),
+        isEmpty,
+      );
+    });
   });
 
   group('ContactsProvider.updateFastGps', () {
