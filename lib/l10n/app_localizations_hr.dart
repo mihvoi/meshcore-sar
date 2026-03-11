@@ -1720,196 +1720,196 @@ class AppLocalizationsHr extends AppLocalizations {
   String get requestingVoice => 'Zahtjev za glasom';
 
   @override
-  String get device => 'device';
+  String get device => 'uređaj';
 
   @override
-  String get change => 'Change';
+  String get change => 'Promijeni';
 
   @override
   String get wizardOverviewDescription =>
-      'This app combines MeshCore messaging, SAR field updates, mapping, and device tools in one place.';
+      'Ova aplikacija objedinjuje MeshCore poruke, SAR ažuriranja s terena, karte i alate za uređaj na jednom mjestu.';
 
   @override
   String get wizardOverviewFeature1 =>
-      'Send direct, room, and channel messages from the main Messages tab.';
+      'Šaljite izravne poruke, objave u sobama i poruke kanala iz glavne kartice Poruke.';
 
   @override
   String get wizardOverviewFeature2 =>
-      'Share SAR markers, map drawings, voice clips, and images over the mesh.';
+      'Dijelite SAR oznake, crteže karte, glasovne isječke i slike preko mesh mreže.';
 
   @override
   String get wizardOverviewFeature3 =>
-      'Connect over BLE or TCP, then manage the companion radio from inside the app.';
+      'Povežite se putem BLE-a ili TCP-a, a zatim upravljajte pratećim radijem izravno iz aplikacije.';
 
   @override
-  String get wizardMessagingTitle => 'Messaging and Field Reports';
+  String get wizardMessagingTitle => 'Poruke i terenska izvješća';
 
   @override
   String get wizardMessagingDescription =>
-      'Messages are more than plain text here. The app already supports several operational payloads and transfer workflows.';
+      'Poruke ovdje nisu samo običan tekst. Aplikacija već podržava više operativnih sadržaja i tijekova prijenosa.';
 
   @override
   String get wizardMessagingFeature1 =>
-      'Send direct messages, room posts, and channel traffic from one composer.';
+      'Šaljite izravne poruke, objave u sobama i promet kanala iz jednog uređivača.';
 
   @override
   String get wizardMessagingFeature2 =>
-      'Create SAR updates and reusable SAR templates for common field reports.';
+      'Stvarajte SAR ažuriranja i višekratne SAR predloške za uobičajena terenska izvješća.';
 
   @override
   String get wizardMessagingFeature3 =>
-      'Transfer voice sessions and images, with progress and airtime estimates in the UI.';
+      'Prenosite glasovne sesije i slike uz prikaz napretka i procjene vremena prijenosa u sučelju.';
 
   @override
-  String get wizardConnectDeviceTitle => 'Connect device';
+  String get wizardConnectDeviceTitle => 'Poveži uređaj';
 
   @override
   String get wizardConnectDeviceDescription =>
-      'Connect your MeshCore radio, choose a name, and apply a radio preset before continuing.';
+      'Povežite svoj MeshCore radio, odaberite naziv i primijenite radijski predložak prije nastavka.';
 
   @override
-  String get wizardSetupBadge => 'Setup';
+  String get wizardSetupBadge => 'Postavljanje';
 
   @override
-  String get wizardOverviewBadge => 'Overview';
+  String get wizardOverviewBadge => 'Pregled';
 
   @override
   String wizardConnectedToDevice(String deviceName) {
-    return 'Connected to $deviceName';
+    return 'Povezano s uređajem $deviceName';
   }
 
   @override
-  String get wizardNoDeviceConnected => 'No device connected yet';
+  String get wizardNoDeviceConnected => 'Još nema povezanog uređaja';
 
   @override
-  String get wizardSkipForNow => 'Skip for now';
+  String get wizardSkipForNow => 'Preskoči za sada';
 
   @override
-  String get wizardDeviceNameLabel => 'Device name';
+  String get wizardDeviceNameLabel => 'Naziv uređaja';
 
   @override
   String get wizardDeviceNameHelp =>
-      'This name is advertised to other MeshCore users.';
+      'Taj se naziv oglašava drugim korisnicima MeshCorea.';
 
   @override
-  String get wizardConfigRegionLabel => 'Config region';
+  String get wizardConfigRegionLabel => 'Regija konfiguracije';
 
   @override
   String get wizardConfigRegionHelp =>
-      'Uses the full official MeshCore preset list. Default is EU/UK (Narrow).';
+      'Koristi puni službeni popis MeshCore predložaka. Zadana je opcija EU/UK (Narrow).';
 
   @override
   String get wizardPresetNote1 =>
-      'Make sure the selected preset matches your local radio regulations.';
+      'Provjerite odgovara li odabrani predložak lokalnim radijskim propisima.';
 
   @override
   String get wizardPresetNote2 =>
-      'The list matches the official MeshCore config tool preset feed.';
+      'Popis odgovara službenom izvoru predložaka alata MeshCore config.';
 
   @override
   String get wizardPresetNote3 =>
-      'EU/UK (Narrow) stays selected by default for onboarding.';
+      'EU/UK (Narrow) ostaje zadano odabran tijekom uvodnog postavljanja.';
 
   @override
-  String get wizardSaving => 'Saving...';
+  String get wizardSaving => 'Spremanje...';
 
   @override
-  String get wizardSaveAndContinue => 'Save and continue';
+  String get wizardSaveAndContinue => 'Spremi i nastavi';
 
   @override
-  String get wizardEnterDeviceName => 'Enter a device name before continuing.';
+  String get wizardEnterDeviceName => 'Unesite naziv uređaja prije nastavka.';
 
   @override
   String wizardDeviceSetupSaved(String deviceName, String presetName) {
-    return 'Saved $deviceName with $presetName.';
+    return 'Spremljeno $deviceName s postavkom $presetName.';
   }
 
   @override
-  String get wizardNetworkTitle => 'Contacts, Rooms, and Repeaters';
+  String get wizardNetworkTitle => 'Kontakti, sobe i repetitori';
 
   @override
   String get wizardNetworkDescription =>
-      'The Contacts tab organizes the network you discover and the routes you learn over time.';
+      'Kartica Kontakti organizira mrežu koju otkrijete i rute koje s vremenom naučite.';
 
   @override
   String get wizardNetworkFeature1 =>
-      'Review team members, repeaters, rooms, channels, and pending adverts in one list.';
+      'Pregledajte članove tima, repetitore, sobe, kanale i oglase na čekanju na jednom popisu.';
 
   @override
   String get wizardNetworkFeature2 =>
-      'Use smart ping, room login, learned paths, and route reset tools when connectivity gets messy.';
+      'Koristite pametni ping, prijavu u sobe, naučene putanje i alate za resetiranje ruta kada povezanost postane neuredna.';
 
   @override
   String get wizardNetworkFeature3 =>
-      'Create channels and manage network destinations without leaving the app.';
+      'Stvarajte kanale i upravljajte mrežnim odredištima bez napuštanja aplikacije.';
 
   @override
-  String get wizardMapOpsTitle => 'Map, Trails, and Shared Geometry';
+  String get wizardMapOpsTitle => 'Karta, tragovi i dijeljena geometrija';
 
   @override
   String get wizardMapOpsDescription =>
-      'The app map is tied directly into messaging, tracking, and SAR overlays instead of being a separate viewer.';
+      'Karta u aplikaciji izravno je povezana s porukama, praćenjem i SAR slojevima umjesto da bude zaseban preglednik.';
 
   @override
   String get wizardMapOpsFeature1 =>
-      'Track your own position, teammate locations, and movement trails on the map.';
+      'Pratite vlastitu poziciju, lokacije suigrača i tragove kretanja na karti.';
 
   @override
   String get wizardMapOpsFeature2 =>
-      'Open drawings from messages, preview them inline, and remove them from the map when needed.';
+      'Otvorite crteže iz poruka, pregledajte ih unutar sučelja i po potrebi ih uklonite s karte.';
 
   @override
   String get wizardMapOpsFeature3 =>
-      'Use repeater map views and shared overlays to understand network reach in the field.';
+      'Koristite karte repetitora i dijeljene slojeve kako biste razumjeli doseg mreže na terenu.';
 
   @override
-  String get wizardToolsTitle => 'Tools Beyond Messaging';
+  String get wizardToolsTitle => 'Alati izvan poruka';
 
   @override
   String get wizardToolsDescription =>
-      'There is more here than the four main tabs. The app also includes configuration, diagnostics, and optional sensor workflows.';
+      'Ovdje postoji više od četiri glavne kartice. Aplikacija uključuje i konfiguraciju, dijagnostiku te opcionalne radne tokove senzora.';
 
   @override
   String get wizardToolsFeature1 =>
-      'Open device config to change radio settings, telemetry, TX power, and companion details.';
+      'Otvorite konfiguraciju uređaja kako biste promijenili radijske postavke, telemetriju, TX snagu i detalje pratećeg uređaja.';
 
   @override
   String get wizardToolsFeature2 =>
-      'Enable the Sensors tab when you want watched sensor dashboards and quick refresh actions.';
+      'Omogućite karticu Senzori kada želite nadzorne ploče praćenih senzora i brza osvježavanja.';
 
   @override
   String get wizardToolsFeature3 =>
-      'Use packet logs, spectrum scan, and developer diagnostics when troubleshooting the mesh.';
+      'Koristite zapisnike paketa, skeniranje spektra i razvojnu dijagnostiku pri rješavanju problema s mesh mrežom.';
 
   @override
-  String get contactInSensors => 'In Sensors';
+  String get contactInSensors => 'U Senzorima';
 
   @override
-  String get contactAddToSensors => 'Add to Sensors';
+  String get contactAddToSensors => 'Dodaj u Senzore';
 
   @override
-  String get contactSetPath => 'Set path';
+  String get contactSetPath => 'Postavi putanju';
 
   @override
   String contactAddedToSensors(String contactName) {
-    return '$contactName added to Sensors';
+    return '$contactName dodan u Senzore';
   }
 
   @override
   String contactFailedToClearRoute(String error) {
-    return 'Failed to clear route: $error';
+    return 'Brisanje rute nije uspjelo: $error';
   }
 
   @override
-  String get contactRouteCleared => 'Route cleared';
+  String get contactRouteCleared => 'Ruta obrisana';
 
   @override
   String contactRouteSet(String route) {
-    return 'Route set: $route';
+    return 'Ruta postavljena: $route';
   }
 
   @override
   String contactFailedToSetRoute(String error) {
-    return 'Failed to set route: $error';
+    return 'Postavljanje rute nije uspjelo: $error';
   }
 }

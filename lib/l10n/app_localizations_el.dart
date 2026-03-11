@@ -1743,196 +1743,197 @@ class AppLocalizationsEl extends AppLocalizations {
   String get requestingVoice => 'Αίτηση φωνής';
 
   @override
-  String get device => 'device';
+  String get device => 'συσκευή';
 
   @override
-  String get change => 'Change';
+  String get change => 'Αλλαγή';
 
   @override
   String get wizardOverviewDescription =>
-      'This app combines MeshCore messaging, SAR field updates, mapping, and device tools in one place.';
+      'Αυτή η εφαρμογή συνδυάζει μηνύματα MeshCore, ενημερώσεις πεδίου SAR, χαρτογράφηση και εργαλεία συσκευής σε ένα σημείο.';
 
   @override
   String get wizardOverviewFeature1 =>
-      'Send direct, room, and channel messages from the main Messages tab.';
+      'Στείλτε άμεσα μηνύματα, δημοσιεύσεις δωματίου και μηνύματα καναλιού από την κύρια καρτέλα Μηνύματα.';
 
   @override
   String get wizardOverviewFeature2 =>
-      'Share SAR markers, map drawings, voice clips, and images over the mesh.';
+      'Μοιραστείτε δείκτες SAR, σχεδιάσεις χάρτη, ηχητικά αποσπάσματα και εικόνες μέσω του mesh.';
 
   @override
   String get wizardOverviewFeature3 =>
-      'Connect over BLE or TCP, then manage the companion radio from inside the app.';
+      'Συνδεθείτε μέσω BLE ή TCP και στη συνέχεια διαχειριστείτε το συνοδευτικό ραδιόφωνο μέσα από την εφαρμογή.';
 
   @override
-  String get wizardMessagingTitle => 'Messaging and Field Reports';
+  String get wizardMessagingTitle => 'Μηνύματα και αναφορές πεδίου';
 
   @override
   String get wizardMessagingDescription =>
-      'Messages are more than plain text here. The app already supports several operational payloads and transfer workflows.';
+      'Τα μηνύματα εδώ είναι κάτι περισσότερο από απλό κείμενο. Η εφαρμογή υποστηρίζει ήδη πολλαπλά επιχειρησιακά φορτία και ροές μεταφοράς.';
 
   @override
   String get wizardMessagingFeature1 =>
-      'Send direct messages, room posts, and channel traffic from one composer.';
+      'Στείλτε άμεσα μηνύματα, δημοσιεύσεις δωματίου και κίνηση καναλιού από έναν μόνο συντάκτη.';
 
   @override
   String get wizardMessagingFeature2 =>
-      'Create SAR updates and reusable SAR templates for common field reports.';
+      'Δημιουργήστε ενημερώσεις SAR και επαναχρησιμοποιήσιμα πρότυπα SAR για συνηθισμένες αναφορές πεδίου.';
 
   @override
   String get wizardMessagingFeature3 =>
-      'Transfer voice sessions and images, with progress and airtime estimates in the UI.';
+      'Μεταφέρετε φωνητικές συνεδρίες και εικόνες, με ένδειξη προόδου και εκτιμήσεις χρόνου εκπομπής στο περιβάλλον.';
 
   @override
-  String get wizardConnectDeviceTitle => 'Connect device';
+  String get wizardConnectDeviceTitle => 'Σύνδεση συσκευής';
 
   @override
   String get wizardConnectDeviceDescription =>
-      'Connect your MeshCore radio, choose a name, and apply a radio preset before continuing.';
+      'Συνδέστε το ραδιόφωνο MeshCore, επιλέξτε όνομα και εφαρμόστε μια προρύθμιση ραδιοφώνου πριν συνεχίσετε.';
 
   @override
-  String get wizardSetupBadge => 'Setup';
+  String get wizardSetupBadge => 'Ρύθμιση';
 
   @override
-  String get wizardOverviewBadge => 'Overview';
+  String get wizardOverviewBadge => 'Επισκόπηση';
 
   @override
   String wizardConnectedToDevice(String deviceName) {
-    return 'Connected to $deviceName';
+    return 'Συνδέθηκε με το $deviceName';
   }
 
   @override
-  String get wizardNoDeviceConnected => 'No device connected yet';
+  String get wizardNoDeviceConnected => 'Δεν έχει συνδεθεί ακόμη συσκευή';
 
   @override
-  String get wizardSkipForNow => 'Skip for now';
+  String get wizardSkipForNow => 'Παράλειψη προς το παρόν';
 
   @override
-  String get wizardDeviceNameLabel => 'Device name';
+  String get wizardDeviceNameLabel => 'Όνομα συσκευής';
 
   @override
   String get wizardDeviceNameHelp =>
-      'This name is advertised to other MeshCore users.';
+      'Αυτό το όνομα ανακοινώνεται σε άλλους χρήστες του MeshCore.';
 
   @override
-  String get wizardConfigRegionLabel => 'Config region';
+  String get wizardConfigRegionLabel => 'Περιοχή ρύθμισης';
 
   @override
   String get wizardConfigRegionHelp =>
-      'Uses the full official MeshCore preset list. Default is EU/UK (Narrow).';
+      'Χρησιμοποιεί την πλήρη επίσημη λίστα προρυθμίσεων MeshCore. Η προεπιλογή είναι EU/UK (Narrow).';
 
   @override
   String get wizardPresetNote1 =>
-      'Make sure the selected preset matches your local radio regulations.';
+      'Βεβαιωθείτε ότι η επιλεγμένη προρύθμιση ταιριάζει με τους τοπικούς ραδιοφωνικούς κανονισμούς.';
 
   @override
   String get wizardPresetNote2 =>
-      'The list matches the official MeshCore config tool preset feed.';
+      'Η λίστα αντιστοιχεί στην επίσημη ροή προρυθμίσεων του εργαλείου ρύθμισης MeshCore.';
 
   @override
   String get wizardPresetNote3 =>
-      'EU/UK (Narrow) stays selected by default for onboarding.';
+      'Το EU/UK (Narrow) παραμένει επιλεγμένο από προεπιλογή κατά την αρχική ρύθμιση.';
 
   @override
-  String get wizardSaving => 'Saving...';
+  String get wizardSaving => 'Αποθήκευση...';
 
   @override
-  String get wizardSaveAndContinue => 'Save and continue';
+  String get wizardSaveAndContinue => 'Αποθήκευση και συνέχεια';
 
   @override
-  String get wizardEnterDeviceName => 'Enter a device name before continuing.';
+  String get wizardEnterDeviceName =>
+      'Εισαγάγετε όνομα συσκευής πριν συνεχίσετε.';
 
   @override
   String wizardDeviceSetupSaved(String deviceName, String presetName) {
-    return 'Saved $deviceName with $presetName.';
+    return 'Αποθηκεύτηκε το $deviceName με $presetName.';
   }
 
   @override
-  String get wizardNetworkTitle => 'Contacts, Rooms, and Repeaters';
+  String get wizardNetworkTitle => 'Επαφές, δωμάτια και αναμεταδότες';
 
   @override
   String get wizardNetworkDescription =>
-      'The Contacts tab organizes the network you discover and the routes you learn over time.';
+      'Η καρτέλα Επαφές οργανώνει το δίκτυο που ανακαλύπτετε και τις διαδρομές που μαθαίνετε με τον χρόνο.';
 
   @override
   String get wizardNetworkFeature1 =>
-      'Review team members, repeaters, rooms, channels, and pending adverts in one list.';
+      'Ελέγξτε μέλη ομάδας, αναμεταδότες, δωμάτια, κανάλια και εκκρεμείς ανακοινώσεις σε μία λίστα.';
 
   @override
   String get wizardNetworkFeature2 =>
-      'Use smart ping, room login, learned paths, and route reset tools when connectivity gets messy.';
+      'Χρησιμοποιήστε smart ping, σύνδεση σε δωμάτια, μαθημένες διαδρομές και εργαλεία επαναφοράς διαδρομών όταν η συνδεσιμότητα γίνεται χαοτική.';
 
   @override
   String get wizardNetworkFeature3 =>
-      'Create channels and manage network destinations without leaving the app.';
+      'Δημιουργήστε κανάλια και διαχειριστείτε προορισμούς δικτύου χωρίς να φύγετε από την εφαρμογή.';
 
   @override
-  String get wizardMapOpsTitle => 'Map, Trails, and Shared Geometry';
+  String get wizardMapOpsTitle => 'Χάρτης, ίχνη και κοινόχρηστη γεωμετρία';
 
   @override
   String get wizardMapOpsDescription =>
-      'The app map is tied directly into messaging, tracking, and SAR overlays instead of being a separate viewer.';
+      'Ο χάρτης της εφαρμογής συνδέεται άμεσα με τα μηνύματα, την παρακολούθηση και τα επικαλύμματα SAR αντί να είναι ξεχωριστός προβολέας.';
 
   @override
   String get wizardMapOpsFeature1 =>
-      'Track your own position, teammate locations, and movement trails on the map.';
+      'Παρακολουθήστε τη θέση σας, τις τοποθεσίες της ομάδας και τα ίχνη κίνησης στον χάρτη.';
 
   @override
   String get wizardMapOpsFeature2 =>
-      'Open drawings from messages, preview them inline, and remove them from the map when needed.';
+      'Ανοίξτε σχεδιάσεις από μηνύματα, προεπισκοπήστε τες επιτόπου και αφαιρέστε τες από τον χάρτη όταν χρειάζεται.';
 
   @override
   String get wizardMapOpsFeature3 =>
-      'Use repeater map views and shared overlays to understand network reach in the field.';
+      'Χρησιμοποιήστε προβολές χάρτη αναμεταδοτών και κοινόχρηστα επικαλύμματα για να κατανοήσετε την εμβέλεια του δικτύου στο πεδίο.';
 
   @override
-  String get wizardToolsTitle => 'Tools Beyond Messaging';
+  String get wizardToolsTitle => 'Εργαλεία πέρα από τα μηνύματα';
 
   @override
   String get wizardToolsDescription =>
-      'There is more here than the four main tabs. The app also includes configuration, diagnostics, and optional sensor workflows.';
+      'Υπάρχουν περισσότερα εδώ από τις τέσσερις κύριες καρτέλες. Η εφαρμογή περιλαμβάνει επίσης ρυθμίσεις, διαγνωστικά και προαιρετικές ροές αισθητήρων.';
 
   @override
   String get wizardToolsFeature1 =>
-      'Open device config to change radio settings, telemetry, TX power, and companion details.';
+      'Ανοίξτε τη ρύθμιση συσκευής για να αλλάξετε παραμέτρους ραδιοφώνου, τηλεμετρία, ισχύ TX και στοιχεία συνοδευτικής συσκευής.';
 
   @override
   String get wizardToolsFeature2 =>
-      'Enable the Sensors tab when you want watched sensor dashboards and quick refresh actions.';
+      'Ενεργοποιήστε την καρτέλα Αισθητήρες όταν θέλετε πίνακες παρακολούθησης και γρήγορες ενέργειες ανανέωσης.';
 
   @override
   String get wizardToolsFeature3 =>
-      'Use packet logs, spectrum scan, and developer diagnostics when troubleshooting the mesh.';
+      'Χρησιμοποιήστε καταγραφές πακέτων, σάρωση φάσματος και διαγνωστικά προγραμματιστή κατά την αντιμετώπιση προβλημάτων του mesh.';
 
   @override
-  String get contactInSensors => 'In Sensors';
+  String get contactInSensors => 'Στους αισθητήρες';
 
   @override
-  String get contactAddToSensors => 'Add to Sensors';
+  String get contactAddToSensors => 'Προσθήκη στους αισθητήρες';
 
   @override
-  String get contactSetPath => 'Set path';
+  String get contactSetPath => 'Ορισμός διαδρομής';
 
   @override
   String contactAddedToSensors(String contactName) {
-    return '$contactName added to Sensors';
+    return 'Το $contactName προστέθηκε στους Αισθητήρες';
   }
 
   @override
   String contactFailedToClearRoute(String error) {
-    return 'Failed to clear route: $error';
+    return 'Αποτυχία εκκαθάρισης διαδρομής: $error';
   }
 
   @override
-  String get contactRouteCleared => 'Route cleared';
+  String get contactRouteCleared => 'Η διαδρομή εκκαθαρίστηκε';
 
   @override
   String contactRouteSet(String route) {
-    return 'Route set: $route';
+    return 'Ορίστηκε διαδρομή: $route';
   }
 
   @override
   String contactFailedToSetRoute(String error) {
-    return 'Failed to set route: $error';
+    return 'Αποτυχία ορισμού διαδρομής: $error';
   }
 }

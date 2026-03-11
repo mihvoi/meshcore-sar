@@ -1722,196 +1722,196 @@ class AppLocalizationsTr extends AppLocalizations {
   String get requestingVoice => 'Ses isteniyor';
 
   @override
-  String get device => 'device';
+  String get device => 'cihaz';
 
   @override
-  String get change => 'Change';
+  String get change => 'Değiştir';
 
   @override
   String get wizardOverviewDescription =>
-      'This app combines MeshCore messaging, SAR field updates, mapping, and device tools in one place.';
+      'Bu uygulama MeshCore mesajlaşmasını, SAR saha güncellemelerini, haritalamayı ve cihaz araçlarını tek bir yerde birleştirir.';
 
   @override
   String get wizardOverviewFeature1 =>
-      'Send direct, room, and channel messages from the main Messages tab.';
+      'Ana Mesajlar sekmesinden doğrudan mesajlar, oda gönderileri ve kanal mesajları gönderin.';
 
   @override
   String get wizardOverviewFeature2 =>
-      'Share SAR markers, map drawings, voice clips, and images over the mesh.';
+      'Mesh üzerinden SAR işaretleri, harita çizimleri, ses klipleri ve görseller paylaşın.';
 
   @override
   String get wizardOverviewFeature3 =>
-      'Connect over BLE or TCP, then manage the companion radio from inside the app.';
+      'BLE veya TCP ile bağlanın, ardından yardımcı radyoyu uygulamanın içinden yönetin.';
 
   @override
-  String get wizardMessagingTitle => 'Messaging and Field Reports';
+  String get wizardMessagingTitle => 'Mesajlaşma ve saha raporları';
 
   @override
   String get wizardMessagingDescription =>
-      'Messages are more than plain text here. The app already supports several operational payloads and transfer workflows.';
+      'Buradaki mesajlar düz metinden fazlasıdır. Uygulama zaten çeşitli operasyonel yükleri ve aktarım akışlarını destekliyor.';
 
   @override
   String get wizardMessagingFeature1 =>
-      'Send direct messages, room posts, and channel traffic from one composer.';
+      'Doğrudan mesajları, oda gönderilerini ve kanal trafiğini tek bir düzenleyiciden gönderin.';
 
   @override
   String get wizardMessagingFeature2 =>
-      'Create SAR updates and reusable SAR templates for common field reports.';
+      'Yaygın saha raporları için SAR güncellemeleri ve yeniden kullanılabilir SAR şablonları oluşturun.';
 
   @override
   String get wizardMessagingFeature3 =>
-      'Transfer voice sessions and images, with progress and airtime estimates in the UI.';
+      'Arayüzde ilerleme ve yayın süresi tahminleriyle ses oturumları ve görseller aktarın.';
 
   @override
-  String get wizardConnectDeviceTitle => 'Connect device';
+  String get wizardConnectDeviceTitle => 'Cihazı bağla';
 
   @override
   String get wizardConnectDeviceDescription =>
-      'Connect your MeshCore radio, choose a name, and apply a radio preset before continuing.';
+      'MeshCore radyonuzu bağlayın, bir ad seçin ve devam etmeden önce bir radyo ön ayarı uygulayın.';
 
   @override
-  String get wizardSetupBadge => 'Setup';
+  String get wizardSetupBadge => 'Kurulum';
 
   @override
-  String get wizardOverviewBadge => 'Overview';
+  String get wizardOverviewBadge => 'Genel bakış';
 
   @override
   String wizardConnectedToDevice(String deviceName) {
-    return 'Connected to $deviceName';
+    return '$deviceName cihazına bağlandı';
   }
 
   @override
-  String get wizardNoDeviceConnected => 'No device connected yet';
+  String get wizardNoDeviceConnected => 'Henüz bağlı cihaz yok';
 
   @override
-  String get wizardSkipForNow => 'Skip for now';
+  String get wizardSkipForNow => 'Şimdilik atla';
 
   @override
-  String get wizardDeviceNameLabel => 'Device name';
+  String get wizardDeviceNameLabel => 'Cihaz adı';
 
   @override
   String get wizardDeviceNameHelp =>
-      'This name is advertised to other MeshCore users.';
+      'Bu ad diğer MeshCore kullanıcılarına duyurulur.';
 
   @override
-  String get wizardConfigRegionLabel => 'Config region';
+  String get wizardConfigRegionLabel => 'Yapılandırma bölgesi';
 
   @override
   String get wizardConfigRegionHelp =>
-      'Uses the full official MeshCore preset list. Default is EU/UK (Narrow).';
+      'MeshCore\'un resmi ön ayar listesinin tamamını kullanır. Varsayılan EU/UK (Narrow) olur.';
 
   @override
   String get wizardPresetNote1 =>
-      'Make sure the selected preset matches your local radio regulations.';
+      'Seçilen ön ayarın yerel radyo düzenlemelerinize uygun olduğundan emin olun.';
 
   @override
   String get wizardPresetNote2 =>
-      'The list matches the official MeshCore config tool preset feed.';
+      'Liste, MeshCore yapılandırma aracının resmi ön ayar akışıyla eşleşir.';
 
   @override
   String get wizardPresetNote3 =>
-      'EU/UK (Narrow) stays selected by default for onboarding.';
+      'Onboarding sırasında varsayılan olarak EU/UK (Narrow) seçili kalır.';
 
   @override
-  String get wizardSaving => 'Saving...';
+  String get wizardSaving => 'Kaydediliyor...';
 
   @override
-  String get wizardSaveAndContinue => 'Save and continue';
+  String get wizardSaveAndContinue => 'Kaydet ve devam et';
 
   @override
-  String get wizardEnterDeviceName => 'Enter a device name before continuing.';
+  String get wizardEnterDeviceName => 'Devam etmeden önce bir cihaz adı girin.';
 
   @override
   String wizardDeviceSetupSaved(String deviceName, String presetName) {
-    return 'Saved $deviceName with $presetName.';
+    return '$deviceName, $presetName ile kaydedildi.';
   }
 
   @override
-  String get wizardNetworkTitle => 'Contacts, Rooms, and Repeaters';
+  String get wizardNetworkTitle => 'Kişiler, odalar ve tekrarlayıcılar';
 
   @override
   String get wizardNetworkDescription =>
-      'The Contacts tab organizes the network you discover and the routes you learn over time.';
+      'Kişiler sekmesi keşfettiğiniz ağı ve zamanla öğrendiğiniz rotaları düzenler.';
 
   @override
   String get wizardNetworkFeature1 =>
-      'Review team members, repeaters, rooms, channels, and pending adverts in one list.';
+      'Ekip üyelerini, tekrarlayıcıları, odaları, kanalları ve bekleyen duyuruları tek listede inceleyin.';
 
   @override
   String get wizardNetworkFeature2 =>
-      'Use smart ping, room login, learned paths, and route reset tools when connectivity gets messy.';
+      'Bağlantı karmaşıklaştığında smart ping, oda girişi, öğrenilen yollar ve rota sıfırlama araçlarını kullanın.';
 
   @override
   String get wizardNetworkFeature3 =>
-      'Create channels and manage network destinations without leaving the app.';
+      'Uygulamadan çıkmadan kanallar oluşturun ve ağ hedeflerini yönetin.';
 
   @override
-  String get wizardMapOpsTitle => 'Map, Trails, and Shared Geometry';
+  String get wizardMapOpsTitle => 'Harita, izler ve paylaşılan geometri';
 
   @override
   String get wizardMapOpsDescription =>
-      'The app map is tied directly into messaging, tracking, and SAR overlays instead of being a separate viewer.';
+      'Uygulama haritası ayrı bir görüntüleyici olmak yerine mesajlaşma, takip ve SAR katmanlarıyla doğrudan bağlantılıdır.';
 
   @override
   String get wizardMapOpsFeature1 =>
-      'Track your own position, teammate locations, and movement trails on the map.';
+      'Kendi konumunuzu, ekip arkadaşlarının konumlarını ve hareket izlerini harita üzerinde takip edin.';
 
   @override
   String get wizardMapOpsFeature2 =>
-      'Open drawings from messages, preview them inline, and remove them from the map when needed.';
+      'Mesajlardaki çizimleri açın, satır içinde önizleyin ve gerektiğinde haritadan kaldırın.';
 
   @override
   String get wizardMapOpsFeature3 =>
-      'Use repeater map views and shared overlays to understand network reach in the field.';
+      'Sahadaki ağ kapsamasını anlamak için tekrarlayıcı harita görünümleri ve paylaşılan katmanları kullanın.';
 
   @override
-  String get wizardToolsTitle => 'Tools Beyond Messaging';
+  String get wizardToolsTitle => 'Mesajlaşma dışındaki araçlar';
 
   @override
   String get wizardToolsDescription =>
-      'There is more here than the four main tabs. The app also includes configuration, diagnostics, and optional sensor workflows.';
+      'Burada dört ana sekmeden fazlası var. Uygulama ayrıca yapılandırma, tanılama ve isteğe bağlı sensör akışları içerir.';
 
   @override
   String get wizardToolsFeature1 =>
-      'Open device config to change radio settings, telemetry, TX power, and companion details.';
+      'Radyo ayarlarını, telemetriyi, TX gücünü ve yardımcı cihaz ayrıntılarını değiştirmek için cihaz yapılandırmasını açın.';
 
   @override
   String get wizardToolsFeature2 =>
-      'Enable the Sensors tab when you want watched sensor dashboards and quick refresh actions.';
+      'İzlenen sensör panoları ve hızlı yenileme eylemleri istediğinizde Sensörler sekmesini etkinleştirin.';
 
   @override
   String get wizardToolsFeature3 =>
-      'Use packet logs, spectrum scan, and developer diagnostics when troubleshooting the mesh.';
+      'Mesh sorunlarını giderirken paket günlükleri, spektrum taraması ve geliştirici tanılamalarını kullanın.';
 
   @override
-  String get contactInSensors => 'In Sensors';
+  String get contactInSensors => 'Sensörlerde';
 
   @override
-  String get contactAddToSensors => 'Add to Sensors';
+  String get contactAddToSensors => 'Sensörlere ekle';
 
   @override
-  String get contactSetPath => 'Set path';
+  String get contactSetPath => 'Yol ayarla';
 
   @override
   String contactAddedToSensors(String contactName) {
-    return '$contactName added to Sensors';
+    return '$contactName Sensörlere eklendi';
   }
 
   @override
   String contactFailedToClearRoute(String error) {
-    return 'Failed to clear route: $error';
+    return 'Rota temizlenemedi: $error';
   }
 
   @override
-  String get contactRouteCleared => 'Route cleared';
+  String get contactRouteCleared => 'Rota temizlendi';
 
   @override
   String contactRouteSet(String route) {
-    return 'Route set: $route';
+    return 'Rota ayarlandı: $route';
   }
 
   @override
   String contactFailedToSetRoute(String error) {
-    return 'Failed to set route: $error';
+    return 'Rota ayarlanamadı: $error';
   }
 }

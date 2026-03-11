@@ -1742,196 +1742,198 @@ class AppLocalizationsFr extends AppLocalizations {
   String get requestingVoice => 'Demande de voix';
 
   @override
-  String get device => 'device';
+  String get device => 'appareil';
 
   @override
-  String get change => 'Change';
+  String get change => 'Modifier';
 
   @override
   String get wizardOverviewDescription =>
-      'This app combines MeshCore messaging, SAR field updates, mapping, and device tools in one place.';
+      'Cette application réunit la messagerie MeshCore, les mises à jour SAR sur le terrain, la cartographie et les outils de l\'appareil au même endroit.';
 
   @override
   String get wizardOverviewFeature1 =>
-      'Send direct, room, and channel messages from the main Messages tab.';
+      'Envoyez des messages directs, des publications de salon et des messages de canal depuis l\'onglet principal Messages.';
 
   @override
   String get wizardOverviewFeature2 =>
-      'Share SAR markers, map drawings, voice clips, and images over the mesh.';
+      'Partagez des marqueurs SAR, des dessins de carte, des extraits vocaux et des images sur le réseau maillé.';
 
   @override
   String get wizardOverviewFeature3 =>
-      'Connect over BLE or TCP, then manage the companion radio from inside the app.';
+      'Connectez-vous en BLE ou en TCP, puis gérez la radio compagnon directement dans l\'application.';
 
   @override
-  String get wizardMessagingTitle => 'Messaging and Field Reports';
+  String get wizardMessagingTitle => 'Messagerie et rapports de terrain';
 
   @override
   String get wizardMessagingDescription =>
-      'Messages are more than plain text here. The app already supports several operational payloads and transfer workflows.';
+      'Ici, les messages sont plus que du texte brut. L\'application prend déjà en charge plusieurs charges opérationnelles et flux de transfert.';
 
   @override
   String get wizardMessagingFeature1 =>
-      'Send direct messages, room posts, and channel traffic from one composer.';
+      'Envoyez des messages directs, des publications de salon et du trafic de canal depuis un seul compositeur.';
 
   @override
   String get wizardMessagingFeature2 =>
-      'Create SAR updates and reusable SAR templates for common field reports.';
+      'Créez des mises à jour SAR et des modèles SAR réutilisables pour les rapports de terrain courants.';
 
   @override
   String get wizardMessagingFeature3 =>
-      'Transfer voice sessions and images, with progress and airtime estimates in the UI.';
+      'Transférez des sessions vocales et des images avec la progression et les estimations de temps d\'antenne dans l\'interface.';
 
   @override
-  String get wizardConnectDeviceTitle => 'Connect device';
+  String get wizardConnectDeviceTitle => 'Connecter l\'appareil';
 
   @override
   String get wizardConnectDeviceDescription =>
-      'Connect your MeshCore radio, choose a name, and apply a radio preset before continuing.';
+      'Connectez votre radio MeshCore, choisissez un nom et appliquez un préréglage radio avant de continuer.';
 
   @override
-  String get wizardSetupBadge => 'Setup';
+  String get wizardSetupBadge => 'Configuration';
 
   @override
-  String get wizardOverviewBadge => 'Overview';
+  String get wizardOverviewBadge => 'Aperçu';
 
   @override
   String wizardConnectedToDevice(String deviceName) {
-    return 'Connected to $deviceName';
+    return 'Connecté à $deviceName';
   }
 
   @override
-  String get wizardNoDeviceConnected => 'No device connected yet';
+  String get wizardNoDeviceConnected =>
+      'Aucun appareil connecté pour le moment';
 
   @override
-  String get wizardSkipForNow => 'Skip for now';
+  String get wizardSkipForNow => 'Ignorer pour l\'instant';
 
   @override
-  String get wizardDeviceNameLabel => 'Device name';
+  String get wizardDeviceNameLabel => 'Nom de l\'appareil';
 
   @override
   String get wizardDeviceNameHelp =>
-      'This name is advertised to other MeshCore users.';
+      'Ce nom est annoncé aux autres utilisateurs de MeshCore.';
 
   @override
-  String get wizardConfigRegionLabel => 'Config region';
+  String get wizardConfigRegionLabel => 'Région de configuration';
 
   @override
   String get wizardConfigRegionHelp =>
-      'Uses the full official MeshCore preset list. Default is EU/UK (Narrow).';
+      'Utilise la liste officielle complète des préréglages MeshCore. La valeur par défaut est EU/UK (Narrow).';
 
   @override
   String get wizardPresetNote1 =>
-      'Make sure the selected preset matches your local radio regulations.';
+      'Assurez-vous que le préréglage sélectionné correspond à votre réglementation radio locale.';
 
   @override
   String get wizardPresetNote2 =>
-      'The list matches the official MeshCore config tool preset feed.';
+      'La liste correspond au flux officiel des préréglages de l\'outil de configuration MeshCore.';
 
   @override
   String get wizardPresetNote3 =>
-      'EU/UK (Narrow) stays selected by default for onboarding.';
+      'EU/UK (Narrow) reste sélectionné par défaut pendant l\'onboarding.';
 
   @override
-  String get wizardSaving => 'Saving...';
+  String get wizardSaving => 'Enregistrement...';
 
   @override
-  String get wizardSaveAndContinue => 'Save and continue';
+  String get wizardSaveAndContinue => 'Enregistrer et continuer';
 
   @override
-  String get wizardEnterDeviceName => 'Enter a device name before continuing.';
+  String get wizardEnterDeviceName =>
+      'Saisissez un nom d\'appareil avant de continuer.';
 
   @override
   String wizardDeviceSetupSaved(String deviceName, String presetName) {
-    return 'Saved $deviceName with $presetName.';
+    return '$deviceName enregistré avec $presetName.';
   }
 
   @override
-  String get wizardNetworkTitle => 'Contacts, Rooms, and Repeaters';
+  String get wizardNetworkTitle => 'Contacts, salons et répéteurs';
 
   @override
   String get wizardNetworkDescription =>
-      'The Contacts tab organizes the network you discover and the routes you learn over time.';
+      'L\'onglet Contacts organise le réseau que vous découvrez et les routes apprises au fil du temps.';
 
   @override
   String get wizardNetworkFeature1 =>
-      'Review team members, repeaters, rooms, channels, and pending adverts in one list.';
+      'Consultez les membres de l\'équipe, les répéteurs, les salons, les canaux et les annonces en attente dans une seule liste.';
 
   @override
   String get wizardNetworkFeature2 =>
-      'Use smart ping, room login, learned paths, and route reset tools when connectivity gets messy.';
+      'Utilisez le smart ping, la connexion aux salons, les chemins appris et les outils de réinitialisation des routes lorsque la connectivité devient chaotique.';
 
   @override
   String get wizardNetworkFeature3 =>
-      'Create channels and manage network destinations without leaving the app.';
+      'Créez des canaux et gérez les destinations réseau sans quitter l\'application.';
 
   @override
-  String get wizardMapOpsTitle => 'Map, Trails, and Shared Geometry';
+  String get wizardMapOpsTitle => 'Carte, traces et géométrie partagée';
 
   @override
   String get wizardMapOpsDescription =>
-      'The app map is tied directly into messaging, tracking, and SAR overlays instead of being a separate viewer.';
+      'La carte de l\'application est directement liée à la messagerie, au suivi et aux couches SAR au lieu d\'être un simple visualiseur séparé.';
 
   @override
   String get wizardMapOpsFeature1 =>
-      'Track your own position, teammate locations, and movement trails on the map.';
+      'Suivez votre position, celles de vos coéquipiers et les traces de déplacement sur la carte.';
 
   @override
   String get wizardMapOpsFeature2 =>
-      'Open drawings from messages, preview them inline, and remove them from the map when needed.';
+      'Ouvrez les dessins depuis les messages, prévisualisez-les en ligne et supprimez-les de la carte si nécessaire.';
 
   @override
   String get wizardMapOpsFeature3 =>
-      'Use repeater map views and shared overlays to understand network reach in the field.';
+      'Utilisez les vues de carte des répéteurs et les couches partagées pour comprendre la portée du réseau sur le terrain.';
 
   @override
-  String get wizardToolsTitle => 'Tools Beyond Messaging';
+  String get wizardToolsTitle => 'Outils au-delà de la messagerie';
 
   @override
   String get wizardToolsDescription =>
-      'There is more here than the four main tabs. The app also includes configuration, diagnostics, and optional sensor workflows.';
+      'Il y a plus ici que les quatre onglets principaux. L\'application inclut aussi la configuration, le diagnostic et des workflows de capteurs optionnels.';
 
   @override
   String get wizardToolsFeature1 =>
-      'Open device config to change radio settings, telemetry, TX power, and companion details.';
+      'Ouvrez la configuration de l\'appareil pour modifier les réglages radio, la télémétrie, la puissance TX et les détails du compagnon.';
 
   @override
   String get wizardToolsFeature2 =>
-      'Enable the Sensors tab when you want watched sensor dashboards and quick refresh actions.';
+      'Activez l\'onglet Capteurs lorsque vous voulez des tableaux de bord surveillés et des actions d\'actualisation rapide.';
 
   @override
   String get wizardToolsFeature3 =>
-      'Use packet logs, spectrum scan, and developer diagnostics when troubleshooting the mesh.';
+      'Utilisez les journaux de paquets, le balayage du spectre et les diagnostics développeur pour dépanner le réseau maillé.';
 
   @override
-  String get contactInSensors => 'In Sensors';
+  String get contactInSensors => 'Dans Capteurs';
 
   @override
-  String get contactAddToSensors => 'Add to Sensors';
+  String get contactAddToSensors => 'Ajouter aux capteurs';
 
   @override
-  String get contactSetPath => 'Set path';
+  String get contactSetPath => 'Définir le chemin';
 
   @override
   String contactAddedToSensors(String contactName) {
-    return '$contactName added to Sensors';
+    return '$contactName ajouté aux capteurs';
   }
 
   @override
   String contactFailedToClearRoute(String error) {
-    return 'Failed to clear route: $error';
+    return 'Échec de l\'effacement de la route : $error';
   }
 
   @override
-  String get contactRouteCleared => 'Route cleared';
+  String get contactRouteCleared => 'Route effacée';
 
   @override
   String contactRouteSet(String route) {
-    return 'Route set: $route';
+    return 'Route définie : $route';
   }
 
   @override
   String contactFailedToSetRoute(String error) {
-    return 'Failed to set route: $error';
+    return 'Échec du réglage de la route : $error';
   }
 }

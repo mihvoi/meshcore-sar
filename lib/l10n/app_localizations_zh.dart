@@ -1658,196 +1658,173 @@ class AppLocalizationsZh extends AppLocalizations {
   String get requestingVoice => '正在请求语音';
 
   @override
-  String get device => 'device';
+  String get device => '设备';
 
   @override
-  String get change => 'Change';
+  String get change => '更改';
 
   @override
   String get wizardOverviewDescription =>
-      'This app combines MeshCore messaging, SAR field updates, mapping, and device tools in one place.';
+      '此应用将 MeshCore 消息、SAR 现场更新、地图功能和设备工具整合到同一处。';
 
   @override
-  String get wizardOverviewFeature1 =>
-      'Send direct, room, and channel messages from the main Messages tab.';
+  String get wizardOverviewFeature1 => '在主消息标签页中发送私聊消息、房间消息和频道消息。';
 
   @override
-  String get wizardOverviewFeature2 =>
-      'Share SAR markers, map drawings, voice clips, and images over the mesh.';
+  String get wizardOverviewFeature2 => '通过 mesh 网络共享 SAR 标记、地图绘图、语音片段和图像。';
 
   @override
-  String get wizardOverviewFeature3 =>
-      'Connect over BLE or TCP, then manage the companion radio from inside the app.';
+  String get wizardOverviewFeature3 => '通过 BLE 或 TCP 连接，然后直接在应用中管理配套电台。';
 
   @override
-  String get wizardMessagingTitle => 'Messaging and Field Reports';
+  String get wizardMessagingTitle => '消息与现场报告';
 
   @override
-  String get wizardMessagingDescription =>
-      'Messages are more than plain text here. The app already supports several operational payloads and transfer workflows.';
+  String get wizardMessagingDescription => '这里的消息不只是纯文本。应用已经支持多种操作载荷和传输流程。';
 
   @override
-  String get wizardMessagingFeature1 =>
-      'Send direct messages, room posts, and channel traffic from one composer.';
+  String get wizardMessagingFeature1 => '通过一个编辑器发送私聊消息、房间消息和频道流量。';
 
   @override
-  String get wizardMessagingFeature2 =>
-      'Create SAR updates and reusable SAR templates for common field reports.';
+  String get wizardMessagingFeature2 => '为常见现场报告创建 SAR 更新和可复用的 SAR 模板。';
 
   @override
-  String get wizardMessagingFeature3 =>
-      'Transfer voice sessions and images, with progress and airtime estimates in the UI.';
+  String get wizardMessagingFeature3 => '传输语音会话和图像，并在界面中显示进度和空口时间估算。';
 
   @override
-  String get wizardConnectDeviceTitle => 'Connect device';
+  String get wizardConnectDeviceTitle => '连接设备';
 
   @override
   String get wizardConnectDeviceDescription =>
-      'Connect your MeshCore radio, choose a name, and apply a radio preset before continuing.';
+      '连接你的 MeshCore 电台，选择名称，并在继续前应用无线电预设。';
 
   @override
-  String get wizardSetupBadge => 'Setup';
+  String get wizardSetupBadge => '设置';
 
   @override
-  String get wizardOverviewBadge => 'Overview';
+  String get wizardOverviewBadge => '概览';
 
   @override
   String wizardConnectedToDevice(String deviceName) {
-    return 'Connected to $deviceName';
+    return '已连接到 $deviceName';
   }
 
   @override
-  String get wizardNoDeviceConnected => 'No device connected yet';
+  String get wizardNoDeviceConnected => '尚未连接设备';
 
   @override
-  String get wizardSkipForNow => 'Skip for now';
+  String get wizardSkipForNow => '暂时跳过';
 
   @override
-  String get wizardDeviceNameLabel => 'Device name';
+  String get wizardDeviceNameLabel => '设备名称';
 
   @override
-  String get wizardDeviceNameHelp =>
-      'This name is advertised to other MeshCore users.';
+  String get wizardDeviceNameHelp => '此名称会广播给其他 MeshCore 用户。';
 
   @override
-  String get wizardConfigRegionLabel => 'Config region';
+  String get wizardConfigRegionLabel => '配置区域';
 
   @override
   String get wizardConfigRegionHelp =>
-      'Uses the full official MeshCore preset list. Default is EU/UK (Narrow).';
+      '使用完整的官方 MeshCore 预设列表。默认值为 EU/UK (Narrow)。';
 
   @override
-  String get wizardPresetNote1 =>
-      'Make sure the selected preset matches your local radio regulations.';
+  String get wizardPresetNote1 => '请确认所选预设符合你所在地区的无线电规定。';
 
   @override
-  String get wizardPresetNote2 =>
-      'The list matches the official MeshCore config tool preset feed.';
+  String get wizardPresetNote2 => '该列表与 MeshCore 配置工具的官方预设源保持一致。';
 
   @override
-  String get wizardPresetNote3 =>
-      'EU/UK (Narrow) stays selected by default for onboarding.';
+  String get wizardPresetNote3 => '在引导设置中默认保持选中 EU/UK (Narrow)。';
 
   @override
-  String get wizardSaving => 'Saving...';
+  String get wizardSaving => '正在保存...';
 
   @override
-  String get wizardSaveAndContinue => 'Save and continue';
+  String get wizardSaveAndContinue => '保存并继续';
 
   @override
-  String get wizardEnterDeviceName => 'Enter a device name before continuing.';
+  String get wizardEnterDeviceName => '继续前请输入设备名称。';
 
   @override
   String wizardDeviceSetupSaved(String deviceName, String presetName) {
-    return 'Saved $deviceName with $presetName.';
+    return '已保存 $deviceName，配置为 $presetName。';
   }
 
   @override
-  String get wizardNetworkTitle => 'Contacts, Rooms, and Repeaters';
+  String get wizardNetworkTitle => '联系人、房间和中继器';
 
   @override
-  String get wizardNetworkDescription =>
-      'The Contacts tab organizes the network you discover and the routes you learn over time.';
+  String get wizardNetworkDescription => '联系人标签页会整理你发现的网络以及随着时间学习到的路由。';
 
   @override
-  String get wizardNetworkFeature1 =>
-      'Review team members, repeaters, rooms, channels, and pending adverts in one list.';
+  String get wizardNetworkFeature1 => '在一个列表中查看团队成员、中继器、房间、频道和待处理广播。';
 
   @override
-  String get wizardNetworkFeature2 =>
-      'Use smart ping, room login, learned paths, and route reset tools when connectivity gets messy.';
+  String get wizardNetworkFeature2 => '当连接变得混乱时，使用智能 ping、房间登录、已学习路径和路由重置工具。';
 
   @override
-  String get wizardNetworkFeature3 =>
-      'Create channels and manage network destinations without leaving the app.';
+  String get wizardNetworkFeature3 => '无需离开应用即可创建频道并管理网络目的地。';
 
   @override
-  String get wizardMapOpsTitle => 'Map, Trails, and Shared Geometry';
+  String get wizardMapOpsTitle => '地图、轨迹与共享几何';
 
   @override
-  String get wizardMapOpsDescription =>
-      'The app map is tied directly into messaging, tracking, and SAR overlays instead of being a separate viewer.';
+  String get wizardMapOpsDescription => '应用地图直接与消息、跟踪和 SAR 叠加层关联，而不是单独的查看器。';
 
   @override
-  String get wizardMapOpsFeature1 =>
-      'Track your own position, teammate locations, and movement trails on the map.';
+  String get wizardMapOpsFeature1 => '在地图上跟踪你自己的位置、队友位置和移动轨迹。';
 
   @override
-  String get wizardMapOpsFeature2 =>
-      'Open drawings from messages, preview them inline, and remove them from the map when needed.';
+  String get wizardMapOpsFeature2 => '打开消息中的绘图，内联预览，并在需要时将其从地图上移除。';
 
   @override
-  String get wizardMapOpsFeature3 =>
-      'Use repeater map views and shared overlays to understand network reach in the field.';
+  String get wizardMapOpsFeature3 => '使用中继器地图视图和共享叠加层来了解现场网络覆盖范围。';
 
   @override
-  String get wizardToolsTitle => 'Tools Beyond Messaging';
+  String get wizardToolsTitle => '消息之外的工具';
 
   @override
-  String get wizardToolsDescription =>
-      'There is more here than the four main tabs. The app also includes configuration, diagnostics, and optional sensor workflows.';
+  String get wizardToolsDescription => '这里不只有四个主标签页。应用还包含配置、诊断和可选的传感器工作流。';
 
   @override
-  String get wizardToolsFeature1 =>
-      'Open device config to change radio settings, telemetry, TX power, and companion details.';
+  String get wizardToolsFeature1 => '打开设备配置以更改无线电设置、遥测、TX 功率和配套设备详情。';
 
   @override
-  String get wizardToolsFeature2 =>
-      'Enable the Sensors tab when you want watched sensor dashboards and quick refresh actions.';
+  String get wizardToolsFeature2 => '当你需要受监控的传感器面板和快速刷新操作时，启用传感器标签页。';
 
   @override
-  String get wizardToolsFeature3 =>
-      'Use packet logs, spectrum scan, and developer diagnostics when troubleshooting the mesh.';
+  String get wizardToolsFeature3 => '在排查 mesh 网络问题时使用数据包日志、频谱扫描和开发者诊断。';
 
   @override
-  String get contactInSensors => 'In Sensors';
+  String get contactInSensors => '在传感器中';
 
   @override
-  String get contactAddToSensors => 'Add to Sensors';
+  String get contactAddToSensors => '添加到传感器';
 
   @override
-  String get contactSetPath => 'Set path';
+  String get contactSetPath => '设置路径';
 
   @override
   String contactAddedToSensors(String contactName) {
-    return '$contactName added to Sensors';
+    return '已将 $contactName 添加到传感器';
   }
 
   @override
   String contactFailedToClearRoute(String error) {
-    return 'Failed to clear route: $error';
+    return '清除路由失败：$error';
   }
 
   @override
-  String get contactRouteCleared => 'Route cleared';
+  String get contactRouteCleared => '路由已清除';
 
   @override
   String contactRouteSet(String route) {
-    return 'Route set: $route';
+    return '路由已设置：$route';
   }
 
   @override
   String contactFailedToSetRoute(String error) {
-    return 'Failed to set route: $error';
+    return '设置路由失败：$error';
   }
 }

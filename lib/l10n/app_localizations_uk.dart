@@ -1734,196 +1734,197 @@ class AppLocalizationsUk extends AppLocalizations {
   String get requestingVoice => 'Запит голосу';
 
   @override
-  String get device => 'device';
+  String get device => 'пристрій';
 
   @override
-  String get change => 'Change';
+  String get change => 'Змінити';
 
   @override
   String get wizardOverviewDescription =>
-      'This app combines MeshCore messaging, SAR field updates, mapping, and device tools in one place.';
+      'Ця програма поєднує повідомлення MeshCore, польові оновлення SAR, карти та інструменти пристрою в одному місці.';
 
   @override
   String get wizardOverviewFeature1 =>
-      'Send direct, room, and channel messages from the main Messages tab.';
+      'Надсилайте особисті повідомлення, повідомлення кімнат і повідомлення каналів з основної вкладки «Повідомлення».';
 
   @override
   String get wizardOverviewFeature2 =>
-      'Share SAR markers, map drawings, voice clips, and images over the mesh.';
+      'Діліться SAR-маркерами, малюнками на карті, голосовими кліпами та зображеннями через mesh-мережу.';
 
   @override
   String get wizardOverviewFeature3 =>
-      'Connect over BLE or TCP, then manage the companion radio from inside the app.';
+      'Підключайтеся через BLE або TCP, а потім керуйте супутнім радіопристроєм прямо з програми.';
 
   @override
-  String get wizardMessagingTitle => 'Messaging and Field Reports';
+  String get wizardMessagingTitle => 'Повідомлення та польові звіти';
 
   @override
   String get wizardMessagingDescription =>
-      'Messages are more than plain text here. The app already supports several operational payloads and transfer workflows.';
+      'Повідомлення тут це більше, ніж просто текст. Програма вже підтримує кілька типів операційних даних і сценаріїв передачі.';
 
   @override
   String get wizardMessagingFeature1 =>
-      'Send direct messages, room posts, and channel traffic from one composer.';
+      'Надсилайте особисті повідомлення, повідомлення кімнат і трафік каналів з одного редактора.';
 
   @override
   String get wizardMessagingFeature2 =>
-      'Create SAR updates and reusable SAR templates for common field reports.';
+      'Створюйте оновлення SAR і багаторазові шаблони SAR для типових польових звітів.';
 
   @override
   String get wizardMessagingFeature3 =>
-      'Transfer voice sessions and images, with progress and airtime estimates in the UI.';
+      'Передавайте голосові сесії та зображення з індикатором прогресу й оцінками ефірного часу в інтерфейсі.';
 
   @override
-  String get wizardConnectDeviceTitle => 'Connect device';
+  String get wizardConnectDeviceTitle => 'Підключити пристрій';
 
   @override
   String get wizardConnectDeviceDescription =>
-      'Connect your MeshCore radio, choose a name, and apply a radio preset before continuing.';
+      'Підключіть своє радіо MeshCore, виберіть назву та застосуйте радіопрофіль перед продовженням.';
 
   @override
-  String get wizardSetupBadge => 'Setup';
+  String get wizardSetupBadge => 'Налаштування';
 
   @override
-  String get wizardOverviewBadge => 'Overview';
+  String get wizardOverviewBadge => 'Огляд';
 
   @override
   String wizardConnectedToDevice(String deviceName) {
-    return 'Connected to $deviceName';
+    return 'Підключено до $deviceName';
   }
 
   @override
-  String get wizardNoDeviceConnected => 'No device connected yet';
+  String get wizardNoDeviceConnected => 'Ще немає підключеного пристрою';
 
   @override
-  String get wizardSkipForNow => 'Skip for now';
+  String get wizardSkipForNow => 'Пропустити поки що';
 
   @override
-  String get wizardDeviceNameLabel => 'Device name';
+  String get wizardDeviceNameLabel => 'Назва пристрою';
 
   @override
   String get wizardDeviceNameHelp =>
-      'This name is advertised to other MeshCore users.';
+      'Ця назва оголошується іншим користувачам MeshCore.';
 
   @override
-  String get wizardConfigRegionLabel => 'Config region';
+  String get wizardConfigRegionLabel => 'Регіон конфігурації';
 
   @override
   String get wizardConfigRegionHelp =>
-      'Uses the full official MeshCore preset list. Default is EU/UK (Narrow).';
+      'Використовується повний офіційний список профілів MeshCore. Типово вибрано EU/UK (Narrow).';
 
   @override
   String get wizardPresetNote1 =>
-      'Make sure the selected preset matches your local radio regulations.';
+      'Переконайтеся, що вибраний профіль відповідає місцевим радіоправилам.';
 
   @override
   String get wizardPresetNote2 =>
-      'The list matches the official MeshCore config tool preset feed.';
+      'Список відповідає офіційному потоку профілів інструмента MeshCore config.';
 
   @override
   String get wizardPresetNote3 =>
-      'EU/UK (Narrow) stays selected by default for onboarding.';
+      'Для онбордингу типовим залишається EU/UK (Narrow).';
 
   @override
-  String get wizardSaving => 'Saving...';
+  String get wizardSaving => 'Збереження...';
 
   @override
-  String get wizardSaveAndContinue => 'Save and continue';
+  String get wizardSaveAndContinue => 'Зберегти й продовжити';
 
   @override
-  String get wizardEnterDeviceName => 'Enter a device name before continuing.';
+  String get wizardEnterDeviceName =>
+      'Введіть назву пристрою перед продовженням.';
 
   @override
   String wizardDeviceSetupSaved(String deviceName, String presetName) {
-    return 'Saved $deviceName with $presetName.';
+    return 'Збережено $deviceName з профілем $presetName.';
   }
 
   @override
-  String get wizardNetworkTitle => 'Contacts, Rooms, and Repeaters';
+  String get wizardNetworkTitle => 'Контакти, кімнати та ретранслятори';
 
   @override
   String get wizardNetworkDescription =>
-      'The Contacts tab organizes the network you discover and the routes you learn over time.';
+      'Вкладка «Контакти» організовує мережу, яку ви виявляєте, і маршрути, які вивчаєте з часом.';
 
   @override
   String get wizardNetworkFeature1 =>
-      'Review team members, repeaters, rooms, channels, and pending adverts in one list.';
+      'Переглядайте членів команди, ретранслятори, кімнати, канали та оголошення в очікуванні в одному списку.';
 
   @override
   String get wizardNetworkFeature2 =>
-      'Use smart ping, room login, learned paths, and route reset tools when connectivity gets messy.';
+      'Використовуйте smart ping, вхід до кімнат, вивчені шляхи й інструменти скидання маршрутів, коли зв\'язок стає нестабільним.';
 
   @override
   String get wizardNetworkFeature3 =>
-      'Create channels and manage network destinations without leaving the app.';
+      'Створюйте канали та керуйте мережевими призначеннями, не виходячи з програми.';
 
   @override
-  String get wizardMapOpsTitle => 'Map, Trails, and Shared Geometry';
+  String get wizardMapOpsTitle => 'Мапа, сліди та спільна геометрія';
 
   @override
   String get wizardMapOpsDescription =>
-      'The app map is tied directly into messaging, tracking, and SAR overlays instead of being a separate viewer.';
+      'Мапа програми напряму пов\'язана з повідомленнями, відстеженням і SAR-накладками, а не є окремим переглядачем.';
 
   @override
   String get wizardMapOpsFeature1 =>
-      'Track your own position, teammate locations, and movement trails on the map.';
+      'Відстежуйте власну позицію, місця розташування команди та сліди руху на мапі.';
 
   @override
   String get wizardMapOpsFeature2 =>
-      'Open drawings from messages, preview them inline, and remove them from the map when needed.';
+      'Відкривайте малюнки з повідомлень, переглядайте їх в інтерфейсі та видаляйте з мапи за потреби.';
 
   @override
   String get wizardMapOpsFeature3 =>
-      'Use repeater map views and shared overlays to understand network reach in the field.';
+      'Використовуйте мапи ретрансляторів і спільні накладки, щоб розуміти покриття мережі в полі.';
 
   @override
-  String get wizardToolsTitle => 'Tools Beyond Messaging';
+  String get wizardToolsTitle => 'Інструменти поза повідомленнями';
 
   @override
   String get wizardToolsDescription =>
-      'There is more here than the four main tabs. The app also includes configuration, diagnostics, and optional sensor workflows.';
+      'Тут є більше, ніж чотири основні вкладки. Програма також включає налаштування, діагностику та необов\'язкові сценарії датчиків.';
 
   @override
   String get wizardToolsFeature1 =>
-      'Open device config to change radio settings, telemetry, TX power, and companion details.';
+      'Відкрийте налаштування пристрою, щоб змінити параметри радіо, телеметрію, потужність TX і дані супутнього пристрою.';
 
   @override
   String get wizardToolsFeature2 =>
-      'Enable the Sensors tab when you want watched sensor dashboards and quick refresh actions.';
+      'Увімкніть вкладку «Датчики», коли потрібні панелі моніторингу та швидкі дії оновлення.';
 
   @override
   String get wizardToolsFeature3 =>
-      'Use packet logs, spectrum scan, and developer diagnostics when troubleshooting the mesh.';
+      'Використовуйте журнали пакетів, сканування спектра та діагностику розробника для усунення проблем mesh-мережі.';
 
   @override
-  String get contactInSensors => 'In Sensors';
+  String get contactInSensors => 'У датчиках';
 
   @override
-  String get contactAddToSensors => 'Add to Sensors';
+  String get contactAddToSensors => 'Додати до датчиків';
 
   @override
-  String get contactSetPath => 'Set path';
+  String get contactSetPath => 'Задати шлях';
 
   @override
   String contactAddedToSensors(String contactName) {
-    return '$contactName added to Sensors';
+    return '$contactName додано до Датчиків';
   }
 
   @override
   String contactFailedToClearRoute(String error) {
-    return 'Failed to clear route: $error';
+    return 'Не вдалося очистити маршрут: $error';
   }
 
   @override
-  String get contactRouteCleared => 'Route cleared';
+  String get contactRouteCleared => 'Маршрут очищено';
 
   @override
   String contactRouteSet(String route) {
-    return 'Route set: $route';
+    return 'Маршрут задано: $route';
   }
 
   @override
   String contactFailedToSetRoute(String error) {
-    return 'Failed to set route: $error';
+    return 'Не вдалося задати маршрут: $error';
   }
 }
