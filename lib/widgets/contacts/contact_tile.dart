@@ -366,13 +366,18 @@ class ContactTile extends StatelessWidget {
                   contact.isChannel ? l10n.deleteChannel : l10n.deleteContact,
                   style: const TextStyle(color: Colors.red),
                 ),
-                onTap: () {
+                onTap: () async {
                   Navigator.pop(sheetContext);
-                  if (contact.isChannel) {
-                    _showDeleteChannelDialog(context, contact);
-                  } else {
-                    _showDeleteConfirmation(context, contact);
-                  }
+                  await Future<void>.delayed(Duration.zero);
+                  if (!context.mounted) return;
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!context.mounted) return;
+                    if (contact.isChannel) {
+                      _showDeleteChannelDialog(context, contact);
+                    } else {
+                      _showDeleteConfirmation(context, contact);
+                    }
+                  });
                 },
               ),
           ],

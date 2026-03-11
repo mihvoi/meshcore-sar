@@ -863,6 +863,11 @@ class ConnectionProvider with ChangeNotifier {
     return message.contains('not found');
   }
 
+  bool _isChannelRefreshTimeoutError(Object error) {
+    final message = error.toString().toLowerCase();
+    return message.contains('0x1f') && message.contains('timed out');
+  }
+
   Future<int?> findNextEmptyChannelSlot() async {
     if (!_activeService.isConnected) {
       throw Exception('Not connected to device');
@@ -873,6 +878,35 @@ class ConnectionProvider with ChangeNotifier {
 
       // maxChannels from device info, or default to 40
       final maxChannels = _deviceInfo.maxChannels ?? 40;
+      final maxCustomChannels = maxChannels > 0 ? maxChannels - 1 : 0;
+
+      // Match meshcore-open: trust the current synced channel list first and
+      // pick the first missing slot rather than probing every slot on-device.
+      if (getChannelInfo != null) {
+        final usedIndices = <int>{};
+        for (int i = 1; i < maxChannels; i++) {
+          final channel = getChannelInfo!(i);
+          if (channel == null) {
+            continue;
+          }
+
+          final channelName = (channel as dynamic).name as String?;
+          if (channelName != null && channelName.isNotEmpty) {
+            usedIndices.add(i);
+          }
+        }
+
+        for (int i = 1; i < maxChannels; i++) {
+          if (!usedIndices.contains(i)) {
+            debugPrint('   ✅ Found empty slot from synced channels: $i');
+            return i;
+          }
+        }
+
+        debugPrint(
+          '   ⚠️  Synced channels report all custom slots occupied ($maxCustomChannels total)',
+        );
+      }
 
       // Check each slot starting from 1 (skip 0 = public channel)
       for (int i = 1; i < maxChannels; i++) {
@@ -969,10 +1003,12 @@ class ConnectionProvider with ChangeNotifier {
         debugPrint('  Using existing slot: $slotIdx (overwrite mode)');
       } else {
         // Find next empty slot for new channel
+        final maxChannels = _deviceInfo.maxChannels ?? 40;
+        final maxCustomChannels = maxChannels > 0 ? maxChannels - 1 : 0;
         final emptySlot = await findNextEmptyChannelSlot();
         if (emptySlot == null) {
           throw Exception(
-            'All channel slots are in use (maximum 39 custom channels)',
+            'All channel slots are in use (maximum $maxCustomChannels custom channels)',
           );
         }
         slotIdx = emptySlot;
@@ -993,23 +1029,33 @@ class ConnectionProvider with ChangeNotifier {
         debugPrint('  Secret converted to 16-byte key using MD5');
       }
 
-      // Send CMD_SET_CHANNEL to radio
-      await _activeService.setChannel(
-        channelIdx: slotIdx,
-        channelName: channelName,
-        secret: secretBytes,
-      );
+      // Send CMD_SET_CHANNEL to radio. Some devices accept the write but do not
+      // reliably answer the follow-up CMD_GET_CHANNEL verification (0x1F).
+      try {
+        await _activeService.setChannel(
+          channelIdx: slotIdx,
+          channelName: channelName,
+          secret: secretBytes,
+        );
+      } catch (e) {
+        if (_isChannelRefreshTimeoutError(e)) {
+          debugPrint(
+            '⚠️ [Provider] CMD_GET_CHANNEL verification timed out after SET_CHANNEL; assuming the channel write succeeded',
+          );
+          onChannelInfoReceived?.call(
+            slotIdx,
+            channelName,
+            Uint8List.fromList(secretBytes),
+            null,
+          );
+        } else {
+          rethrow;
+        }
+      }
 
       debugPrint(
         '✅ [Provider] Channel ${existingSlot != null ? 'updated' : 'created'} successfully in slot $slotIdx',
       );
-
-      // Small delay to allow the response to propagate
-      await Future.delayed(const Duration(milliseconds: 100));
-
-      // Refresh channels to update UI
-      // The channel info will be received via onChannelInfoReceived callback
-      await _activeService.getChannel(slotIdx);
     } catch (e) {
       _error = 'Failed to create channel: $e';
       debugPrint('❌ [Provider] Channel creation failed: $e');
