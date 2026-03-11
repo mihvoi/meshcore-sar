@@ -35,16 +35,17 @@ class _AddChannelDialogState extends State<AddChannelDialog> {
   /// Validate channel name
   String? _validateName(String? value) {
     final l10n = AppLocalizations.of(context)!;
+    final trimmedValue = value?.trim() ?? '';
 
-    if (value == null || value.trim().isEmpty) {
+    if (trimmedValue.isEmpty) {
       return l10n.channelNameRequired;
     }
 
-    if (value.length > 31) {
+    if (trimmedValue.length > 31) {
       return l10n.channelNameTooLong;
     }
 
-    if (!_isAscii(value)) {
+    if (!_isAscii(trimmedValue)) {
       return l10n.invalidAsciiCharacters;
     }
 
@@ -105,7 +106,8 @@ class _AddChannelDialogState extends State<AddChannelDialog> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
-    final isHashChannel = _nameController.text.startsWith('#');
+    final normalizedName = _nameController.text.trimLeft();
+    final isHashChannel = normalizedName.startsWith('#');
 
     return AlertDialog(
       title: Text(l10n.addChannel),
@@ -163,8 +165,15 @@ class _AddChannelDialogState extends State<AddChannelDialog> {
                 enabled: !_isCreating,
                 maxLength: 31,
                 validator: _validateName,
-                textInputAction: TextInputAction.next,
+                textInputAction: isHashChannel
+                    ? TextInputAction.done
+                    : TextInputAction.next,
                 onChanged: (_) => setState(() {}), // Rebuild to update icon
+                onFieldSubmitted: (_) {
+                  if (isHashChannel) {
+                    _handleCreate();
+                  }
+                },
               ),
               // Channel Secret Field (only show for private channels)
               if (!isHashChannel) ...[
