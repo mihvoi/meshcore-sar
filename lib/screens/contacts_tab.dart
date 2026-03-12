@@ -511,33 +511,114 @@ class _ContactsTabState extends State<ContactsTab> {
     BuildContext context,
     ContactSection section,
   ) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final hasFilter = (_sectionFilters[section] ?? '').isNotEmpty;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: TextFormField(
-        key: ValueKey('${section.name}:${_sectionFilters[section] ?? ''}'),
-        initialValue: _sectionFilters[section] ?? '',
-        onChanged: (value) {
-          setState(() {
-            _sectionFilters[section] = value;
-          });
-        },
-        decoration: InputDecoration(
-          isDense: true,
-          prefixIcon: const Icon(Icons.search, size: 18),
-          hintText: 'Filter by name',
-          border: const OutlineInputBorder(),
-          suffixIcon: hasFilter
-              ? IconButton(
-                  icon: const Icon(Icons.close, size: 18),
-                  onPressed: () {
-                    setState(() {
-                      _sectionFilters[section] = '';
-                    });
-                  },
-                )
-              : null,
+      child: Material(
+        color: Colors.transparent,
+        child: Ink(
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: hasFilter
+                  ? colorScheme.primary.withValues(alpha: 0.38)
+                  : colorScheme.outline.withValues(alpha: 0.32),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: colorScheme.shadow.withValues(alpha: 0.025),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: SizedBox(
+              height: 42,
+              child: Row(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(left: 12, right: 8),
+                    child: Icon(
+                      Icons.search_rounded,
+                      size: 17,
+                      color: hasFilter
+                          ? colorScheme.primary
+                          : colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  Expanded(
+                    child: TextFormField(
+                      key: ValueKey(
+                        '${section.name}:${_sectionFilters[section] ?? ''}',
+                      ),
+                      initialValue: _sectionFilters[section] ?? '',
+                      onChanged: (value) {
+                        setState(() {
+                          _sectionFilters[section] = value;
+                        });
+                      },
+                      cursorColor: colorScheme.primary,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        height: 1.1,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'Search this section',
+                        hintStyle: theme.textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurfaceVariant.withValues(
+                            alpha: 0.85,
+                          ),
+                        ),
+                        filled: true,
+                        fillColor: Colors.transparent,
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        disabledBorder: InputBorder.none,
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 10,
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (hasFilter)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: Material(
+                        color: colorScheme.primary.withValues(alpha: 0.10),
+                        shape: const CircleBorder(),
+                        child: InkWell(
+                          customBorder: const CircleBorder(),
+                          onTap: () {
+                            setState(() {
+                              _sectionFilters[section] = '';
+                            });
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(6),
+                            child: Icon(
+                              Icons.close_rounded,
+                              size: 14,
+                              color: colorScheme.primary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    const SizedBox(width: 12),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );
