@@ -27,6 +27,7 @@ class MessageTraceSheet extends StatefulWidget {
 
 class _MessageTraceSheetState extends State<MessageTraceSheet> {
   late final Future<_TraceResult> _future;
+  _TraceResult? _traceOverride;
 
   @override
   void initState() {
@@ -53,7 +54,6 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
     final recipientPrefix = widget.message.recipientPublicKey != null
         ? _toPrefixHex(widget.message.recipientPublicKey)
         : _toPrefixHex(connectionProvider.deviceInfo.publicKey);
-
     final localNodes = _localNodesFromContacts(contactsProvider);
     final localPublicKeys = localNodes.map((node) => node.publicKey).toSet();
     var trace = _buildTraceResult(
@@ -115,7 +115,7 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
             );
           }
 
-          final trace = snapshot.data!;
+          final trace = _traceOverride ?? snapshot.data!;
           final routeEntries = _displayRouteEntries(trace);
           final concretePathNodes = routeEntries
               .where((entry) => entry.resolved.node != null)
@@ -275,6 +275,15 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
                         ),
                       ...routeEntries.asMap().entries.map(
                         (entry) => ListTile(
+                          onTap: entry.value.resolved.canCycle
+                              ? () => setState(() {
+                                  final baseTrace =
+                                      _traceOverride ?? snapshot.data!;
+                                  _traceOverride = baseTrace.cycleEntry(
+                                    entry.value.target,
+                                  );
+                                })
+                              : null,
                           leading: CircleAvatar(
                             radius: 14,
                             backgroundColor: entry.key == 0
@@ -293,8 +302,11 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
                           ),
                           title: Text(entry.value.label),
                           subtitle: Text(
-                            '${_routeRoleLabel(entry.key, routeEntries.length)}${entry.value.keyLabel == null ? '' : ' • ${entry.value.keyLabel}'}${entry.value.matchSummary == null ? '' : ' • ${entry.value.matchSummary}'}',
+                            '${_routeRoleLabel(entry.key, routeEntries.length)}${entry.value.keyLabel == null ? '' : ' • ${entry.value.keyLabel}'}${entry.value.matchSummary == null ? '' : ' • ${entry.value.matchSummary}'}${entry.value.resolved.cycleSummary == null ? '' : ' • ${entry.value.resolved.cycleSummary}'}',
                           ),
+                          trailing: entry.value.resolved.canCycle
+                              ? const Icon(Icons.sync_alt)
+                              : null,
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -360,10 +372,16 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
     if (pathNodes.isEmpty) {
       return [
         if (trace.sender.node != null)
-          _RouteDisplayEntry.fromResolved(trace.sender),
+          _RouteDisplayEntry.fromResolved(
+            trace.sender,
+            target: const _RouteEntryTarget.sender(),
+          ),
         if (trace.recipient.node != null &&
             trace.recipient.node!.publicKey != trace.sender.node?.publicKey)
-          _RouteDisplayEntry.fromResolved(trace.recipient),
+          _RouteDisplayEntry.fromResolved(
+            trace.recipient,
+            target: const _RouteEntryTarget.recipient(),
+          ),
       ];
     }
 
@@ -377,6 +395,7 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
               ? _prefixKeyLabel(entry.value.node!.publicKey)
               : hashHex,
           matchSummary: entry.value.matchSummary,
+          target: _RouteEntryTarget.pathNode(entry.key),
         );
       }).toList();
       final lastKey = pathNodes.last.publicKey;
@@ -384,7 +403,10 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
         ...entries,
         if (trace.recipient.node != null &&
             trace.recipient.node!.publicKey != lastKey)
-          _RouteDisplayEntry.fromResolved(trace.recipient),
+          _RouteDisplayEntry.fromResolved(
+            trace.recipient,
+            target: const _RouteEntryTarget.recipient(),
+          ),
       ];
     }
 
@@ -392,13 +414,26 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
     final lastKey = pathNodes.last.publicKey;
     return [
       if (trace.sender.node != null && trace.sender.node!.publicKey != firstKey)
-        _RouteDisplayEntry.fromResolved(trace.sender),
+        _RouteDisplayEntry.fromResolved(
+          trace.sender,
+          target: const _RouteEntryTarget.sender(),
+        ),
       ...trace.matchedPathNodes
-          .where((entry) => entry.node != null)
-          .map(_RouteDisplayEntry.fromResolved),
+          .asMap()
+          .entries
+          .where((entry) => entry.value.node != null)
+          .map(
+            (entry) => _RouteDisplayEntry.fromResolved(
+              entry.value,
+              target: _RouteEntryTarget.pathNode(entry.key),
+            ),
+          ),
       if (trace.recipient.node != null &&
           trace.recipient.node!.publicKey != lastKey)
-        _RouteDisplayEntry.fromResolved(trace.recipient),
+        _RouteDisplayEntry.fromResolved(
+          trace.recipient,
+          target: const _RouteEntryTarget.recipient(),
+        ),
     ];
   }
 
@@ -515,7 +550,7 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
       if (senderNode.node != null) senderNode,
       ...inferred.map(
         (node) => ResolvedTraceNode(
-          node: node,
+          candidates: [node],
           matchCount: 1,
           usedOnlineFallback: false,
         ),
@@ -688,6 +723,37 @@ class _TraceResult {
     required this.pathHashes,
     required this.matchedPathNodes,
   });
+
+  _TraceResult cycleEntry(_RouteEntryTarget target) {
+    switch (target.kind) {
+      case _RouteEntryKind.sender:
+        return _TraceResult(
+          mode: mode,
+          sender: sender.cycle(),
+          recipient: recipient,
+          pathHashes: pathHashes,
+          matchedPathNodes: matchedPathNodes,
+        );
+      case _RouteEntryKind.recipient:
+        return _TraceResult(
+          mode: mode,
+          sender: sender,
+          recipient: recipient.cycle(),
+          pathHashes: pathHashes,
+          matchedPathNodes: matchedPathNodes,
+        );
+      case _RouteEntryKind.pathNode:
+        final updated = matchedPathNodes.toList();
+        updated[target.index] = updated[target.index].cycle();
+        return _TraceResult(
+          mode: mode,
+          sender: sender,
+          recipient: recipient,
+          pathHashes: pathHashes,
+          matchedPathNodes: updated,
+        );
+    }
+  }
 }
 
 class _RouteDisplayEntry {
@@ -695,17 +761,22 @@ class _RouteDisplayEntry {
   final String label;
   final String? keyLabel;
   final String? matchSummary;
+  final _RouteEntryTarget target;
 
   const _RouteDisplayEntry({
     required this.resolved,
     required this.label,
     required this.keyLabel,
     required this.matchSummary,
+    required this.target,
   });
 
   MeshMapNode? get node => resolved.node;
 
-  factory _RouteDisplayEntry.fromResolved(ResolvedTraceNode resolved) {
+  factory _RouteDisplayEntry.fromResolved(
+    ResolvedTraceNode resolved, {
+    required _RouteEntryTarget target,
+  }) {
     final node = resolved.node!;
     return _RouteDisplayEntry(
       resolved: resolved,
@@ -715,6 +786,21 @@ class _RouteDisplayEntry {
         math.min(12, node.publicKey.length),
       ),
       matchSummary: resolved.matchSummary,
+      target: target,
     );
   }
+}
+
+enum _RouteEntryKind { sender, recipient, pathNode }
+
+class _RouteEntryTarget {
+  final _RouteEntryKind kind;
+  final int index;
+
+  const _RouteEntryTarget._(this.kind, [this.index = 0]);
+
+  const _RouteEntryTarget.sender() : this._(_RouteEntryKind.sender);
+  const _RouteEntryTarget.recipient() : this._(_RouteEntryKind.recipient);
+  const _RouteEntryTarget.pathNode(int index)
+    : this._(_RouteEntryKind.pathNode, index);
 }

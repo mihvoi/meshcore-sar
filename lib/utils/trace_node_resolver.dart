@@ -3,23 +3,41 @@ import 'package:latlong2/latlong.dart';
 import '../services/mesh_map_nodes_service.dart';
 
 class ResolvedTraceNode {
-  final MeshMapNode? node;
+  final List<MeshMapNode> candidates;
   final int matchCount;
   final bool usedOnlineFallback;
+  final int selectedIndex;
 
   const ResolvedTraceNode({
-    required this.node,
+    required this.candidates,
     required this.matchCount,
     required this.usedOnlineFallback,
+    this.selectedIndex = 0,
   });
 
+  MeshMapNode? get node =>
+      candidates.isEmpty ? null : candidates[selectedIndex];
   bool get hasMatch => node != null;
   bool get isAmbiguous => matchCount > 1;
+  bool get canCycle => candidates.length > 1;
 
   String? get matchSummary {
     if (matchCount <= 1) return null;
     final source = usedOnlineFallback ? 'online' : 'local';
     return '$matchCount $source matches';
+  }
+
+  String? get cycleSummary =>
+      canCycle ? 'tap to cycle ${selectedIndex + 1}/$matchCount' : null;
+
+  ResolvedTraceNode cycle() {
+    if (!canCycle) return this;
+    return ResolvedTraceNode(
+      candidates: candidates,
+      matchCount: matchCount,
+      usedOnlineFallback: usedOnlineFallback,
+      selectedIndex: (selectedIndex + 1) % candidates.length,
+    );
   }
 }
 
@@ -38,7 +56,7 @@ class TraceNodeResolver {
   }) {
     if (prefixHex == null || prefixHex.isEmpty) {
       return const ResolvedTraceNode(
-        node: null,
+        candidates: <MeshMapNode>[],
         matchCount: 0,
         usedOnlineFallback: false,
       );
@@ -49,7 +67,7 @@ class TraceNodeResolver {
         .toList();
     if (allMatches.isEmpty) {
       return const ResolvedTraceNode(
-        node: null,
+        candidates: <MeshMapNode>[],
         matchCount: 0,
         usedOnlineFallback: false,
       );
@@ -84,7 +102,7 @@ class TraceNodeResolver {
     });
 
     return ResolvedTraceNode(
-      node: pool.first,
+      candidates: List<MeshMapNode>.unmodifiable(pool),
       matchCount: pool.length,
       usedOnlineFallback: usedOnlineFallback,
     );

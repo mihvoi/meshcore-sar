@@ -61,6 +61,33 @@ void main() {
     expect(resolved.usedOnlineFallback, isTrue);
     expect(resolved.matchCount, 1);
   });
+
+  test('cycles through ambiguous local prefix matches', () {
+    final first = _node(
+      name: 'First Match',
+      publicKey: 'cc1100',
+      latitude: 46.08,
+      longitude: 14.52,
+    );
+    final second = _node(
+      name: 'Second Match',
+      publicKey: 'cc11ff',
+      latitude: 46.09,
+      longitude: 14.53,
+    );
+
+    final resolved = TraceNodeResolver.resolveBest(
+      nodes: [second, first],
+      localPublicKeys: {first.publicKey, second.publicKey},
+      prefixHex: 'cc11',
+    );
+
+    expect(resolved.matchCount, 2);
+    expect(resolved.canCycle, isTrue);
+    expect(resolved.node?.name, 'Second Match');
+    expect(resolved.cycle().node?.name, 'First Match');
+    expect(resolved.cycle().cycle().node?.name, 'Second Match');
+  });
 }
 
 MeshMapNode _node({

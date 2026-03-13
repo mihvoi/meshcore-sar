@@ -23,6 +23,7 @@ class ContactTraceSheet extends StatefulWidget {
 
 class _ContactTraceSheetState extends State<ContactTraceSheet> {
   late final Future<_ContactTraceResult> _future;
+  _ContactTraceResult? _traceOverride;
 
   @override
   void initState() {
@@ -89,7 +90,7 @@ class _ContactTraceSheetState extends State<ContactTraceSheet> {
             );
           }
 
-          final trace = snapshot.data!;
+          final trace = _traceOverride ?? snapshot.data!;
           final routeEntries = _displayRouteEntries(trace);
           final concreteNodes = routeEntries
               .where((entry) => entry.resolved.node != null)
@@ -99,7 +100,9 @@ class _ContactTraceSheetState extends State<ContactTraceSheet> {
               .map((node) => LatLng(node.latitude, node.longitude))
               .toList();
           final hasMapPath = mapPoints.length >= 2;
-          final relayNodes = trace.matchedRelayNodes.whereType<MeshMapNode>();
+          final relayNodes = trace.matchedRelayNodes
+              .map((entry) => entry.node)
+              .whereType<MeshMapNode>();
 
           return SizedBox(
             height: MediaQuery.of(context).size.height * 0.75,
@@ -249,6 +252,15 @@ class _ContactTraceSheetState extends State<ContactTraceSheet> {
                         ),
                       ...routeEntries.asMap().entries.map(
                         (entry) => ListTile(
+                          onTap: entry.value.resolved.canCycle
+                              ? () => setState(() {
+                                  final baseTrace =
+                                      _traceOverride ?? snapshot.data!;
+                                  _traceOverride = baseTrace.cycleEntry(
+                                    entry.value.target,
+                                  );
+                                })
+                              : null,
                           leading: CircleAvatar(
                             radius: 14,
                             backgroundColor: entry.key == 0
@@ -267,8 +279,11 @@ class _ContactTraceSheetState extends State<ContactTraceSheet> {
                           ),
                           title: Text(entry.value.label),
                           subtitle: Text(
-                            '${_routeRoleLabel(entry.key, routeEntries.length)}${entry.value.keyLabel == null ? '' : ' • ${entry.value.keyLabel}'}${entry.value.matchSummary == null ? '' : ' • ${entry.value.matchSummary}'}',
+                            '${_routeRoleLabel(entry.key, routeEntries.length)}${entry.value.keyLabel == null ? '' : ' • ${entry.value.keyLabel}'}${entry.value.matchSummary == null ? '' : ' • ${entry.value.matchSummary}'}${entry.value.resolved.cycleSummary == null ? '' : ' • ${entry.value.resolved.cycleSummary}'}',
                           ),
+                          trailing: entry.value.resolved.canCycle
+                              ? const Icon(Icons.sync_alt)
+                              : null,
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -313,7 +328,12 @@ class _ContactTraceSheetState extends State<ContactTraceSheet> {
   List<_RouteDisplayEntry> _displayRouteEntries(_ContactTraceResult trace) {
     final entries = <_RouteDisplayEntry>[];
     if (trace.sender.node != null) {
-      entries.add(_RouteDisplayEntry.fromResolved(trace.sender));
+      entries.add(
+        _RouteDisplayEntry.fromResolved(
+          trace.sender,
+          target: const _RouteEntryTarget.sender(),
+        ),
+      );
     }
     entries.addAll(
       trace.matchedRelayNodes.asMap().entries.map((entry) {
@@ -325,11 +345,17 @@ class _ContactTraceSheetState extends State<ContactTraceSheet> {
           label: node?.name ?? 'Unknown',
           keyLabel: node != null ? _prefixKeyLabel(node.publicKey) : hashHex,
           matchSummary: resolved.matchSummary,
+          target: _RouteEntryTarget.relayNode(entry.key),
         );
       }),
     );
     if (trace.recipient.node != null) {
-      entries.add(_RouteDisplayEntry.fromResolved(trace.recipient));
+      entries.add(
+        _RouteDisplayEntry.fromResolved(
+          trace.recipient,
+          target: const _RouteEntryTarget.recipient(),
+        ),
+      );
     }
     return entries;
   }
@@ -493,6 +519,34 @@ class _ContactTraceResult {
     required this.routeHashes,
     required this.matchedRelayNodes,
   });
+
+  _ContactTraceResult cycleEntry(_RouteEntryTarget target) {
+    switch (target.kind) {
+      case _RouteEntryKind.sender:
+        return _ContactTraceResult(
+          sender: sender.cycle(),
+          recipient: recipient,
+          routeHashes: routeHashes,
+          matchedRelayNodes: matchedRelayNodes,
+        );
+      case _RouteEntryKind.recipient:
+        return _ContactTraceResult(
+          sender: sender,
+          recipient: recipient.cycle(),
+          routeHashes: routeHashes,
+          matchedRelayNodes: matchedRelayNodes,
+        );
+      case _RouteEntryKind.relayNode:
+        final updated = matchedRelayNodes.toList();
+        updated[target.index] = updated[target.index].cycle();
+        return _ContactTraceResult(
+          sender: sender,
+          recipient: recipient,
+          routeHashes: routeHashes,
+          matchedRelayNodes: updated,
+        );
+    }
+  }
 }
 
 class _RouteDisplayEntry {
@@ -500,17 +554,22 @@ class _RouteDisplayEntry {
   final String label;
   final String? keyLabel;
   final String? matchSummary;
+  final _RouteEntryTarget target;
 
   const _RouteDisplayEntry({
     required this.resolved,
     required this.label,
     required this.keyLabel,
     required this.matchSummary,
+    required this.target,
   });
 
   MeshMapNode? get node => resolved.node;
 
-  factory _RouteDisplayEntry.fromResolved(ResolvedTraceNode resolved) {
+  factory _RouteDisplayEntry.fromResolved(
+    ResolvedTraceNode resolved, {
+    required _RouteEntryTarget target,
+  }) {
     final node = resolved.node!;
     return _RouteDisplayEntry(
       resolved: resolved,
@@ -520,6 +579,21 @@ class _RouteDisplayEntry {
         math.min(12, node.publicKey.length),
       ),
       matchSummary: resolved.matchSummary,
+      target: target,
     );
   }
+}
+
+enum _RouteEntryKind { sender, recipient, relayNode }
+
+class _RouteEntryTarget {
+  final _RouteEntryKind kind;
+  final int index;
+
+  const _RouteEntryTarget._(this.kind, [this.index = 0]);
+
+  const _RouteEntryTarget.sender() : this._(_RouteEntryKind.sender);
+  const _RouteEntryTarget.recipient() : this._(_RouteEntryKind.recipient);
+  const _RouteEntryTarget.relayNode(int index)
+    : this._(_RouteEntryKind.relayNode, index);
 }
