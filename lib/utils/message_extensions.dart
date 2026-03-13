@@ -9,14 +9,16 @@ extension MessageLocalization on Message {
   /// Get localized delivery status text
   String getLocalizedDeliveryStatus(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final routeMetadata = context
-        .read<MessagesProvider>()
-        .getMessageRouteMetadata(id);
+    final messagesProvider = context.read<MessagesProvider>();
+    final routeMetadata = messagesProvider.getMessageRouteMetadata(id);
 
     // For channel messages, show echo count instead of delivery status
     if (isChannelMessage && deliveryStatus == MessageDeliveryStatus.sent) {
       final latestMeta = _formatEchoMeta(context);
       if (echoCount == 0) {
+        if (messagesProvider.hasChannelSendWarning(id)) {
+          return 'Broadcast may have failed';
+        }
         return l10n.broadcast; // "Broadcast (no echoes yet)"
       } else if (echoCount == 1) {
         return latestMeta == null ? '1 node' : '1 node • $latestMeta';

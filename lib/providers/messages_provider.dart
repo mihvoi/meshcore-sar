@@ -20,6 +20,8 @@ import 'helpers/message_retry_manager.dart';
 
 /// Messages Provider - manages message history and SAR markers
 class MessagesProvider with ChangeNotifier {
+  static const Duration _channelEchoWarningDelay = Duration(seconds: 12);
+
   final List<Message> _messages = [];
   final Map<String, SarMarker> _sarMarkers = {};
   final Set<String> _removedSarMarkerIds = <String>{};
@@ -38,6 +40,8 @@ class MessagesProvider with ChangeNotifier {
   // Track timeout timers for pending messages
   // Key: message ID (not ACK tag, since multiple messages can share same ACK)
   final Map<String, Timer> _timeoutTimers = {};
+  final Map<String, Timer> _channelEchoWarningTimers = {};
+  final Set<String> _channelEchoWarningMessageIds = <String>{};
 
   // Recently completed ACKs are kept briefly to ignore duplicate confirms.
   final Map<int, DateTime> _completedAckHistory = {};
@@ -155,6 +159,9 @@ class MessagesProvider with ChangeNotifier {
 
   MessageRouteMetadata? getMessageRouteMetadata(String messageId) =>
       _messageRouteMetadata[messageId];
+
+  bool hasChannelSendWarning(String messageId) =>
+      _channelEchoWarningMessageIds.contains(messageId);
 
   void updateMessageRouteSelection(
     String messageId,
@@ -565,6 +572,11 @@ class MessagesProvider with ChangeNotifier {
         '   Text: ${finalMessage.text.substring(0, finalMessage.text.length > 50 ? 50 : finalMessage.text.length)}...',
       );
       final existingId = _messages[duplicateIndex].id;
+      if (finalMessage.isChannelMessage &&
+          !finalMessage.isSentMessage &&
+          _messages[duplicateIndex].isSentMessage) {
+        _clearChannelSendWarning(existingId);
+      }
       if (contactLocationSnapshot != null) {
         _messageContactLocations[existingId] = contactLocationSnapshot;
       }
@@ -785,6 +797,35 @@ class MessagesProvider with ChangeNotifier {
       message.senderPublicKeyPrefix,
     );
     return _normalizeSenderName(resolved);
+  }
+
+  void _scheduleChannelEchoWarning(String messageId) {
+    _channelEchoWarningTimers[messageId]?.cancel();
+    _channelEchoWarningMessageIds.remove(messageId);
+    _channelEchoWarningTimers[messageId] = Timer(_channelEchoWarningDelay, () {
+      final index = _messages.indexWhere((m) => m.id == messageId);
+      _channelEchoWarningTimers.remove(messageId);
+      if (index == -1) {
+        return;
+      }
+
+      final message = _messages[index];
+      if (!message.isChannelMessage ||
+          !message.isSentMessage ||
+          message.deliveryStatus != MessageDeliveryStatus.sent ||
+          message.echoCount > 0) {
+        return;
+      }
+
+      _channelEchoWarningMessageIds.add(messageId);
+      notifyListeners();
+    });
+  }
+
+  void _clearChannelSendWarning(String messageId) {
+    _channelEchoWarningTimers[messageId]?.cancel();
+    _channelEchoWarningTimers.remove(messageId);
+    _channelEchoWarningMessageIds.remove(messageId);
   }
 
   /// Trigger urgent notification for SAR marker
@@ -1167,6 +1208,7 @@ class MessagesProvider with ChangeNotifier {
       // Cancel timeout timer if it exists
       _timeoutTimers[message.id]?.cancel();
       _timeoutTimers.remove(message.id);
+      _clearChannelSendWarning(message.id);
       if (message.expectedAckTag != null) {
         _pendingSentMessages.remove(message.expectedAckTag);
       }
@@ -1203,6 +1245,11 @@ class MessagesProvider with ChangeNotifier {
 
   /// Clear all messages
   void clearMessages() {
+    for (final timer in _channelEchoWarningTimers.values) {
+      timer.cancel();
+    }
+    _channelEchoWarningTimers.clear();
+    _channelEchoWarningMessageIds.clear();
     _messages.clear();
     _sarMarkers.clear();
     _removedSarMarkerIds.clear();
@@ -1225,6 +1272,11 @@ class MessagesProvider with ChangeNotifier {
 
   /// Clear all data
   void clearAll() {
+    for (final timer in _channelEchoWarningTimers.values) {
+      timer.cancel();
+    }
+    _channelEchoWarningTimers.clear();
+    _channelEchoWarningMessageIds.clear();
     _messages.clear();
     _sarMarkers.clear();
     _removedSarMarkerIds.clear();
@@ -1639,6 +1691,9 @@ class MessagesProvider with ChangeNotifier {
         debugPrint(
           '  ℹ️ Channel message (no ACK tracking) - marked as sent immediately',
         );
+        if (message.isChannelMessage) {
+          _scheduleChannelEchoWarning(messageId);
+        }
       }
 
       debugPrint('  Calling notifyListeners() to update UI with "sent" status');
@@ -1687,6 +1742,7 @@ class MessagesProvider with ChangeNotifier {
         lastEchoAt: DateTime.now(),
       );
       _messages[index] = updatedMessage;
+      _clearChannelSendWarning(messageId);
 
       debugPrint('  Updated echo count to: $echoCount');
       _persistMessages();
@@ -2062,6 +2118,7 @@ class MessagesProvider with ChangeNotifier {
     }
 
     final message = _messages[index];
+    _clearChannelSendWarning(messageId);
     final contact = _messageContactMap[messageId];
 
     debugPrint('❌ [MessagesProvider] Message $messageId timeout/failed');
@@ -2101,6 +2158,7 @@ class MessagesProvider with ChangeNotifier {
         deliveryStatus: MessageDeliveryStatus.sending,
         lastRetryAt: DateTime.now(),
       );
+      _clearChannelSendWarning(messageId);
 
       // Cancel old timeout timer
       _timeoutTimers[message.id]?.cancel();
@@ -2166,6 +2224,7 @@ class MessagesProvider with ChangeNotifier {
         deliveryStatus: MessageDeliveryStatus.sending,
         lastRetryAt: DateTime.now(),
       );
+      _clearChannelSendWarning(messageId);
 
       _timeoutTimers[message.id]?.cancel();
       _timeoutTimers.remove(message.id);
@@ -2292,6 +2351,7 @@ class MessagesProvider with ChangeNotifier {
       isVoice: message.isVoice,
       voiceId: message.voiceId,
     );
+    _clearChannelSendWarning(messageId);
 
     _persistMessages();
     notifyListeners();
@@ -2355,6 +2415,11 @@ class MessagesProvider with ChangeNotifier {
       timer.cancel();
     }
     _timeoutTimers.clear();
+    for (final timer in _channelEchoWarningTimers.values) {
+      timer.cancel();
+    }
+    _channelEchoWarningTimers.clear();
+    _channelEchoWarningMessageIds.clear();
     _completedAckHistory.clear();
     _messageAckHistory.clear();
     _ackHistoryLookup.clear();

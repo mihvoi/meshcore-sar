@@ -176,6 +176,72 @@ void main() {
       );
     });
 
+    test('channel warning appears when no echo arrives in time', () {
+      fakeAsync((async) {
+        final provider = MessagesProvider();
+        provider.addSentMessage(
+          _buildSentChannelMessage(id: 'c-warn', senderTimestamp: 1700000000),
+        );
+
+        provider.markMessageSent('c-warn', 0, 0);
+        expect(provider.hasChannelSendWarning('c-warn'), isFalse);
+
+        async.elapse(const Duration(seconds: 12));
+        async.flushMicrotasks();
+
+        expect(provider.hasChannelSendWarning('c-warn'), isTrue);
+      });
+    });
+
+    test('channel warning clears when echo arrives before timeout', () {
+      fakeAsync((async) {
+        final provider = MessagesProvider();
+        provider.addSentMessage(
+          _buildSentChannelMessage(
+            id: 'c-warn-echo',
+            senderTimestamp: 1700000000,
+          ),
+        );
+
+        provider.markMessageSent('c-warn-echo', 0, 0);
+        async.elapse(const Duration(seconds: 6));
+        provider.handleMessageEcho('c-warn-echo', 1, 4, -90);
+        async.elapse(const Duration(seconds: 6));
+        async.flushMicrotasks();
+
+        expect(provider.hasChannelSendWarning('c-warn-echo'), isFalse);
+      });
+    });
+
+    test('channel warning clears when replay is deduped into sent bubble', () {
+      fakeAsync((async) {
+        final provider = MessagesProvider();
+        provider.resolveContactNameCallback = (_) => 'dz0ny (SI)';
+        provider.addSentMessage(
+          _buildSentChannelMessage(
+            id: 'c-warn-replay',
+            senderTimestamp: 1700000100,
+          ),
+        );
+
+        provider.markMessageSent('c-warn-replay', 0, 0);
+        async.elapse(const Duration(seconds: 12));
+        async.flushMicrotasks();
+        expect(provider.hasChannelSendWarning('c-warn-replay'), isTrue);
+
+        provider.addMessage(
+          _buildReceivedChannelReplay(
+            id: 'c-warn-replay-incoming',
+            senderTimestamp: 1700000101,
+            senderName: 'dz0ny (SI)',
+          ),
+        );
+
+        expect(provider.hasChannelSendWarning('c-warn-replay'), isFalse);
+        expect(provider.messages, hasLength(1));
+      });
+    });
+
     test('channel replay is deduped for self sender within repeat window', () {
       final provider = MessagesProvider();
       provider.resolveContactNameCallback = (_) => 'dz0ny (SI)';
