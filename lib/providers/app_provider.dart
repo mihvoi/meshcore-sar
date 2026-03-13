@@ -824,6 +824,11 @@ class AppProvider with ChangeNotifier {
               channelName,
               secret,
             );
+            final isEmptyChannelInfo = AppProvider.isDeletedChannelInfo(
+              channelIdx,
+              channelName,
+              secret,
+            );
             final contactChannelName = AppProvider.channelContactName(
               channelIdx,
               channelName,
@@ -855,6 +860,13 @@ class AppProvider with ChangeNotifier {
               contactsProvider.removeContact(publicKeyHex);
               debugPrint('   ✅ Removed from ContactsProvider');
 
+              return;
+            }
+
+            if (isEmptyChannelInfo) {
+              debugPrint(
+                '   ⏭️  Ignoring empty channel slot $channelIdx during sync',
+              );
               return;
             }
 
@@ -1856,22 +1868,6 @@ class AppProvider with ChangeNotifier {
       );
       await connectionProvider.syncChannels(maxChannels: channelsToSync);
       debugPrint('✅ [AppProvider] Channel sync complete');
-
-      // Configure the default public channel (channel 0)
-      // This must be done before sending any channel messages
-      // Note: Some firmware versions may have this pre-configured
-      debugPrint(
-        '📻 [AppProvider] Configuring default public channel (channel 0)...',
-      );
-      try {
-        await connectionProvider.configureDefaultPublicChannel();
-        debugPrint('✅ [AppProvider] Public channel configured successfully');
-      } catch (e) {
-        debugPrint(
-          '⚠️ [AppProvider] Public channel configuration failed (may already be configured): $e',
-        );
-        // Continue anyway - channel might already be configured in firmware
-      }
 
       // Automatically login to all saved rooms
       await _autoLoginToRooms();
