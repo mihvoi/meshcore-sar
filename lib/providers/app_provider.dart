@@ -836,6 +836,9 @@ class AppProvider with ChangeNotifier {
                 '   🗑️  Channel $channelIdx deleted - removing from providers',
               );
 
+              messagesProvider.clearChannelMessages(channelIdx);
+              debugPrint('   ✅ Cleared channel messages');
+
               // Remove from ChannelsProvider
               channelsProvider.removeChannel(channelIdx);
               debugPrint('   ✅ Removed from ChannelsProvider');

@@ -1115,6 +1115,10 @@ class ConnectionProvider with ChangeNotifier {
         '✅ [Provider] Channel deleted successfully from slot $channelIdx',
       );
 
+      // Soft-reset local UI state immediately, matching meshcore-open's
+      // behavior, then reconcile with an on-device refresh below.
+      onChannelInfoReceived?.call(channelIdx, '', Uint8List(16), null);
+
       // Small delay to allow the response to propagate
       await Future.delayed(const Duration(milliseconds: 100));
 

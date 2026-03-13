@@ -916,6 +916,50 @@ class MessagesProvider with ChangeNotifier {
         .toList();
   }
 
+  /// Remove all messages associated with a specific channel.
+  void clearChannelMessages(int channelIdx) {
+    final messageIdsToRemove = _messages
+        .where((message) => message.isChannelMessage && message.channelIdx == channelIdx)
+        .map((message) => message.id)
+        .toList();
+
+    if (messageIdsToRemove.isEmpty) {
+      return;
+    }
+
+    _messages.removeWhere(
+      (message) => message.isChannelMessage && message.channelIdx == channelIdx,
+    );
+
+    for (final messageId in messageIdsToRemove) {
+      _timeoutTimers[messageId]?.cancel();
+      _timeoutTimers.remove(messageId);
+      _messageContactMap.remove(messageId);
+      _groupedMessageMapping.remove(messageId);
+      _messageContactLocations.remove(messageId);
+      _messageReceptionDetails.remove(messageId);
+      _messageTransferDetails.remove(messageId);
+      _messageRouteMetadata.remove(messageId);
+    }
+
+    _pendingSentMessages.removeWhere(
+      (_, message) => message.isChannelMessage && message.channelIdx == channelIdx,
+    );
+    _messageAckHistory.removeWhere(
+      (messageId, _) => messageIdsToRemove.contains(messageId),
+    );
+    _ackHistoryLookup.removeWhere(
+      (_, value) => messageIdsToRemove.contains(value.$1),
+    );
+
+    debugPrint(
+      '🗑️ [MessagesProvider] Cleared ${messageIdsToRemove.length} message(s) for channel $channelIdx',
+    );
+
+    _persistMessages();
+    notifyListeners();
+  }
+
   /// Get recent messages (last N messages)
   List<Message> getRecentMessages({int count = 50}) {
     final sorted = List<Message>.from(_messages)
