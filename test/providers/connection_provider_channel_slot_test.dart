@@ -65,5 +65,22 @@ void main() {
         isNull,
       );
     });
+
+    test('private channels with same name do not block slot selection', () {
+      expect(
+        ConnectionProvider.isDuplicateChannelName(
+          requestedName: 'RPT_admins',
+          existingName: 'RPT_admins',
+        ),
+        isFalse,
+      );
+      expect(
+        ConnectionProvider.firstAvailableChannelSlot(
+          occupiedIndices: {1, 2, 3},
+          maxChannels: 6,
+        ),
+        4,
+      );
+    });
   });
 }

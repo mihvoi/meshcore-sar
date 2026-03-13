@@ -1043,8 +1043,6 @@ class ConnectionProvider with ChangeNotifier {
   }) async {
     final maxChannels = _deviceInfo.maxChannels ?? 40;
 
-    await syncChannels(maxChannels: maxChannels);
-
     if (getChannelInfo != null) {
       for (int i = 1; i < maxChannels; i++) {
         final channel = getChannelInfo!(i);
@@ -1103,8 +1101,6 @@ class ConnectionProvider with ChangeNotifier {
         rethrow;
       }
     }
-
-    await syncChannels(maxChannels: maxChannels);
 
     debugPrint('✅ [Provider] Channel created successfully in slot $slotIdx');
   }
