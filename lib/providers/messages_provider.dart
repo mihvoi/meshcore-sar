@@ -246,6 +246,17 @@ class MessagesProvider with ChangeNotifier {
       )
       .length;
 
+  int getUnreadCountForChannel(int channelIdx) => _messages
+      .where(
+        (message) =>
+            message.isChannelMessage &&
+            (message.channelIdx ?? 0) == channelIdx &&
+            !message.isRead &&
+            !message.isSentMessage &&
+            !message.isSystemMessage,
+      )
+      .length;
+
   bool _isMessageForDestination(Message message, Contact contact) {
     if (message.isSystemMessage) return false;
 

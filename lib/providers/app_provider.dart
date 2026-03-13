@@ -1849,11 +1849,11 @@ class AppProvider with ChangeNotifier {
       // Small delay to ensure contacts are fully loaded
       await Future.delayed(const Duration(milliseconds: 500));
 
-      // Sync channels to get channel names
-      // In simple mode: only sync first 5 channels for faster startup
-      // In normal mode: sync all channels (up to device max)
-      const channelsToSync = 5;
-      debugPrint('📻 [AppProvider] Syncing channels (simple mode: max 5)...');
+      // Sync all channels so slot assignment and channel state mirror the device.
+      final channelsToSync = connectionProvider.deviceInfo.maxChannels;
+      debugPrint(
+        '📻 [AppProvider] Syncing channels (max: ${channelsToSync ?? 40})...',
+      );
       await connectionProvider.syncChannels(maxChannels: channelsToSync);
       debugPrint('✅ [AppProvider] Channel sync complete');
 
@@ -2918,9 +2918,10 @@ class AppProvider with ChangeNotifier {
       // Sync contacts
       await connectionProvider.getContacts();
 
-      // Sync channels (respect simple mode settings)
-      const channelsToSync = 5;
-      await connectionProvider.syncChannels(maxChannels: channelsToSync);
+      // Sync all channels so refresh reflects the full device state.
+      await connectionProvider.syncChannels(
+        maxChannels: connectionProvider.deviceInfo.maxChannels,
+      );
 
       // Messages are automatically synced via PUSH_CODE_MSG_WAITING events
       notifyListeners();

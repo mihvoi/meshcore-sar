@@ -853,6 +853,19 @@ class ConnectionProvider with ChangeNotifier {
     return requestedName.startsWith('#') && existingName == requestedName;
   }
 
+  @visibleForTesting
+  static int? firstAvailableChannelSlot({
+    required Set<int> occupiedIndices,
+    required int maxChannels,
+  }) {
+    for (int i = 1; i < maxChannels; i++) {
+      if (!occupiedIndices.contains(i)) {
+        return i;
+      }
+    }
+    return null;
+  }
+
   bool _channelSlotIsOccupied(Object channel) {
     final channelName = (channel as dynamic).name as String?;
     final secret = (channel as dynamic).secret;
@@ -934,6 +947,21 @@ class ConnectionProvider with ChangeNotifier {
     return _pendingDeletedChannelIndices.remove(channelIdx);
   }
 
+  Set<int> _syncedOccupiedChannelIndices({required int maxChannels}) {
+    if (getChannelInfo == null) {
+      throw Exception('Channel state is unavailable');
+    }
+
+    final occupiedIndices = <int>{};
+    for (int i = 1; i < maxChannels; i++) {
+      final channel = getChannelInfo!(i);
+      if (channel != null && _channelSlotIsOccupied(channel)) {
+        occupiedIndices.add(i);
+      }
+    }
+    return occupiedIndices;
+  }
+
   Future<int?> findNextEmptyChannelSlot() async {
     if (!_activeService.isConnected) {
       throw Exception('Not connected to device');
@@ -946,30 +974,16 @@ class ConnectionProvider with ChangeNotifier {
       final maxChannels = _deviceInfo.maxChannels ?? 40;
       final maxCustomChannels = maxChannels > 0 ? maxChannels - 1 : 0;
 
-      // Match meshcore-open: choose the first missing slot from the synced
-      // channel set and avoid speculative per-slot probing that can overwrite
-      // an existing channel when device state is delayed or transient.
-      if (getChannelInfo == null) {
-        throw Exception('Channel state is unavailable');
-      }
-
-      final usedIndices = <int>{};
-      for (int i = 1; i < maxChannels; i++) {
-        final channel = getChannelInfo!(i);
-        if (channel == null) {
-          continue;
-        }
-
-        if (_channelSlotIsOccupied(channel)) {
-          usedIndices.add(i);
-        }
-      }
-
-      for (int i = 1; i < maxChannels; i++) {
-        if (!usedIndices.contains(i)) {
-          debugPrint('   ✅ Found empty slot from synced channels: $i');
-          return i;
-        }
+      final occupiedIndices = _syncedOccupiedChannelIndices(
+        maxChannels: maxChannels,
+      );
+      final emptySlot = firstAvailableChannelSlot(
+        occupiedIndices: occupiedIndices,
+        maxChannels: maxChannels,
+      );
+      if (emptySlot != null) {
+        debugPrint('   ✅ Found empty slot from synced channels: $emptySlot');
+        return emptySlot;
       }
 
       debugPrint(
@@ -1004,92 +1018,15 @@ class ConnectionProvider with ChangeNotifier {
       debugPrint('📻 [Provider] Creating new channel...');
       debugPrint('  Name: $channelName');
 
-      // Determine channel type
       final bool isHashChannel = channelName.startsWith('#');
-      final maxChannels = _deviceInfo.maxChannels ?? 40;
+      final secretBytes = isHashChannel
+          ? _generateHashChannelSecret(channelName)
+          : _convertSecretToBytes(channelSecret);
 
-      // Refresh channel state before choosing a slot so we match meshcore-open's
-      // "pick first missing slot from the synced list" behavior.
-      await syncChannels(maxChannels: maxChannels);
-
-      // Match meshcore-open behavior:
-      // - deterministic hash channels (#name) cannot be duplicated
-      // - private channels always use the next empty slot, even if the name matches
-      if (getChannelInfo != null) {
-        for (int i = 1; i < maxChannels; i++) {
-          final channel = getChannelInfo!(i);
-          if (channel != null) {
-            final existingName = (channel as dynamic).name as String?;
-            if (existingName != null && existingName.isNotEmpty) {
-              if (
-                isDuplicateChannelName(
-                  requestedName: channelName,
-                  existingName: existingName,
-                )
-              ) {
-                debugPrint(
-                  '  ⚠️  Hash channel "$channelName" already exists in slot $i',
-                );
-                throw Exception(
-                  'Channel "$channelName" already exists. Hash channels cannot be duplicated.',
-                );
-              }
-            }
-          }
-        }
-      }
-
-      // Find next empty slot for any new channel.
-      final maxCustomChannels = maxChannels > 0 ? maxChannels - 1 : 0;
-      final emptySlot = await findNextEmptyChannelSlot();
-      if (emptySlot == null) {
-        throw Exception(
-          'All channel slots are in use (maximum $maxCustomChannels custom channels)',
-        );
-      }
-      final slotIdx = emptySlot;
-      debugPrint('  Using empty slot: $slotIdx (new channel)');
-
-      // Generate secret
-      final List<int> secretBytes;
-      if (isHashChannel) {
-        // Hash channel: auto-generate secret from name using SHA256
-        debugPrint('  Channel type: Hash channel (#)');
-        secretBytes = _generateHashChannelSecret(channelName);
-        debugPrint('  Secret auto-generated from channel name using SHA256');
-      } else {
-        // Private channel: use explicit secret with MD5
-        debugPrint('  Channel type: Private channel');
-        secretBytes = _convertSecretToBytes(channelSecret);
-        debugPrint('  Secret converted to 16-byte key using MD5');
-      }
-
-      // Send CMD_SET_CHANNEL to radio. Some devices accept the write but do not
-      // reliably answer the follow-up CMD_GET_CHANNEL verification (0x1F).
-      try {
-        await _activeService.setChannel(
-          channelIdx: slotIdx,
-          channelName: channelName,
-          secret: secretBytes,
-        );
-      } catch (e) {
-        if (_isChannelRefreshTimeoutError(e)) {
-          debugPrint(
-            '⚠️ [Provider] CMD_GET_CHANNEL verification timed out after SET_CHANNEL; assuming the channel write succeeded',
-          );
-          onChannelInfoReceived?.call(
-            slotIdx,
-            channelName,
-            Uint8List.fromList(secretBytes),
-            null,
-          );
-        } else {
-          rethrow;
-        }
-      }
-
-      debugPrint(
-        '✅ [Provider] Channel created successfully in slot $slotIdx',
+      await _createChannelWithSecretBytes(
+        channelName: channelName,
+        secretBytes: secretBytes,
+        isHashChannel: isHashChannel,
       );
     } catch (e) {
       _error = 'Failed to create channel: $e';
@@ -1097,6 +1034,79 @@ class ConnectionProvider with ChangeNotifier {
       notifyListeners();
       rethrow;
     }
+  }
+
+  Future<void> _createChannelWithSecretBytes({
+    required String channelName,
+    required List<int> secretBytes,
+    required bool isHashChannel,
+  }) async {
+    final maxChannels = _deviceInfo.maxChannels ?? 40;
+
+    await syncChannels(maxChannels: maxChannels);
+
+    if (getChannelInfo != null) {
+      for (int i = 1; i < maxChannels; i++) {
+        final channel = getChannelInfo!(i);
+        if (channel == null) {
+          continue;
+        }
+
+        final existingName = (channel as dynamic).name as String?;
+        if (existingName != null &&
+            existingName.isNotEmpty &&
+            isDuplicateChannelName(
+              requestedName: channelName,
+              existingName: existingName,
+            )) {
+          debugPrint(
+            '  ⚠️  Hash channel "$channelName" already exists in slot $i',
+          );
+          throw Exception(
+            'Channel "$channelName" already exists. Hash channels cannot be duplicated.',
+          );
+        }
+      }
+    }
+
+    final maxCustomChannels = maxChannels > 0 ? maxChannels - 1 : 0;
+    final slotIdx = await findNextEmptyChannelSlot();
+    if (slotIdx == null) {
+      throw Exception(
+        'All channel slots are in use (maximum $maxCustomChannels custom channels)',
+      );
+    }
+
+    debugPrint(
+      '  Channel type: ${isHashChannel ? "Hash channel (#)" : "Private channel"}',
+    );
+    debugPrint('  Using empty slot: $slotIdx');
+
+    try {
+      await _activeService.setChannel(
+        channelIdx: slotIdx,
+        channelName: channelName,
+        secret: secretBytes,
+      );
+    } catch (e) {
+      if (_isChannelRefreshTimeoutError(e)) {
+        debugPrint(
+          '⚠️ [Provider] CMD_GET_CHANNEL verification timed out after SET_CHANNEL; assuming the channel write succeeded',
+        );
+        onChannelInfoReceived?.call(
+          slotIdx,
+          channelName,
+          Uint8List.fromList(secretBytes),
+          null,
+        );
+      } else {
+        rethrow;
+      }
+    }
+
+    await syncChannels(maxChannels: maxChannels);
+
+    debugPrint('✅ [Provider] Channel created successfully in slot $slotIdx');
   }
 
   /// Delete a channel and remove it from the UI

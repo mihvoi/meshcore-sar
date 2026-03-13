@@ -753,6 +753,9 @@ class _HomeScreenState extends State<HomeScreen>
           switch (tab) {
             case _HomeTab.messages:
               return MessagesTab(
+                isActive:
+                    _currentTab == _HomeTab.messages &&
+                    _lifecycleState == AppLifecycleState.resumed,
                 onNavigateToMap: _isMapEnabled
                     ? () => _navigateToTab(_HomeTab.map)
                     : null,

@@ -45,5 +45,25 @@ void main() {
         isFalse,
       );
     });
+
+    test('finds first missing custom channel slot', () {
+      expect(
+        ConnectionProvider.firstAvailableChannelSlot(
+          occupiedIndices: {1, 2, 4},
+          maxChannels: 6,
+        ),
+        3,
+      );
+    });
+
+    test('returns null when all custom channel slots are occupied', () {
+      expect(
+        ConnectionProvider.firstAvailableChannelSlot(
+          occupiedIndices: {1, 2, 3, 4},
+          maxChannels: 5,
+        ),
+        isNull,
+      );
+    });
   });
 }

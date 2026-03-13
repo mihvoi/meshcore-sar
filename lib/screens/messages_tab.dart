@@ -39,8 +39,9 @@ import '../l10n/app_localizations.dart';
 
 class MessagesTab extends StatefulWidget {
   final VoidCallback? onNavigateToMap;
+  final bool isActive;
 
-  const MessagesTab({super.key, this.onNavigateToMap});
+  const MessagesTab({super.key, this.onNavigateToMap, this.isActive = true});
 
   @override
   State<MessagesTab> createState() => _MessagesTabState();
@@ -50,6 +51,7 @@ class _MessagesTabState extends State<MessagesTab> {
   static const int _maxContactMessageBytes = 156;
   static const int _maxChannelMessageBytes = 127;
   static const double _composerOverlayHeight = 148;
+  static const Duration _channelAutoReadDelay = Duration(seconds: 5);
 
   final TextEditingController _textController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
@@ -57,6 +59,8 @@ class _MessagesTabState extends State<MessagesTab> {
   int _messageByteCount = 0;
   String? _highlightedMessageId;
   Timer? _highlightTimer; // Timer for clearing message highlight
+  Timer? _channelReadTimer;
+  String? _pendingChannelReadKey;
   TextEditingValue _lastComposerValue = const TextEditingValue();
   bool _isMentionPickerOpen = false;
   bool _suppressMentionTrigger = false;
@@ -119,12 +123,21 @@ class _MessagesTabState extends State<MessagesTab> {
   @override
   void dispose() {
     _highlightTimer?.cancel();
+    _channelReadTimer?.cancel();
     _voiceStreamSub?.cancel();
     _voiceRecorder.dispose();
     _textController.dispose();
     _focusNode.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant MessagesTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isActive != widget.isActive) {
+      _syncChannelAutoReadTimer(context.read<MessagesProvider>());
+    }
   }
 
   void _checkForNavigationRequest() {
@@ -1830,10 +1843,62 @@ class _MessagesTabState extends State<MessagesTab> {
   }
 
   void _markCurrentDestinationAsRead() {
+    _channelReadTimer?.cancel();
+    _pendingChannelReadKey = null;
     context.read<MessagesProvider>().markDestinationAsRead(
       destinationType: _destinationType,
       contact: _selectedRecipient,
     );
+  }
+
+  void _syncChannelAutoReadTimer(MessagesProvider messagesProvider) {
+    if (!widget.isActive ||
+        _destinationType !=
+            MessageDestinationPreferences.destinationTypeChannel) {
+      _channelReadTimer?.cancel();
+      _pendingChannelReadKey = null;
+      return;
+    }
+
+    final channelIdx = _selectedRecipient?.publicKey[1] ?? 0;
+    final unreadCount = messagesProvider.getUnreadCountForChannel(channelIdx);
+
+    if (unreadCount <= 0) {
+      _channelReadTimer?.cancel();
+      _pendingChannelReadKey = null;
+      return;
+    }
+
+    final nextKey = '$channelIdx:$unreadCount';
+    if (_pendingChannelReadKey == nextKey &&
+        _channelReadTimer?.isActive == true) {
+      return;
+    }
+
+    _channelReadTimer?.cancel();
+    _pendingChannelReadKey = nextKey;
+    _channelReadTimer = Timer(_channelAutoReadDelay, () {
+      if (!mounted || !widget.isActive) {
+        return;
+      }
+
+      if (_destinationType !=
+          MessageDestinationPreferences.destinationTypeChannel) {
+        return;
+      }
+
+      final currentChannelIdx = _selectedRecipient?.publicKey[1] ?? 0;
+      if (currentChannelIdx != channelIdx) {
+        return;
+      }
+
+      final latestProvider = context.read<MessagesProvider>();
+      if (latestProvider.getUnreadCountForChannel(channelIdx) <= 0) {
+        return;
+      }
+
+      _markCurrentDestinationAsRead();
+    });
   }
 
   List<Message> _getFilteredMessages(MessagesProvider messagesProvider) {
@@ -1928,6 +1993,7 @@ class _MessagesTabState extends State<MessagesTab> {
   Widget build(BuildContext context) {
     return Consumer<MessagesProvider>(
       builder: (context, messagesProvider, child) {
+        _syncChannelAutoReadTimer(messagesProvider);
         final messages = _getFilteredMessages(messagesProvider);
         final bottomInset = MediaQuery.of(context).viewPadding.bottom;
         final composerBottomPadding = bottomInset > 0 ? 2.0 : 10.0;
