@@ -122,6 +122,27 @@ void main() {
       expect(snapshot.busyness, LiveTrafficBusyness.quiet);
     });
 
+    test('normalizes packet rate for windows longer than one minute', () {
+      final now = DateTime(2026, 3, 12, 12, 0, 0);
+      final snapshot = LiveTrafficSummary.fromLogs(
+        List.generate(
+          24,
+          (index) => _log(
+            timestamp: now.subtract(Duration(seconds: index * 10)),
+            direction: PacketDirection.rx,
+            rawData: [0x88, 0x00, 0x00],
+            responseCode: 0x88,
+          ),
+        ),
+        now: now,
+        window: const Duration(minutes: 5),
+      );
+
+      expect(snapshot.totalCount, 24);
+      expect(snapshot.windowDuration, const Duration(minutes: 5));
+      expect(snapshot.packetsPerMinute, 5);
+    });
+
     test('supports clearing the live view without mutating source logs', () {
       final now = DateTime(2026, 3, 12, 12, 0, 0);
       final clearAt = now.subtract(const Duration(seconds: 8));

@@ -345,7 +345,7 @@ class _SummaryPanel extends StatelessWidget {
                 label: 'RX packets',
                 value: '${snapshot.rxCount}',
                 subtitle: totalRxCount == null
-                    ? 'Last 60 sec'
+                    ? _windowSummaryLabel(snapshot.windowDuration)
                     : 'Device total $totalRxCount',
               ),
               _MetricTile(
@@ -504,10 +504,13 @@ class _FilterChip extends StatelessWidget {
 }
 
 String _windowLabel(Duration duration) {
-  if (duration.inMinutes >= 60) {
-    return '${duration.inMinutes} min';
-  }
   return '${duration.inMinutes} min';
+}
+
+String _windowSummaryLabel(Duration duration) {
+  final minutes = duration.inMinutes;
+  if (minutes == 1) return 'Last 1 min';
+  return 'Last $minutes min';
 }
 
 class _MetricTile extends StatelessWidget {
@@ -527,7 +530,7 @@ class _MetricTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: 160,
-      height: 128,
+      height: 136,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.82),

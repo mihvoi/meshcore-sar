@@ -12,6 +12,7 @@ class RecipientSelectorSheet extends StatefulWidget {
   final Map<String, int> unreadCountsByPublicKey;
   final String? currentDestinationType;
   final String? currentRecipientPublicKey;
+  final bool showAllOption;
   final Function(String type, Contact? recipient) onSelect;
 
   const RecipientSelectorSheet({
@@ -23,6 +24,7 @@ class RecipientSelectorSheet extends StatefulWidget {
     required this.unreadCountsByPublicKey,
     this.currentDestinationType,
     this.currentRecipientPublicKey,
+    this.showAllOption = true,
     required this.onSelect,
   });
 
@@ -61,6 +63,11 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
     final filteredContacts = _filterContacts(widget.contacts);
     final filteredRooms = _filterContacts(widget.rooms);
     final filteredChannels = _filterContacts(widget.channels);
+    final showChannelsSection = widget.channels.isNotEmpty;
+    final showContactsSection = widget.contacts.isNotEmpty;
+    final showRoomsSection = widget.rooms.isNotEmpty;
+    final showAnyRecipients =
+        showChannelsSection || showContactsSection || showRoomsSection;
 
     return Container(
       constraints: BoxConstraints(
@@ -142,21 +149,23 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
             child: ListView(
               shrinkWrap: true,
               children: [
-                _buildOptionTile(
-                  context: context,
-                  icon: Icons.all_inbox,
-                  title: l10n.showAll,
-                  subtitle: 'All messages',
-                  unreadCount: widget.unreadCount,
-                  isSelected: _isSelected('all', null),
-                  onTap: () {
-                    widget.onSelect('all', null);
-                    Navigator.pop(context);
-                  },
-                ),
-                const Divider(),
+                if (widget.showAllOption) ...[
+                  _buildOptionTile(
+                    context: context,
+                    icon: Icons.all_inbox,
+                    title: l10n.showAll,
+                    subtitle: 'All messages',
+                    unreadCount: widget.unreadCount,
+                    isSelected: _isSelected('all', null),
+                    onTap: () {
+                      widget.onSelect('all', null);
+                      Navigator.pop(context);
+                    },
+                  ),
+                  if (showAnyRecipients) const Divider(),
+                ],
                 // Channels section
-                if (widget.channels.isNotEmpty) ...[
+                if (showChannelsSection) ...[
                   Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -204,10 +213,12 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
                     }),
                 ],
 
-                const Divider(),
+                if (showChannelsSection &&
+                    (showContactsSection || showRoomsSection))
+                  const Divider(),
 
                 // Contacts section
-                if (widget.contacts.isNotEmpty) ...[
+                if (showContactsSection) ...[
                   Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -253,10 +264,10 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
                     }),
                 ],
 
-                const Divider(),
+                if (showContactsSection && showRoomsSection) const Divider(),
 
                 // Rooms section
-                if (widget.rooms.isNotEmpty) ...[
+                if (showRoomsSection) ...[
                   Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -302,9 +313,7 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
                 ],
 
                 // Empty state
-                if (widget.contacts.isEmpty &&
-                    widget.rooms.isEmpty &&
-                    widget.channels.isEmpty) ...[
+                if (!showAnyRecipients) ...[
                   Padding(
                     padding: const EdgeInsets.all(32),
                     child: Column(

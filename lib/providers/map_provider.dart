@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -6,6 +8,10 @@ import '../models/location_trail.dart';
 import '../models/map_drawing.dart';
 
 class MapProvider with ChangeNotifier {
+  MapProvider() {
+    unawaited(_loadInitialState());
+  }
+
   LatLng? _targetLocation;
   double? _targetZoom;
   bool _shouldAnimate = false;
@@ -33,6 +39,7 @@ class MapProvider with ChangeNotifier {
 
   // Contact trail toggles
   bool _showAllContactTrails = true; // Default to showing all contact trails
+  bool _hideRepeatersOnMap = false;
 
   // Imported trail (from GPX)
   LocationTrail? _importedTrail;
@@ -67,6 +74,7 @@ class MapProvider with ChangeNotifier {
 
   // Contact trail getters
   bool get showAllContactTrails => _showAllContactTrails;
+  bool get hideRepeatersOnMap => _hideRepeatersOnMap;
 
   // Imported trail getters
   LocationTrail? get importedTrail => _importedTrail;
@@ -350,6 +358,11 @@ class MapProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> _loadInitialState() async {
+    await Future.wait([loadOverlayState(), loadTrailSettings()]);
+    await loadRepeaterVisibilitySettings();
+  }
+
   /// Save overlay state to SharedPreferences
   Future<void> _saveOverlayState() async {
     final prefs = await SharedPreferences.getInstance();
@@ -384,6 +397,20 @@ class MapProvider with ChangeNotifier {
   Future<void> _saveTrailSettings() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('map_show_all_contact_trails', _showAllContactTrails);
+  }
+
+  Future<void> setHideRepeatersOnMap(bool hide) async {
+    if (_hideRepeatersOnMap == hide) return;
+    _hideRepeatersOnMap = hide;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('map_hide_repeaters', _hideRepeatersOnMap);
+  }
+
+  Future<void> loadRepeaterVisibilitySettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    _hideRepeatersOnMap = prefs.getBool('map_hide_repeaters') ?? false;
+    notifyListeners();
   }
 
   /// Set imported trail (from GPX import)

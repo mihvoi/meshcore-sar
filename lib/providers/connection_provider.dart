@@ -1627,6 +1627,22 @@ class ConnectionProvider with ChangeNotifier {
     }
   }
 
+  Future<void> factoryResetDevice() async {
+    if (!_activeService.isConnected) {
+      _error = 'Not connected to device';
+      notifyListeners();
+      return;
+    }
+
+    try {
+      _error = null;
+      await _activeService.factoryReset();
+    } catch (e) {
+      _error = 'Failed to wipe device data: $e';
+      notifyListeners();
+    }
+  }
+
   /// Set advertised name
   Future<void> setAdvertName(String name) async {
     if (!_activeService.isConnected) {

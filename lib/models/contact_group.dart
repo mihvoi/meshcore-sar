@@ -4,6 +4,8 @@ class SavedContactGroup {
   final String label;
   final String query;
   final DateTime createdAt;
+  final List<String>? matchPrefixes;
+  final bool isAutoGroup;
 
   const SavedContactGroup({
     required this.id,
@@ -11,6 +13,8 @@ class SavedContactGroup {
     required this.label,
     required this.query,
     required this.createdAt,
+    this.matchPrefixes,
+    this.isAutoGroup = false,
   });
 
   SavedContactGroup copyWith({
@@ -19,6 +23,8 @@ class SavedContactGroup {
     String? label,
     String? query,
     DateTime? createdAt,
+    List<String>? matchPrefixes,
+    bool? isAutoGroup,
   }) {
     return SavedContactGroup(
       id: id ?? this.id,
@@ -26,6 +32,8 @@ class SavedContactGroup {
       label: label ?? this.label,
       query: query ?? this.query,
       createdAt: createdAt ?? this.createdAt,
+      matchPrefixes: matchPrefixes ?? this.matchPrefixes,
+      isAutoGroup: isAutoGroup ?? this.isAutoGroup,
     );
   }
 }

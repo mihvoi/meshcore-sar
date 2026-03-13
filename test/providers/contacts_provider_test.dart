@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:meshcore_sar_app/models/contact.dart';
+import 'package:meshcore_sar_app/models/contact_group.dart';
 import 'package:meshcore_sar_app/providers/contacts_provider.dart';
 import 'package:meshcore_sar_app/services/cayenne_lpp_parser.dart';
 import 'package:meshcore_sar_app/utils/fast_gps_packet.dart';
@@ -427,6 +428,46 @@ void main() {
         expect(reloaded.advertLocation!.longitude, closeTo(13.9999, 0.0001));
       },
     );
+
+    test('prefers a local name override and preserves it across refreshes', () {
+      provider.setContactNameOverride(publicKeyHex(publicKey), 'Rescue One');
+
+      final renamed = provider.findContactByKey(publicKey)!;
+      expect(renamed.nameOverride, 'Rescue One');
+      expect(renamed.displayName, 'Rescue One');
+
+      provider.addOrUpdateContact(
+        Contact(
+          publicKey: publicKey,
+          type: ContactType.chat,
+          flags: 0,
+          outPathLen: 0,
+          outPath: Uint8List(64),
+          advName: 'Updated Advertised Name',
+          lastAdvert: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+          advLat: (46.0569 * 1e6).toInt(),
+          advLon: (14.5058 * 1e6).toInt(),
+          lastMod: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        ),
+      );
+
+      final refreshed = provider.findContactByKey(publicKey)!;
+      expect(refreshed.nameOverride, 'Rescue One');
+      expect(refreshed.displayName, 'Rescue One');
+      expect(refreshed.advName, 'Updated Advertised Name');
+    });
+
+    test('persists a local name override across reloads', () async {
+      provider.setContactNameOverride(publicKeyHex(publicKey), 'Rescue One');
+      await Future<void>.delayed(Duration.zero);
+
+      final reloadedProvider = ContactsProvider();
+      await reloadedProvider.initializeEarly();
+
+      final reloaded = reloadedProvider.findContactByKey(publicKey)!;
+      expect(reloaded.nameOverride, 'Rescue One');
+      expect(reloaded.displayName, 'Rescue One');
+    });
   });
 
   group('ContactsProvider route updates', () {
@@ -733,5 +774,45 @@ void main() {
       expect(restored.savedGroupsForSection('rooms').first.query, 'ops');
       expect(restored.savedGroupsForSection('rooms').first.label, 'ops');
     });
+
+    test('replaces persisted auto groups for a section', () async {
+      await provider.replaceAutoGroupsForSection('repeaters', [
+        SavedContactGroup(
+          id: '${ContactsProvider.autoGroupIdPrefix}repeaters_al',
+          sectionKey: 'repeaters',
+          label: 'AL-',
+          query: 'AL-',
+          createdAt: DateTime(2026, 3, 10, 12),
+          matchPrefixes: const ['AL-'],
+          isAutoGroup: true,
+        ),
+        SavedContactGroup(
+          id: '${ContactsProvider.autoGroupIdPrefix}repeaters_others',
+          sectionKey: 'repeaters',
+          label: 'Others',
+          query: 'Others',
+          createdAt: DateTime(2026, 3, 10, 12),
+          matchPrefixes: const ['CR-', 'DE-'],
+          isAutoGroup: true,
+        ),
+      ]);
+
+      final restored = ContactsProvider();
+      await restored.initializeEarly();
+
+      expect(restored.savedGroupsForSection('repeaters'), hasLength(2));
+      expect(
+        restored.savedGroupsForSection('repeaters').first.matchPrefixes,
+        isNotEmpty,
+      );
+      expect(
+        restored.savedGroupsForSection('repeaters').first.isAutoGroup,
+        isTrue,
+      );
+    });
   });
+}
+
+String publicKeyHex(Uint8List publicKey) {
+  return publicKey.map((b) => b.toRadixString(16).padLeft(2, '0')).join('');
 }

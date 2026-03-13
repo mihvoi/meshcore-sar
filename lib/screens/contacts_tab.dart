@@ -2,12 +2,14 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 import '../l10n/app_localizations.dart';
 import '../models/contact.dart';
 import '../models/contact_group.dart';
 import '../providers/contacts_provider.dart';
 import '../providers/app_provider.dart';
 import '../providers/connection_provider.dart';
+import '../providers/map_provider.dart';
 import '../providers/messages_provider.dart';
 import '../services/message_destination_preferences.dart';
 import '../utils/contact_grouping.dart';
@@ -200,7 +202,9 @@ class _ContactsTabState extends State<ContactsTab> {
     return contacts.where((contact) {
       final name = contact.displayName.toLowerCase();
       final advertisedName = contact.advName.toLowerCase();
-      return name.contains(query) || advertisedName.contains(query);
+      return name.contains(query) ||
+          advertisedName.contains(query) ||
+          ContactGrouping.contactMatchesInferredGroupLabel(contact, query);
     }).toList();
   }
 
@@ -213,7 +217,19 @@ class _ContactsTabState extends State<ContactsTab> {
     final name = contact.displayName.toLowerCase();
     final advertisedName = contact.advName.toLowerCase();
     return name.contains(normalizedQuery) ||
-        advertisedName.contains(normalizedQuery);
+        advertisedName.contains(normalizedQuery) ||
+        ContactGrouping.contactMatchesInferredGroupLabel(
+          contact,
+          normalizedQuery,
+        );
+  }
+
+  bool _sectionHasActiveFilter(ContactSection section) {
+    return (_sectionFilters[section] ?? '').trim().isNotEmpty;
+  }
+
+  bool _showSavedGroupsForSection(ContactSection section) {
+    return !_sectionHasActiveFilter(section);
   }
 
   List<_RenderedSavedGroup> _buildSavedGroupsForSection(
@@ -225,7 +241,7 @@ class _ContactsTabState extends State<ContactsTab> {
         .savedGroupsForSection(section.name)
         .map((group) {
           final matches = contacts
-              .where((contact) => _contactMatchesFilter(contact, group.query))
+              .where((contact) => _contactMatchesSavedGroup(contact, group))
               .toList();
           return _RenderedSavedGroup(group: group, contacts: matches);
         })
@@ -236,6 +252,23 @@ class _ContactsTabState extends State<ContactsTab> {
           a.contacts.first.lastSeenTime,
         ),
       );
+  }
+
+  bool _contactMatchesSavedGroup(Contact contact, SavedContactGroup group) {
+    final matchPrefixes = group.matchPrefixes;
+    if (matchPrefixes != null && matchPrefixes.isNotEmpty) {
+      final inferredLabel = ContactGrouping.inferredGroupLabelForContact(
+        contact,
+      )?.toLowerCase();
+      if (inferredLabel == null) {
+        return false;
+      }
+      return matchPrefixes.any(
+        (prefix) => prefix.toLowerCase() == inferredLabel,
+      );
+    }
+
+    return _contactMatchesFilter(contact, group.query);
   }
 
   Future<void> _toggleSavedGroupForSection(
@@ -275,6 +308,48 @@ class _ContactsTabState extends State<ContactsTab> {
               : 'Saved group "$filter"',
         ),
       ),
+    );
+  }
+
+  Future<void> _createAutoGroupsForSection(
+    BuildContext context,
+    ContactsProvider contactsProvider,
+    ContactSection section,
+    List<Contact> contacts, {
+    int? maxNamedGroups,
+    String? overflowGroupLabel,
+    String emptyMessage = 'No auto groups available',
+    String successMessage = 'Updated auto groups',
+  }) async {
+    final inferredGroups = ContactGrouping.inferGroups(
+      contacts,
+      maxNamedGroups: maxNamedGroups,
+      overflowGroupLabel: overflowGroupLabel,
+    );
+
+    final now = DateTime.now();
+    final groups = inferredGroups
+        .map(
+          (group) => SavedContactGroup(
+            id: '${ContactsProvider.autoGroupIdPrefix}${section.name}_${group.key}',
+            sectionKey: section.name,
+            label: group.label,
+            query: group.label,
+            createdAt: now,
+            matchPrefixes: group.matchPrefixes,
+            isAutoGroup: true,
+          ),
+        )
+        .toList();
+
+    await contactsProvider.replaceAutoGroupsForSection(section.name, groups);
+
+    if (!context.mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(groups.isEmpty ? emptyMessage : successMessage)),
     );
   }
 
@@ -365,6 +440,142 @@ class _ContactsTabState extends State<ContactsTab> {
     );
   }
 
+  Future<void> _showDeleteChannelDialog(
+    BuildContext context,
+    Contact channel,
+  ) async {
+    if (channel.isPublicChannel) {
+      return;
+    }
+
+    final l10n = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.deleteChannel),
+        content: Text(l10n.deleteChannelConfirmation(channel.advName)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(l10n.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: Text(l10n.delete),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) {
+      return;
+    }
+
+    try {
+      final channelIdx = channel.publicKey.length > 1
+          ? channel.publicKey[1]
+          : 0;
+      await context.read<ConnectionProvider>().deleteChannel(channelIdx);
+
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.channelDeletedSuccessfully),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.channelDeletionFailed(e.toString())),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _openMessagesForChannel(
+    BuildContext context,
+    Contact channel,
+  ) async {
+    final messagesProvider = context.read<MessagesProvider>();
+    await MessageDestinationPreferences.setDestination(
+      MessageDestinationPreferences.destinationTypeChannel,
+      recipientPublicKey: channel.publicKeyHex,
+    );
+    messagesProvider.navigateToDestination(
+      MessageDestinationPreferences.destinationTypeChannel,
+      recipientPublicKeyHex: channel.publicKeyHex,
+    );
+    widget.onNavigateToMessages?.call();
+  }
+
+  void _showChannelOnMap(BuildContext context, Contact channel) {
+    final location = channel.displayLocation;
+    if (location == null) {
+      return;
+    }
+
+    context.read<MapProvider>().navigateToLocation(
+      location: LatLng(location.latitude, location.longitude),
+    );
+    widget.onNavigateToMap?.call();
+  }
+
+  void _showChannelActionSheet(BuildContext context, Contact channel) {
+    final l10n = AppLocalizations.of(context)!;
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.message_outlined),
+              title: Text(l10n.messages),
+              onTap: () async {
+                Navigator.pop(sheetContext);
+                await _openMessagesForChannel(context, channel);
+              },
+            ),
+            if (channel.displayLocation != null)
+              ListTile(
+                leading: const Icon(Icons.map_outlined),
+                title: Text(l10n.viewOnMap),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _showChannelOnMap(context, channel);
+                },
+              ),
+            if (!channel.isPublicChannel)
+              ListTile(
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: Text(
+                  l10n.deleteChannel,
+                  style: const TextStyle(color: Colors.red),
+                ),
+                onTap: () async {
+                  Navigator.pop(sheetContext);
+                  await Future<void>.delayed(Duration.zero);
+                  if (!context.mounted) return;
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!context.mounted) return;
+                    _showDeleteChannelDialog(context, channel);
+                  });
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -399,6 +610,10 @@ class _ContactsTabState extends State<ContactsTab> {
             allChatContacts,
             ContactSection.teamMembers,
           );
+          final visibleSavedTeamGroups =
+              _showSavedGroupsForSection(ContactSection.teamMembers)
+              ? savedTeamGroups
+              : const <_RenderedSavedGroup>[];
           final repeaters = _filterContactsForSection(
             allRepeaters,
             ContactSection.repeaters,
@@ -408,6 +623,10 @@ class _ContactsTabState extends State<ContactsTab> {
             allRepeaters,
             ContactSection.repeaters,
           );
+          final visibleSavedRepeaterGroups =
+              _showSavedGroupsForSection(ContactSection.repeaters)
+              ? savedRepeaterGroups
+              : const <_RenderedSavedGroup>[];
           final rooms = _filterContactsForSection(
             allRooms,
             ContactSection.rooms,
@@ -417,6 +636,10 @@ class _ContactsTabState extends State<ContactsTab> {
             allRooms,
             ContactSection.rooms,
           );
+          final visibleSavedRoomGroups =
+              _showSavedGroupsForSection(ContactSection.rooms)
+              ? savedRoomGroups
+              : const <_RenderedSavedGroup>[];
           final filteredChannels = _filterContactsForSection(
             allChannels,
             ContactSection.channels,
@@ -426,6 +649,29 @@ class _ContactsTabState extends State<ContactsTab> {
             allChannels,
             ContactSection.channels,
           );
+          final visibleSavedChannelGroups =
+              _showSavedGroupsForSection(ContactSection.channels)
+              ? savedChannelGroups
+              : const <_RenderedSavedGroup>[];
+          final showTeamMembersSection =
+              allChatContacts.isNotEmpty &&
+              (!_sectionHasActiveFilter(ContactSection.teamMembers) ||
+                  chatContacts.isNotEmpty ||
+                  visibleSavedTeamGroups.isNotEmpty);
+          final showRepeatersSection =
+              allRepeaters.isNotEmpty &&
+              (!_sectionHasActiveFilter(ContactSection.repeaters) ||
+                  repeaters.isNotEmpty ||
+                  visibleSavedRepeaterGroups.isNotEmpty);
+          final showRoomsSection =
+              allRooms.isNotEmpty &&
+              (!_sectionHasActiveFilter(ContactSection.rooms) ||
+                  rooms.isNotEmpty ||
+                  visibleSavedRoomGroups.isNotEmpty);
+          final showChannelsSection =
+              !_sectionHasActiveFilter(ContactSection.channels) ||
+              filteredChannels.isNotEmpty ||
+              visibleSavedChannelGroups.isNotEmpty;
           final pendingAdverts = contactsProvider.pendingAdverts;
 
           _schedulePendingAdvertResolution(pendingAdverts, connectionProvider);
@@ -470,7 +716,7 @@ class _ContactsTabState extends State<ContactsTab> {
               padding: const EdgeInsets.all(8),
               children: [
                 // Team Members (Chat contacts)
-                if (allChatContacts.isNotEmpty) ...[
+                if (showTeamMembersSection) ...[
                   _SectionHeader(
                     title: l10n.teamMembers,
                     count: chatContacts.length,
@@ -484,23 +730,32 @@ class _ContactsTabState extends State<ContactsTab> {
                     context,
                     ContactSection.teamMembers,
                     contactsProvider,
-                  ),
-                  if (chatContacts.isEmpty)
-                    _buildEmptyFilterState(context)
-                  else ...[
-                    ..._buildSavedGroupCards(
-                      savedTeamGroups,
+                    onSecondaryAction: () => _createAutoGroupsForSection(
+                      context,
+                      contactsProvider,
                       ContactSection.teamMembers,
+                      allChatContacts,
+                      emptyMessage: 'No contact auto groups available',
+                      successMessage: 'Updated contact auto groups',
                     ),
-                    ..._buildContactSectionItems(
-                      _excludeGroupedContacts(chatContacts, savedTeamGroups),
+                    secondaryActionIcon: Icons.auto_awesome_outlined,
+                    secondaryActionTooltip: 'Auto group',
+                  ),
+                  ..._buildSavedGroupCards(
+                    visibleSavedTeamGroups,
+                    ContactSection.teamMembers,
+                  ),
+                  ..._buildContactSectionItems(
+                    _excludeGroupedContacts(
+                      chatContacts,
+                      visibleSavedTeamGroups,
                     ),
-                  ],
+                  ),
                   const Divider(height: 32),
                 ],
 
                 // Repeaters
-                if (allRepeaters.isNotEmpty) ...[
+                if (showRepeatersSection) ...[
                   _SectionHeader(
                     title: l10n.repeaters,
                     count: repeaters.length,
@@ -511,23 +766,34 @@ class _ContactsTabState extends State<ContactsTab> {
                     context,
                     ContactSection.repeaters,
                     contactsProvider,
-                  ),
-                  if (repeaters.isEmpty)
-                    _buildEmptyFilterState(context)
-                  else ...[
-                    ..._buildSavedGroupCards(
-                      savedRepeaterGroups,
+                    onSecondaryAction: () => _createAutoGroupsForSection(
+                      context,
+                      contactsProvider,
                       ContactSection.repeaters,
+                      allRepeaters,
+                      maxNamedGroups: 2,
+                      overflowGroupLabel: 'Others',
+                      emptyMessage: 'No repeater auto groups available',
+                      successMessage: 'Updated repeater auto groups',
                     ),
-                    ..._buildContactSectionItems(
-                      _excludeGroupedContacts(repeaters, savedRepeaterGroups),
+                    secondaryActionIcon: Icons.auto_awesome_outlined,
+                    secondaryActionTooltip: 'Auto group',
+                  ),
+                  ..._buildSavedGroupCards(
+                    visibleSavedRepeaterGroups,
+                    ContactSection.repeaters,
+                  ),
+                  ..._buildContactSectionItems(
+                    _excludeGroupedContacts(
+                      repeaters,
+                      visibleSavedRepeaterGroups,
                     ),
-                  ],
+                  ),
                   const Divider(height: 32),
                 ],
 
                 // Rooms
-                if (allRooms.isNotEmpty) ...[
+                if (showRoomsSection) ...[
                   _SectionHeader(
                     title: l10n.rooms,
                     count: rooms.length,
@@ -539,17 +805,13 @@ class _ContactsTabState extends State<ContactsTab> {
                     ContactSection.rooms,
                     contactsProvider,
                   ),
-                  if (rooms.isEmpty)
-                    _buildEmptyFilterState(context)
-                  else ...[
-                    ..._buildSavedGroupCards(
-                      savedRoomGroups,
-                      ContactSection.rooms,
-                    ),
-                    ..._buildContactSectionItems(
-                      _excludeGroupedContacts(rooms, savedRoomGroups),
-                    ),
-                  ],
+                  ..._buildSavedGroupCards(
+                    visibleSavedRoomGroups,
+                    ContactSection.rooms,
+                  ),
+                  ..._buildContactSectionItems(
+                    _excludeGroupedContacts(rooms, visibleSavedRoomGroups),
+                  ),
                   const Divider(height: 32),
                 ],
 
@@ -575,34 +837,34 @@ class _ContactsTabState extends State<ContactsTab> {
                 ],
 
                 // Channels (visible in both simple and advanced mode)
-                _SectionHeader(
-                  title: l10n.channels,
-                  count: filteredChannels.length,
-                  icon: Icons.broadcast_on_personal,
-                ),
-                _buildSectionFilterField(
-                  context,
-                  ContactSection.channels,
-                  contactsProvider,
-                ),
-                if (allChannels.isNotEmpty && filteredChannels.isEmpty)
-                  _buildEmptyFilterState(context),
-                ..._buildSavedGroupCards(
-                  savedChannelGroups,
-                  ContactSection.channels,
-                ),
-                if (filteredChannels.isNotEmpty) ...[
-                  ..._excludeGroupedContacts(
-                    filteredChannels,
-                    savedChannelGroups,
-                  ).map(
-                    (channel) => _ChannelActivityCard(
-                      channel: channel,
-                      messagesProvider: messagesProvider,
-                      contactsProvider: contactsProvider,
-                      onNavigateToMessages: widget.onNavigateToMessages,
-                    ),
+                if (showChannelsSection) ...[
+                  _SectionHeader(
+                    title: l10n.channels,
+                    count: filteredChannels.length,
+                    icon: Icons.broadcast_on_personal,
                   ),
+                  _buildSectionFilterField(
+                    context,
+                    ContactSection.channels,
+                    contactsProvider,
+                  ),
+                  ..._buildSavedGroupCards(
+                    visibleSavedChannelGroups,
+                    ContactSection.channels,
+                  ),
+                  if (filteredChannels.isNotEmpty) ...[
+                    ..._excludeGroupedContacts(
+                      filteredChannels,
+                      visibleSavedChannelGroups,
+                    ).map(
+                      (channel) => _ChannelActivityCard(
+                        channel: channel,
+                        messagesProvider: messagesProvider,
+                        contactsProvider: contactsProvider,
+                        onTap: () => _showChannelActionSheet(context, channel),
+                      ),
+                    ),
+                  ],
                 ],
 
                 // Add Channel Button (visible in both simple and advanced mode, only show when connected)
@@ -633,30 +895,18 @@ class _ContactsTabState extends State<ContactsTab> {
   }
 
   List<Widget> _buildContactSectionItems(List<Contact> contacts) {
-    final items = ContactGrouping.buildItemsFromSorted(contacts);
-
-    return items.map((item) {
-      if (item.isGroup) {
-        return _InferredContactGroupCard(
-          label: item.group!.label,
-          contacts: item.group!.contacts,
-          currentPosition: _currentPosition,
-          calculateDistance: _calculateDistanceInMeters,
-          formatDistance: _formatDistance,
-          onNavigateToMap: widget.onNavigateToMap,
-          onNavigateToMessages: widget.onNavigateToMessages,
-        );
-      }
-
-      return ContactTile(
-        contact: item.contact!,
-        currentPosition: _currentPosition,
-        calculateDistance: _calculateDistanceInMeters,
-        formatDistance: _formatDistance,
-        onNavigateToMap: widget.onNavigateToMap,
-        onNavigateToMessages: widget.onNavigateToMessages,
-      );
-    }).toList();
+    return contacts
+        .map(
+          (contact) => ContactTile(
+            contact: contact,
+            currentPosition: _currentPosition,
+            calculateDistance: _calculateDistanceInMeters,
+            formatDistance: _formatDistance,
+            onNavigateToMap: widget.onNavigateToMap,
+            onNavigateToMessages: widget.onNavigateToMessages,
+          ),
+        )
+        .toList();
   }
 
   List<Contact> _excludeGroupedContacts(
@@ -690,7 +940,7 @@ class _ContactsTabState extends State<ContactsTab> {
             onDelete: () => context
                 .read<ContactsProvider>()
                 .removeSavedGroupById(group.group.id),
-            kindLabel: 'Saved filter',
+            kindLabel: group.group.isAutoGroup ? 'Auto group' : 'Saved filter',
           ),
         )
         .toList();
@@ -699,8 +949,11 @@ class _ContactsTabState extends State<ContactsTab> {
   Widget _buildSectionFilterField(
     BuildContext context,
     ContactSection section,
-    ContactsProvider contactsProvider,
-  ) {
+    ContactsProvider contactsProvider, {
+    VoidCallback? onSecondaryAction,
+    IconData? secondaryActionIcon,
+    String? secondaryActionTooltip,
+  }) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final controller = _filterControllers[section]!;
@@ -784,6 +1037,30 @@ class _ContactsTabState extends State<ContactsTab> {
                     ),
                   ),
                   if (hasFilter) ...[
+                    if (onSecondaryAction != null &&
+                        secondaryActionIcon != null)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 4),
+                        child: Tooltip(
+                          message: secondaryActionTooltip ?? '',
+                          child: Material(
+                            color: colorScheme.tertiary.withValues(alpha: 0.10),
+                            shape: const CircleBorder(),
+                            child: InkWell(
+                              customBorder: const CircleBorder(),
+                              onTap: onSecondaryAction,
+                              child: Padding(
+                                padding: const EdgeInsets.all(6),
+                                child: Icon(
+                                  secondaryActionIcon,
+                                  size: 16,
+                                  color: colorScheme.tertiary,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     Padding(
                       padding: const EdgeInsets.only(right: 4),
                       child: Material(
@@ -840,23 +1117,41 @@ class _ContactsTabState extends State<ContactsTab> {
                       ),
                     ),
                   ] else
-                    const SizedBox(width: 12),
+                    Row(
+                      children: [
+                        if (onSecondaryAction != null &&
+                            secondaryActionIcon != null)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 6),
+                            child: Tooltip(
+                              message: secondaryActionTooltip ?? '',
+                              child: Material(
+                                color: colorScheme.tertiary.withValues(
+                                  alpha: 0.10,
+                                ),
+                                shape: const CircleBorder(),
+                                child: InkWell(
+                                  customBorder: const CircleBorder(),
+                                  onTap: onSecondaryAction,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(6),
+                                    child: Icon(
+                                      secondaryActionIcon,
+                                      size: 16,
+                                      color: colorScheme.tertiary,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        const SizedBox(width: 12),
+                      ],
+                    ),
                 ],
               ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyFilterState(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(
-        'No matches for this filter.',
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
         ),
       ),
     );
@@ -1137,13 +1432,13 @@ class _ChannelActivityCard extends StatelessWidget {
   final Contact channel;
   final MessagesProvider messagesProvider;
   final ContactsProvider contactsProvider;
-  final VoidCallback? onNavigateToMessages;
+  final VoidCallback? onTap;
 
   const _ChannelActivityCard({
     required this.channel,
     required this.messagesProvider,
     required this.contactsProvider,
-    required this.onNavigateToMessages,
+    this.onTap,
   });
 
   String _formatRelativeTime(BuildContext context, DateTime when) {
@@ -1207,17 +1502,7 @@ class _ChannelActivityCard extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(18),
-          onTap: () async {
-            await MessageDestinationPreferences.setDestination(
-              MessageDestinationPreferences.destinationTypeChannel,
-              recipientPublicKey: channel.publicKeyHex,
-            );
-            messagesProvider.navigateToDestination(
-              MessageDestinationPreferences.destinationTypeChannel,
-              recipientPublicKeyHex: channel.publicKeyHex,
-            );
-            onNavigateToMessages?.call();
-          },
+          onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: Row(

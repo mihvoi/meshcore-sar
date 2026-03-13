@@ -610,6 +610,68 @@ class _DeviceConfigScreenState extends State<DeviceConfigScreen> {
     }
   }
 
+  Future<void> _confirmFactoryReset() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Wipe device data'),
+        content: const Text(
+          'This will erase all data on the connected device, including contacts, keys, and saved settings. This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(AppLocalizations.of(context)!.cancel),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Wipe device'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    final connectionProvider = context.read<ConnectionProvider>();
+
+    try {
+      await connectionProvider.factoryResetDevice();
+      if (!mounted) return;
+
+      if (connectionProvider.error != null) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(connectionProvider.error!),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+        return;
+      }
+
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Factory reset command sent. The device should reboot and disconnect shortly.',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Failed to wipe device data: $e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final deviceInfo = context.watch<ConnectionProvider>().deviceInfo;
@@ -1094,6 +1156,74 @@ class _DeviceConfigScreenState extends State<DeviceConfigScreen> {
                         isSaving: _isSavingRadioSettings,
                         isSaved: _radioSettingsSaved,
                         label: 'Save radio settings',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              _ConfigSectionCard(
+                title: 'Danger zone',
+                subtitle: 'Destructive device actions.',
+                icon: Icons.warning_amber_rounded,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: colorScheme.errorContainer.withValues(
+                          alpha: 0.55,
+                        ),
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(
+                          color: colorScheme.error.withValues(alpha: 0.28),
+                        ),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.delete_forever_rounded,
+                            color: colorScheme.error,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Wipe data on device',
+                                  style: theme.textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                    color: colorScheme.onErrorContainer,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Erase contacts, keys, and radio settings from the connected MeshCore device and return it to factory defaults.',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: colorScheme.onErrorContainer,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: _confirmFactoryReset,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: colorScheme.error,
+                          foregroundColor: colorScheme.onError,
+                          minimumSize: const Size.fromHeight(52),
+                        ),
+                        icon: const Icon(Icons.delete_forever_rounded),
+                        label: const Text('Wipe device data'),
                       ),
                     ),
                   ],

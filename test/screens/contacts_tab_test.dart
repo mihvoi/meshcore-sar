@@ -8,8 +8,7 @@ import 'package:meshcore_sar_app/providers/connection_provider.dart';
 import 'package:meshcore_sar_app/providers/contacts_provider.dart';
 import 'package:meshcore_sar_app/providers/map_provider.dart';
 import 'package:meshcore_sar_app/providers/messages_provider.dart';
-import 'package:meshcore_sar_app/providers/sensors_provider.dart';
-import 'package:meshcore_sar_app/widgets/contacts/contact_tile.dart';
+import 'package:meshcore_sar_app/screens/contacts_tab.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -18,81 +17,76 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  Contact buildContact({
-    required String name,
-    required ContactType type,
-    int secondByte = 1,
-  }) {
+  Contact buildChannel({required String name, required int channelIndex}) {
     final publicKey = Uint8List(32);
-    publicKey[1] = secondByte;
+    publicKey[0] = 0xFF;
+    publicKey[1] = channelIndex;
 
     return Contact(
       publicKey: publicKey,
-      type: type,
+      type: ContactType.channel,
       flags: 0,
-      outPathLen: 0,
-      outPath: Uint8List(64),
+      outPathLen: -1,
+      outPath: Uint8List(0),
       advName: name,
       lastAdvert: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      advLat: 46562000,
-      advLon: 14950000,
+      advLat: 0,
+      advLon: 0,
       lastMod: DateTime.now().millisecondsSinceEpoch ~/ 1000,
     );
   }
 
-  Future<void> pumpTile(WidgetTester tester, Contact contact) async {
+  Future<void> pumpContactsTab(
+    WidgetTester tester, {
+    required List<Contact> channels,
+  }) async {
+    final contactsProvider = ContactsProvider();
+    for (final channel in channels) {
+      contactsProvider.addOrUpdateContact(channel);
+    }
+
     await tester.pumpWidget(
       MultiProvider(
         providers: [
+          ChangeNotifierProvider.value(value: contactsProvider),
           ChangeNotifierProvider(create: (_) => ConnectionProvider()),
-          ChangeNotifierProvider(create: (_) => ContactsProvider()),
           ChangeNotifierProvider(create: (_) => MessagesProvider()),
-          ChangeNotifierProvider(create: (_) => SensorsProvider()),
           ChangeNotifierProvider(create: (_) => MapProvider()),
         ],
         child: MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: Scaffold(body: ContactTile(contact: contact)),
+          home: const Scaffold(body: ContactsTab()),
         ),
       ),
     );
+
+    await tester.pumpAndSettle();
   }
 
-  testWidgets('shows trace action for non-channel contacts', (tester) async {
-    await pumpTile(
+  testWidgets('private channel activity card shows delete action in sheet', (
+    tester,
+  ) async {
+    await pumpContactsTab(
       tester,
-      buildContact(name: 'John Smith', type: ContactType.chat),
+      channels: [buildChannel(name: 'Ops', channelIndex: 3)],
     );
 
-    await tester.tap(find.text('John Smith'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Trace'), findsOneWidget);
-  });
-
-  testWidgets('does not show trace action for channels', (tester) async {
-    await pumpTile(
-      tester,
-      buildContact(name: 'Ops', type: ContactType.channel, secondByte: 3),
-    );
-
+    expect(find.text('Ops'), findsOneWidget);
     await tester.tap(find.text('Ops'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Trace'), findsNothing);
-  });
+    expect(find.text('Delete Channel'), findsOneWidget);
 
-  testWidgets('shows overridden contact name as primary label', (tester) async {
-    await pumpTile(
-      tester,
-      buildContact(
-        name: 'John Smith',
-        type: ContactType.chat,
-      ).copyWith(nameOverride: 'Rescue One'),
+    await tester.tap(find.text('Delete Channel'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Delete Channel'), findsWidgets);
+    expect(
+      find.text(
+        'Are you sure you want to delete channel "Ops"? This action cannot be undone.',
+      ),
+      findsOneWidget,
     );
-
-    expect(find.text('Rescue One'), findsOneWidget);
-    expect(find.text('John Smith'), findsNothing);
   });
 }

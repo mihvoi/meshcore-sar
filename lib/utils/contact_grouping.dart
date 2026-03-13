@@ -4,30 +4,16 @@ class InferredContactGroup {
   final String key;
   final String label;
   final List<Contact> contacts;
+  final List<String> matchPrefixes;
 
   const InferredContactGroup({
     required this.key,
     required this.label,
     required this.contacts,
-  });
+    List<String>? matchPrefixes,
+  }) : matchPrefixes = matchPrefixes ?? const <String>[];
 
   DateTime get latestSeen => contacts.first.lastSeenTime;
-}
-
-class ContactListItem {
-  final Contact? contact;
-  final InferredContactGroup? group;
-
-  const ContactListItem._({this.contact, this.group});
-
-  const ContactListItem.contact(Contact contact) : this._(contact: contact);
-
-  const ContactListItem.group(InferredContactGroup group)
-    : this._(group: group);
-
-  bool get isGroup => group != null;
-
-  DateTime get latestSeen => group?.latestSeen ?? contact!.lastSeenTime;
 }
 
 class ContactGrouping {
@@ -35,23 +21,81 @@ class ContactGrouping {
     r'^([A-Za-z0-9]{2,})([-_/:])',
   );
 
+  static String? inferredGroupLabelForContact(Contact contact) {
+    return _extractPrefix(contact.displayName)?.label;
+  }
+
+  static bool contactMatchesInferredGroupLabel(Contact contact, String query) {
+    final normalizedQuery = query.trim().toLowerCase();
+    if (normalizedQuery.isEmpty) {
+      return false;
+    }
+
+    final groupLabel = inferredGroupLabelForContact(contact)?.toLowerCase();
+    return groupLabel?.contains(normalizedQuery) ?? false;
+  }
+
+  static String? sharedInferredGroupLabel(List<Contact> contacts) {
+    String? sharedLabel;
+    for (final contact in contacts) {
+      final label = inferredGroupLabelForContact(contact);
+      if (label == null) {
+        return null;
+      }
+      if (sharedLabel == null) {
+        sharedLabel = label;
+        continue;
+      }
+      if (sharedLabel != label) {
+        return null;
+      }
+    }
+    return sharedLabel;
+  }
+
+  static String? sharedParentGroupLabel(List<String> labels) {
+    if (labels.isEmpty) {
+      return null;
+    }
+
+    var commonPrefix = labels.first;
+    for (final label in labels.skip(1)) {
+      final maxLength = commonPrefix.length < label.length
+          ? commonPrefix.length
+          : label.length;
+      var matchLength = 0;
+      while (matchLength < maxLength &&
+          commonPrefix.codeUnitAt(matchLength) ==
+              label.codeUnitAt(matchLength)) {
+        matchLength++;
+      }
+      commonPrefix = commonPrefix.substring(0, matchLength);
+      if (commonPrefix.isEmpty) {
+        return null;
+      }
+    }
+
+    final separatorIndex = commonPrefix.lastIndexOf(RegExp(r'[-_/:]'));
+    if (separatorIndex < 1) {
+      return null;
+    }
+
+    final parentLabel = commonPrefix.substring(0, separatorIndex + 1);
+    return parentLabel.length >= 3 ? parentLabel : null;
+  }
+
   static List<Contact> sortByLastSeen(List<Contact> contacts) {
     return List<Contact>.from(contacts)
       ..sort((a, b) => b.lastSeenTime.compareTo(a.lastSeenTime));
   }
 
-  static List<ContactListItem> buildItems(
+  static List<InferredContactGroup> inferGroups(
     List<Contact> contacts, {
     int minGroupSize = 4,
+    int? maxNamedGroups,
+    String? overflowGroupLabel,
   }) {
     final sortedContacts = sortByLastSeen(contacts);
-    return buildItemsFromSorted(sortedContacts, minGroupSize: minGroupSize);
-  }
-
-  static List<ContactListItem> buildItemsFromSorted(
-    List<Contact> sortedContacts, {
-    int minGroupSize = 4,
-  }) {
     final groupedContacts = <String, List<Contact>>{};
     final groupLabels = <String, String>{};
 
@@ -62,32 +106,46 @@ class ContactGrouping {
       groupLabels.putIfAbsent(prefix.key, () => prefix.label);
     }
 
-    final eligibleGroups = <String, InferredContactGroup>{};
+    final rankedGroups = <InferredContactGroup>[];
     for (final entry in groupedContacts.entries) {
       if (entry.value.length < minGroupSize) continue;
-      eligibleGroups[entry.key] = InferredContactGroup(
-        key: entry.key,
-        label: groupLabels[entry.key] ?? entry.key,
-        contacts: entry.value,
+      rankedGroups.add(
+        InferredContactGroup(
+          key: entry.key,
+          label: groupLabels[entry.key] ?? entry.key,
+          contacts: entry.value,
+          matchPrefixes: [groupLabels[entry.key] ?? entry.key],
+        ),
       );
     }
+    rankedGroups.sort((a, b) => b.latestSeen.compareTo(a.latestSeen));
 
-    final emittedGroups = <String>{};
-    final items = <ContactListItem>[];
+    if (maxNamedGroups != null &&
+        overflowGroupLabel != null &&
+        rankedGroups.length > maxNamedGroups) {
+      final retainedGroups = rankedGroups.take(maxNamedGroups).toList();
+      final overflowGroups = rankedGroups.skip(maxNamedGroups).toList();
+      final parentLabel = sharedParentGroupLabel([
+        for (final group in overflowGroups) ...group.matchPrefixes,
+      ]);
+      if (parentLabel != null) {
+        final overflowContacts = overflowGroups
+            .expand((group) => group.contacts)
+            .toList();
+        return [
+          ...retainedGroups,
+          InferredContactGroup(
+            key: parentLabel,
+            label: parentLabel,
+            contacts: sortByLastSeen(overflowContacts),
+            matchPrefixes: [parentLabel],
+          ),
+        ];
+      }
 
-    for (final contact in sortedContacts) {
-      final prefix = _extractPrefix(contact.displayName);
-      final group = prefix == null ? null : eligibleGroups[prefix.key];
-      if (group == null) {
-        items.add(ContactListItem.contact(contact));
-        continue;
-      }
-      if (emittedGroups.add(group.key)) {
-        items.add(ContactListItem.group(group));
-      }
+      return rankedGroups;
     }
-
-    return items;
+    return rankedGroups;
   }
 
   static _GroupPrefix? _extractPrefix(String name) {

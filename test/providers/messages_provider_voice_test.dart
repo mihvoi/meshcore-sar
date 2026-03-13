@@ -131,6 +131,108 @@ void main() {
       expect(snapshot.location.longitude, closeTo(14.5058, 0.000001));
     });
 
+    test('dedupes repeated incoming contact messages with same text', () {
+      final provider = MessagesProvider();
+      final sender = Uint8List.fromList([0, 1, 2, 3, 4, 5]);
+
+      provider.addMessage(
+        Message(
+          id: 'dup-1',
+          messageType: MessageType.contact,
+          pathLen: 1,
+          textType: MessageTextType.plain,
+          senderTimestamp: 1700001000,
+          text: 'same payload',
+          receivedAt: DateTime.now(),
+          senderPublicKeyPrefix: sender,
+        ),
+      );
+      provider.addMessage(
+        Message(
+          id: 'dup-2',
+          messageType: MessageType.contact,
+          pathLen: 1,
+          textType: MessageTextType.plain,
+          senderTimestamp: 1700001999,
+          text: 'same payload',
+          receivedAt: DateTime.now(),
+          senderPublicKeyPrefix: sender,
+        ),
+      );
+
+      expect(provider.messages, hasLength(1));
+      expect(provider.messages.single.id, equals('dup-1'));
+    });
+
+    test('keeps separate incoming messages when text differs', () {
+      final provider = MessagesProvider();
+      final sender = Uint8List.fromList([0, 1, 2, 3, 4, 5]);
+
+      provider.addMessage(
+        Message(
+          id: 'unique-1',
+          messageType: MessageType.contact,
+          pathLen: 1,
+          textType: MessageTextType.plain,
+          senderTimestamp: 1700002000,
+          text: 'same payload',
+          receivedAt: DateTime.now(),
+          senderPublicKeyPrefix: sender,
+        ),
+      );
+      provider.addMessage(
+        Message(
+          id: 'unique-2',
+          messageType: MessageType.contact,
+          pathLen: 1,
+          textType: MessageTextType.plain,
+          senderTimestamp: 1700002999,
+          text: 'different payload',
+          receivedAt: DateTime.now(),
+          senderPublicKeyPrefix: sender,
+        ),
+      );
+
+      expect(provider.messages, hasLength(2));
+    });
+
+    test('removed SAR markers stay hidden after provider restore', () async {
+      final provider = MessagesProvider();
+      final message = Message(
+        id: 'sar-hidden',
+        messageType: MessageType.channel,
+        channelIdx: 0,
+        pathLen: 0,
+        textType: MessageTextType.plain,
+        senderTimestamp: 1700000003,
+        text: 'S:🧑:0:46.0569,14.5058:Hidden marker',
+        receivedAt: DateTime.now(),
+        senderPublicKeyPrefix: Uint8List.fromList([0, 1, 2, 3, 4, 5]),
+      );
+
+      provider.addMessage(message);
+      expect(
+        provider.sarMarkers.map((marker) => marker.id),
+        contains(message.id),
+      );
+
+      await provider.removeSarMarker(message.id);
+      expect(provider.sarMarkers, isEmpty);
+
+      final restoredProvider = MessagesProvider();
+      await restoredProvider.initialize();
+
+      expect(
+        restoredProvider.messages.map((stored) => stored.id),
+        contains(message.id),
+      );
+      expect(
+        restoredProvider.sarMarkers.map((marker) => marker.id),
+        isNot(contains(message.id)),
+      );
+      expect(restoredProvider.removedSarMarkerIds, contains(message.id));
+    });
+
     test('tracks and persists media transfer counts and downloaders', () async {
       final provider = MessagesProvider();
       final voiceEnvelope = VoiceEnvelope(

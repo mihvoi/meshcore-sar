@@ -71,4 +71,31 @@ void main() {
     expect(find.text('7'), findsOneWidget);
     expect(find.text('3'), findsOneWidget);
   });
+
+  testWidgets('can hide show all option for contact-only flows', (
+    tester,
+  ) async {
+    final contact = buildContact(name: 'John Smith', type: ContactType.chat);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: RecipientSelectorSheet(
+            contacts: [contact],
+            rooms: const [],
+            channels: const [],
+            unreadCount: 0,
+            unreadCountsByPublicKey: const {},
+            showAllOption: false,
+            onSelect: (_, __) {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Show all'), findsNothing);
+    expect(find.text('John Smith'), findsOneWidget);
+  });
 }

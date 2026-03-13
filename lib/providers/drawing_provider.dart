@@ -11,6 +11,8 @@ enum DrawingMode { none, line, rectangle, measure }
 /// Provider for managing map drawings
 class DrawingProvider with ChangeNotifier {
   static const String _storageKey = 'map_drawings';
+  static const String _showReceivedDrawingsKey = 'map_show_received_drawings';
+  static const String _showSarMarkersKey = 'map_show_sar_markers';
 
   // Drawing state
   DrawingMode _drawingMode = DrawingMode.none;
@@ -57,6 +59,7 @@ class DrawingProvider with ChangeNotifier {
 
   /// Initialize and load saved drawings
   Future<void> initialize() async {
+    await _loadPreferences();
     await _loadDrawings();
   }
 
@@ -77,15 +80,30 @@ class DrawingProvider with ChangeNotifier {
   }
 
   /// Toggle visibility of received drawings
-  void toggleReceivedDrawings() {
+  Future<void> toggleReceivedDrawings() async {
     _showReceivedDrawings = !_showReceivedDrawings;
     notifyListeners();
+    await _savePreferences();
   }
 
   /// Toggle visibility of SAR markers
-  void toggleSarMarkers() {
+  Future<void> toggleSarMarkers() async {
     _showSarMarkers = !_showSarMarkers;
     notifyListeners();
+    await _savePreferences();
+  }
+
+  Future<void> _loadPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    _showReceivedDrawings = prefs.getBool(_showReceivedDrawingsKey) ?? true;
+    _showSarMarkers = prefs.getBool(_showSarMarkersKey) ?? true;
+    notifyListeners();
+  }
+
+  Future<void> _savePreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_showReceivedDrawingsKey, _showReceivedDrawings);
+    await prefs.setBool(_showSarMarkersKey, _showSarMarkers);
   }
 
   /// Start drawing a line

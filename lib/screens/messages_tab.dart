@@ -57,6 +57,9 @@ class _MessagesTabState extends State<MessagesTab> {
   int _messageByteCount = 0;
   String? _highlightedMessageId;
   Timer? _highlightTimer; // Timer for clearing message highlight
+  TextEditingValue _lastComposerValue = const TextEditingValue();
+  bool _isMentionPickerOpen = false;
+  bool _suppressMentionTrigger = false;
 
   // Message destination state
   String _destinationType =
@@ -85,7 +88,8 @@ class _MessagesTabState extends State<MessagesTab> {
   @override
   void initState() {
     super.initState();
-    _textController.addListener(_updateCharacterCount);
+    _lastComposerValue = _textController.value;
+    _textController.addListener(_handleComposerChanged);
     // Load saved message destination
     _loadSavedDestination();
     _loadVoiceSettings();
@@ -177,10 +181,71 @@ class _MessagesTabState extends State<MessagesTab> {
     }
   }
 
+  void _handleComposerChanged() {
+    final previousValue = _lastComposerValue;
+    final currentValue = _textController.value;
+    _lastComposerValue = currentValue;
+
+    _updateCharacterCount();
+
+    if (_suppressMentionTrigger || _isMentionPickerOpen) {
+      return;
+    }
+
+    final mentionTriggerRange = _getMentionTriggerRange(
+      previousValue: previousValue,
+      currentValue: currentValue,
+    );
+    if (mentionTriggerRange == null) {
+      return;
+    }
+
+    unawaited(_showMentionSelectorForRange(mentionTriggerRange));
+  }
+
   void _updateCharacterCount() {
     setState(() {
       _messageByteCount = utf8.encode(_textController.text).length;
     });
+  }
+
+  TextRange? _getMentionTriggerRange({
+    required TextEditingValue previousValue,
+    required TextEditingValue currentValue,
+  }) {
+    if (!previousValue.selection.isValid ||
+        !currentValue.selection.isValid ||
+        !previousValue.selection.isCollapsed ||
+        !currentValue.selection.isCollapsed) {
+      return null;
+    }
+
+    final previousOffset = previousValue.selection.baseOffset;
+    final currentOffset = currentValue.selection.baseOffset;
+    if (previousOffset < 0 || currentOffset < 0) {
+      return null;
+    }
+
+    if (currentValue.text.length != previousValue.text.length + 1 ||
+        currentOffset != previousOffset + 1) {
+      return null;
+    }
+
+    if (currentValue.text.substring(0, previousOffset) !=
+        previousValue.text.substring(0, previousOffset)) {
+      return null;
+    }
+
+    if (currentValue.text.substring(currentOffset) !=
+        previousValue.text.substring(previousOffset)) {
+      return null;
+    }
+
+    if (currentValue.text[previousOffset] != '@') {
+      return null;
+    }
+
+    return TextRange(start: previousOffset, end: currentOffset);
   }
 
   int get _maxMessageBytes =>
@@ -300,6 +365,56 @@ class _MessagesTabState extends State<MessagesTab> {
     );
   }
 
+  Future<void> _showMentionSelectorForRange(TextRange triggerRange) async {
+    final contactsProvider = context.read<ContactsProvider>();
+    final contacts = contactsProvider.contacts
+        .where((contact) => contact.type == ContactType.chat)
+        .toList();
+
+    if (contacts.isEmpty || !mounted) {
+      return;
+    }
+
+    _isMentionPickerOpen = true;
+    Contact? selectedContact;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => RecipientSelectorSheet(
+        contacts: contacts,
+        rooms: const [],
+        channels: const [],
+        unreadCount: 0,
+        unreadCountsByPublicKey: {
+          for (final contact in contacts) contact.publicKeyHex: 0,
+        },
+        currentDestinationType: null,
+        currentRecipientPublicKey: null,
+        showAllOption: false,
+        onSelect: (_, recipient) {
+          selectedContact = recipient;
+        },
+      ),
+    );
+
+    _isMentionPickerOpen = false;
+
+    if (!mounted) {
+      return;
+    }
+
+    if (selectedContact != null) {
+      _insertReplyMention(
+        selectedContact!.displayName,
+        replacementRange: triggerRange,
+      );
+    }
+
+    _focusNode.requestFocus();
+  }
+
   /// Handle recipient selection
   Future<void> _onRecipientSelected(String type, Contact? recipient) async {
     setState(() {
@@ -338,13 +453,13 @@ class _MessagesTabState extends State<MessagesTab> {
     _focusNode.requestFocus();
   }
 
-  void _insertReplyMention(String displayName) {
+  void _insertReplyMention(String displayName, {TextRange? replacementRange}) {
     final trimmedName = displayName.trim();
     if (trimmedName.isEmpty) return;
 
     final mention = '@[$trimmedName] ';
     final value = _textController.value;
-    final selection = value.selection;
+    final selection = replacementRange ?? value.selection;
     final hasSelection =
         selection.isValid &&
         selection.start >= 0 &&
@@ -355,11 +470,14 @@ class _MessagesTabState extends State<MessagesTab> {
     final nextText = value.text.replaceRange(start, end, mention);
     final nextOffset = start + mention.length;
 
+    _suppressMentionTrigger = true;
     _textController.value = value.copyWith(
       text: nextText,
       selection: TextSelection.collapsed(offset: nextOffset),
       composing: TextRange.empty,
     );
+    _lastComposerValue = _textController.value;
+    _suppressMentionTrigger = false;
     _enforceMessageByteLimit();
   }
 

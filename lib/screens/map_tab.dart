@@ -22,6 +22,7 @@ import '../models/message.dart';
 import '../services/background_location_service.dart';
 import '../services/location_tracking_service.dart';
 import '../services/map_marker_service.dart';
+import '../services/message_destination_preferences.dart';
 import '../services/trail_color_service.dart';
 import '../widgets/map_debug_info.dart';
 import '../widgets/map/compass_widget.dart';
@@ -816,6 +817,174 @@ class _MapTabState extends State<MapTab> with AutomaticKeepAliveClientMixin {
     }
   }
 
+  Future<void> _showSarMarkerActions(
+    SarMarker marker,
+    MessagesProvider messagesProvider,
+    ContactsProvider contactsProvider,
+  ) async {
+    final message = messagesProvider.getMessageById(marker.id);
+
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        final theme = Theme.of(sheetContext);
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(marker.emoji, style: const TextStyle(fontSize: 24)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        marker.displayName,
+                        style: theme.textTheme.titleMedium,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  '${marker.location.latitude.toStringAsFixed(6)}, ${marker.location.longitude.toStringAsFixed(6)}',
+                  style: theme.textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  marker.senderName != null
+                      ? '${marker.timeAgo} • ${marker.senderName}'
+                      : marker.timeAgo,
+                  style: theme.textTheme.bodySmall,
+                ),
+                if (marker.notes != null && marker.notes!.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Text(marker.notes!),
+                ],
+                const SizedBox(height: 16),
+                if (message != null)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.chat_bubble_outline),
+                    title: const Text('Open message'),
+                    subtitle: const Text('Jump to the related SAR message'),
+                    onTap: () async {
+                      Navigator.pop(sheetContext);
+                      await _openSarMarkerMessage(
+                        message,
+                        messagesProvider,
+                        contactsProvider,
+                      );
+                    },
+                  ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.delete_outline, color: Colors.red),
+                  title: Text(
+                    'Remove marker',
+                    style: TextStyle(color: theme.colorScheme.error),
+                  ),
+                  subtitle: Text(
+                    message != null
+                        ? 'This also removes the linked SAR message.'
+                        : 'Hide this marker from the map.',
+                  ),
+                  onTap: () async {
+                    final confirmed = await _confirmSarMarkerRemoval(
+                      hasMessage: message != null,
+                    );
+                    if (!mounted ||
+                        !sheetContext.mounted ||
+                        confirmed != true) {
+                      return;
+                    }
+                    Navigator.pop(sheetContext);
+                    await messagesProvider.removeSarMarkerPermanently(
+                      marker.id,
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<bool?> _confirmSarMarkerRemoval({required bool hasMessage}) {
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Remove SAR marker'),
+        content: Text(
+          hasMessage
+              ? 'This will remove the marker and its linked chat message.'
+              : 'This will hide the marker from the map, even if it is not visible in chat.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(AppLocalizations.of(dialogContext)!.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: Text(AppLocalizations.of(dialogContext)!.delete),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openSarMarkerMessage(
+    Message message,
+    MessagesProvider messagesProvider,
+    ContactsProvider contactsProvider,
+  ) async {
+    if (message.isChannelMessage) {
+      final channelContact = contactsProvider.channels.where((contact) {
+        return contact.publicKey.length > 1 &&
+            contact.publicKey[1] == (message.channelIdx ?? 0);
+      }).firstOrNull;
+
+      messagesProvider.navigateToDestination(
+        MessageDestinationPreferences.destinationTypeChannel,
+        recipientPublicKeyHex: channelContact?.publicKeyHex,
+      );
+    } else {
+      Contact? destinationContact;
+
+      if (message.recipientPublicKey != null) {
+        destinationContact = contactsProvider.contacts.where((contact) {
+          return contact.publicKey.length >=
+                  message.recipientPublicKey!.length &&
+              contact.publicKey.matches(message.recipientPublicKey!);
+        }).firstOrNull;
+      } else if (message.senderPublicKeyPrefix != null &&
+          message.senderPublicKeyPrefix!.length >= 6) {
+        destinationContact = contactsProvider.findContactByPrefix(
+          message.senderPublicKeyPrefix!,
+        );
+      }
+
+      if (destinationContact != null) {
+        messagesProvider.navigateToDestination(
+          destinationContact.isRoom
+              ? MessageDestinationPreferences.destinationTypeRoom
+              : MessageDestinationPreferences.destinationTypeContact,
+          recipientPublicKeyHex: destinationContact.publicKeyHex,
+        );
+      }
+    }
+
+    messagesProvider.navigateToMessage(message.id);
+    widget.onNavigateToMessages?.call();
+  }
+
   /// Show SAR dialog with pre-populated location from map long press
   void _showSarDialogWithLocation(LatLng location) {
     // Create a Position object from the LatLng coordinates
@@ -1119,9 +1288,26 @@ class _MapTabState extends State<MapTab> with AutomaticKeepAliveClientMixin {
   Widget build(BuildContext context) {
     super.build(context); // Required for AutomaticKeepAliveClientMixin
 
-    return Consumer3<ContactsProvider, MessagesProvider, DrawingProvider>(
-      builder: (context, contactsProvider, messagesProvider, drawingProvider, child) {
-        final contactsWithLocation = contactsProvider.contactsWithLocation;
+    return Consumer4<
+      ContactsProvider,
+      MessagesProvider,
+      DrawingProvider,
+      MapProvider
+    >(
+      builder: (
+        context,
+        contactsProvider,
+        messagesProvider,
+        drawingProvider,
+        mapProvider,
+        child,
+      ) {
+        final allContactsWithLocation = contactsProvider.contactsWithLocation;
+        final contactsWithLocation = mapProvider.hideRepeatersOnMap
+            ? allContactsWithLocation
+                .where((contact) => !contact.isRepeater)
+                .toList()
+            : allContactsWithLocation;
         // Filter SAR markers based on visibility toggle
         final allSarMarkers = messagesProvider.sarMarkers;
         final sarMarkers = drawingProvider.showSarMarkers
@@ -1719,7 +1905,7 @@ class _MapTabState extends State<MapTab> with AutomaticKeepAliveClientMixin {
                         onTap: (contact) {
                           _showDetailedCompassWithContact(
                             context,
-                            contactsProvider.contactsWithLocation,
+                            contactsWithLocation,
                             messagesProvider.sarMarkers,
                             contact,
                           );
@@ -1731,9 +1917,11 @@ class _MapTabState extends State<MapTab> with AutomaticKeepAliveClientMixin {
                         context: context,
                         mapRotation: _getMapRotation(),
                         onTap: (marker) {
-                          // Navigate to the corresponding message in Messages tab
-                          messagesProvider.navigateToMessage(marker.id);
-                          widget.onNavigateToMessages?.call();
+                          _showSarMarkerActions(
+                            marker,
+                            messagesProvider,
+                            contactsProvider,
+                          );
                         },
                       ),
                       // User location marker with directional pointer
@@ -2021,7 +2209,7 @@ class _MapTabState extends State<MapTab> with AutomaticKeepAliveClientMixin {
                 child: GestureDetector(
                   onTap: () => _showDetailedCompass(
                     context,
-                    contactsProvider.contactsWithLocation,
+                    contactsWithLocation,
                     messagesProvider.sarMarkers,
                   ),
                   child: CompassWidget(

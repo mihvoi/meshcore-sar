@@ -66,7 +66,7 @@ void main() {
       ),
     );
 
-    expect(find.text('No live traffic yet'), findsOneWidget);
+    expect(find.text('No packets for this filter'), findsOneWidget);
     expect(find.text('Quiet'), findsOneWidget);
   });
 
@@ -115,7 +115,7 @@ void main() {
 
     expect(find.text('1 pkt/min'), findsOneWidget);
     expect(find.text('Device total 7'), findsOneWidget);
-    expect(find.textContaining('RESP'), findsOneWidget);
+    expect(find.text('Response'), findsWidgets);
     expect(find.text('MULTI-HOP'), findsOneWidget);
     expect(find.textContaining('RSSI -84 dBm'), findsOneWidget);
   });
@@ -151,7 +151,7 @@ void main() {
     await tester.tap(find.byTooltip('Clear live view'));
     await tester.pump();
 
-    expect(find.text('No live traffic yet'), findsOneWidget);
+    expect(find.text('No packets for this filter'), findsOneWidget);
 
     now = now.add(const Duration(seconds: 2));
     logs.add(
@@ -173,7 +173,7 @@ void main() {
     refresh.value += 1;
     await tester.pump();
 
-    expect(find.text('No live traffic yet'), findsNothing);
+    expect(find.text('No packets for this filter'), findsNothing);
     expect(find.textContaining('3 bytes'), findsOneWidget);
   });
 }

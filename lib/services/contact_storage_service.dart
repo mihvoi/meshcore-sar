@@ -159,6 +159,7 @@ class ContactStorageService {
       'outPathLen': contact.outPathLen,
       'outPath': base64Encode(contact.outPath),
       'advName': contact.advName,
+      'nameOverride': contact.nameOverride,
       'lastAdvert': contact.lastAdvert,
       'advLat': contact.advLat,
       'advLon': contact.advLon,
@@ -181,6 +182,7 @@ class ContactStorageService {
         outPathLen: json['outPathLen'] as int,
         outPath: Uint8List.fromList(base64Decode(json['outPath'] as String)),
         advName: json['advName'] as String,
+        nameOverride: json['nameOverride'] as String?,
         lastAdvert: json['lastAdvert'] as int,
         advLat: json['advLat'] as int,
         advLon: json['advLon'] as int,
@@ -247,6 +249,8 @@ class ContactStorageService {
       'label': group.label,
       'query': group.query,
       'createdAtMillis': group.createdAt.millisecondsSinceEpoch,
+      'matchPrefixes': group.matchPrefixes,
+      'isAutoGroup': group.isAutoGroup,
     };
   }
 
@@ -260,6 +264,10 @@ class ContactStorageService {
         createdAt: DateTime.fromMillisecondsSinceEpoch(
           json['createdAtMillis'] as int,
         ),
+        matchPrefixes: (json['matchPrefixes'] as List<dynamic>?)
+            ?.map((value) => value as String)
+            .toList(),
+        isAutoGroup: json['isAutoGroup'] as bool? ?? false,
       );
     } catch (e) {
       debugPrint('❌ [ContactStorage] Error parsing contact group: $e');

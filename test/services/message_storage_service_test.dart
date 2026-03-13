@@ -98,4 +98,14 @@ void main() {
       DateTime.fromMillisecondsSinceEpoch(1700000100400),
     );
   });
+
+  test('persists removed SAR marker IDs', () async {
+    final storage = MessageStorageService();
+
+    await storage.saveRemovedSarMarkerIds({'sar-2', 'sar-1'});
+
+    final restored = await storage.loadRemovedSarMarkerIds();
+
+    expect(restored, equals({'sar-1', 'sar-2'}));
+  });
 }

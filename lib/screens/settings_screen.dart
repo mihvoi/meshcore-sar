@@ -14,6 +14,8 @@ import '../providers/contacts_provider.dart';
 import '../providers/messages_provider.dart';
 import '../providers/app_provider.dart';
 import '../providers/connection_provider.dart';
+import '../providers/drawing_provider.dart';
+import '../providers/map_provider.dart';
 import '../services/location_tracking_service.dart';
 import '../services/locale_preferences.dart';
 import '../services/mesh_map_nodes_service.dart';
@@ -72,6 +74,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _fastLocationUpdatesEnabled = false;
   double _fastLocationMovementThresholdMeters = 10.0;
   int _fastLocationActiveCadenceSeconds = 10;
+  bool _rotateMapWithHeading = false;
+  bool _showMapDebugInfo = false;
+  bool _openMapInFullscreen = false;
   bool _isDeveloperModeEnabled = false;
   DateTime? _onlineTraceCacheUpdatedAt;
   bool _isClearingOnlineTraceCache = false;
@@ -93,6 +98,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadFastLocationSettings();
     _loadDeveloperMode();
     _loadOnlineTraceCacheStatus();
+    _loadMapPreferences();
   }
 
   @override
@@ -175,6 +181,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _saveRxTxPreference(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('show_rx_tx_indicators', value);
+  }
+
+  Future<void> _loadMapPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _rotateMapWithHeading =
+          prefs.getBool('map_rotate_with_heading') ?? false;
+      _showMapDebugInfo = prefs.getBool('map_show_debug_info') ?? false;
+      _openMapInFullscreen = prefs.getBool('map_fullscreen') ?? false;
+    });
+  }
+
+  Future<void> _saveMapPreference(String key, bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(key, value);
   }
 
   Future<void> _loadVoicePreferences() async {
@@ -1151,6 +1173,240 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onTap: _isClearingOnlineTraceCache
                   ? null
                   : _clearOnlineTraceCache,
+            ),
+          ]),
+
+          _buildSectionHeader('Map'),
+          _buildSettingsCard([
+            SwitchListTile(
+              secondary: const Icon(Icons.explore),
+              title: const Text('Rotate map with heading'),
+              subtitle: const Text(
+                'Rotate the map based on your compass or movement heading',
+              ),
+              value: _rotateMapWithHeading,
+              onChanged: (value) async {
+                setState(() {
+                  _rotateMapWithHeading = value;
+                });
+                await _saveMapPreference('map_rotate_with_heading', value);
+              },
+            ),
+            SwitchListTile(
+              secondary: const Icon(Icons.bug_report_outlined),
+              title: const Text('Show map debug info'),
+              subtitle: const Text(
+                'Display extra map diagnostics and internal state overlays',
+              ),
+              value: _showMapDebugInfo,
+              onChanged: (value) async {
+                setState(() {
+                  _showMapDebugInfo = value;
+                });
+                await _saveMapPreference('map_show_debug_info', value);
+              },
+            ),
+            SwitchListTile(
+              secondary: const Icon(Icons.fullscreen),
+              title: const Text('Open map in fullscreen'),
+              subtitle: const Text(
+                'Start the map tab in fullscreen mode by default',
+              ),
+              value: _openMapInFullscreen,
+              onChanged: (value) async {
+                setState(() {
+                  _openMapInFullscreen = value;
+                });
+                await _saveMapPreference('map_fullscreen', value);
+              },
+            ),
+            Consumer<DrawingProvider>(
+              builder: (context, drawingProvider, child) => SwitchListTile(
+                secondary: const Icon(Icons.fmd_good_outlined),
+                title: const Text('Show SAR markers'),
+                subtitle: const Text(
+                  'Display SAR markers on the main map',
+                ),
+                value: drawingProvider.showSarMarkers,
+                onChanged: (value) {
+                  drawingProvider.toggleSarMarkers();
+                },
+              ),
+            ),
+            Consumer<MapProvider>(
+              builder: (context, mapProvider, child) => SwitchListTile(
+                secondary: const Icon(Icons.timeline),
+                title: const Text('Show all contact trails'),
+                subtitle: const Text(
+                  'Display location trails for all contacts that have history',
+                ),
+                value: mapProvider.showAllContactTrails,
+                onChanged: (value) async {
+                  await mapProvider.toggleAllContactTrails();
+                },
+              ),
+            ),
+            Consumer<MapProvider>(
+              builder: (context, mapProvider, child) => SwitchListTile(
+                secondary: const Icon(Icons.router_outlined),
+                title: const Text('Hide repeaters on map'),
+                subtitle: const Text(
+                  'Hide repeater contacts from the main map view',
+                ),
+                value: mapProvider.hideRepeatersOnMap,
+                onChanged: (value) async {
+                  await mapProvider.setHideRepeatersOnMap(value);
+                },
+              ),
+            ),
+          ]),
+          _buildSettingsCard([
+            ListTile(
+              leading: const Icon(Icons.layers_outlined),
+              title: const Text('Rendering'),
+              subtitle: const Text(
+                'Control map drawings and overlay layers used by the renderer',
+              ),
+            ),
+            Consumer<DrawingProvider>(
+              builder: (context, drawingProvider, child) => SwitchListTile(
+                secondary: const Icon(Icons.draw_outlined),
+                title: Text(AppLocalizations.of(context)!.showReceivedDrawings),
+                subtitle: const Text(
+                  'Render drawings received from other devices on the map',
+                ),
+                value: drawingProvider.showReceivedDrawings,
+                onChanged: (value) async {
+                  await drawingProvider.toggleReceivedDrawings();
+                },
+              ),
+            ),
+            Consumer<MapProvider>(
+              builder: (context, mapProvider, child) => SwitchListTile(
+                secondary: const Icon(Icons.grid_on, color: Colors.blue),
+                title: Text(AppLocalizations.of(context)!.cadastralParcels),
+                subtitle: const Text('WMS overlay'),
+                value: mapProvider.showCadastralOverlay,
+                onChanged: (value) async {
+                  await mapProvider.toggleCadastralOverlay();
+                },
+              ),
+            ),
+            Consumer<MapProvider>(
+              builder: (context, mapProvider, child) => SwitchListTile(
+                secondary: const Icon(Icons.route, color: Colors.green),
+                title: Text(AppLocalizations.of(context)!.forestRoads),
+                subtitle: const Text('WMS overlay'),
+                value: mapProvider.showForestRoadsOverlay,
+                onChanged: (value) async {
+                  await mapProvider.toggleForestRoadsOverlay();
+                },
+              ),
+            ),
+            Consumer<MapProvider>(
+              builder: (context, mapProvider, child) => SwitchListTile(
+                secondary: const Icon(Icons.hiking, color: Colors.brown),
+                title: Text(AppLocalizations.of(context)!.hikingTrails),
+                subtitle: const Text('WMS overlay'),
+                value: mapProvider.showHikingTrailsOverlay,
+                onChanged: (value) async {
+                  await mapProvider.toggleHikingTrailsOverlay();
+                },
+              ),
+            ),
+            Consumer<MapProvider>(
+              builder: (context, mapProvider, child) => SwitchListTile(
+                secondary: const Icon(Icons.alt_route, color: Colors.grey),
+                title: Text(AppLocalizations.of(context)!.mainRoads),
+                subtitle: const Text('WMS overlay'),
+                value: mapProvider.showMainRoadsOverlay,
+                onChanged: (value) async {
+                  await mapProvider.toggleMainRoadsOverlay();
+                },
+              ),
+            ),
+            Consumer<MapProvider>(
+              builder: (context, mapProvider, child) => SwitchListTile(
+                secondary: const Icon(Icons.numbers, color: Colors.purple),
+                title: Text(AppLocalizations.of(context)!.houseNumbers),
+                subtitle: const Text('WMS overlay'),
+                value: mapProvider.showHouseNumbersOverlay,
+                onChanged: (value) async {
+                  await mapProvider.toggleHouseNumbersOverlay();
+                },
+              ),
+            ),
+            Consumer<MapProvider>(
+              builder: (context, mapProvider, child) => SwitchListTile(
+                secondary: const Icon(
+                  Icons.warning_amber,
+                  color: Colors.orange,
+                ),
+                title: Text(AppLocalizations.of(context)!.fireHazardZones),
+                subtitle: const Text('WMS overlay'),
+                value: mapProvider.showFireHazardZonesOverlay,
+                onChanged: (value) async {
+                  await mapProvider.toggleFireHazardZonesOverlay();
+                },
+              ),
+            ),
+            Consumer<MapProvider>(
+              builder: (context, mapProvider, child) => SwitchListTile(
+                secondary: const Icon(
+                  Icons.local_fire_department,
+                  color: Colors.red,
+                ),
+                title: Text(AppLocalizations.of(context)!.historicalFires),
+                subtitle: const Text('WMS overlay'),
+                value: mapProvider.showHistoricalFiresOverlay,
+                onChanged: (value) async {
+                  await mapProvider.toggleHistoricalFiresOverlay();
+                },
+              ),
+            ),
+            Consumer<MapProvider>(
+              builder: (context, mapProvider, child) => SwitchListTile(
+                secondary: const Icon(Icons.forest, color: Colors.teal),
+                title: Text(AppLocalizations.of(context)!.firebreaks),
+                subtitle: const Text('WMS overlay'),
+                value: mapProvider.showFirebreaksOverlay,
+                onChanged: (value) async {
+                  await mapProvider.toggleFirebreaksOverlay();
+                },
+              ),
+            ),
+            Consumer<MapProvider>(
+              builder: (context, mapProvider, child) => SwitchListTile(
+                secondary: const Icon(Icons.warning, color: Colors.deepOrange),
+                title: Text(AppLocalizations.of(context)!.krasFireZones),
+                subtitle: const Text('WMS overlay'),
+                value: mapProvider.showKrasFireZonesOverlay,
+                onChanged: (value) async {
+                  await mapProvider.toggleKrasFireZonesOverlay();
+                },
+              ),
+            ),
+            Consumer<MapProvider>(
+              builder: (context, mapProvider, child) => SwitchListTile(
+                secondary: const Icon(Icons.place, color: Colors.indigo),
+                title: Text(AppLocalizations.of(context)!.placeNames),
+                subtitle: const Text('WMS overlay'),
+                value: mapProvider.showPlaceNamesOverlay,
+                onChanged: (value) async {
+                  await mapProvider.togglePlaceNamesOverlay();
+                },
+              ),
+            ),
+            Consumer<MapProvider>(
+              builder: (context, mapProvider, child) => SwitchListTile(
+                secondary: const Icon(Icons.border_outer, color: Colors.cyan),
+                title: Text(AppLocalizations.of(context)!.municipalityBorders),
+                subtitle: const Text('WMS overlay'),
+                value: mapProvider.showMunicipalityBordersOverlay,
+                onChanged: (value) async {
+                  await mapProvider.toggleMunicipalityBordersOverlay();
+                },
+              ),
             ),
           ]),
 

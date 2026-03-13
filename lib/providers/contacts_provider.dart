@@ -58,6 +58,7 @@ class _RetainedRoute {
 /// Contacts Provider - manages contact list and telemetry
 class ContactsProvider with ChangeNotifier {
   static const double _firstHopFallbackOffsetMeters = 100.0;
+  static const String autoGroupIdPrefix = 'auto_group_';
   final Map<String, Contact> _contacts = {};
   final List<SavedContactGroup> _savedContactGroups = <SavedContactGroup>[];
   final Map<String, PendingAdvert> _pendingAdverts = {};
@@ -248,6 +249,8 @@ class ContactsProvider with ChangeNotifier {
     String sectionKey,
     String query, {
     String? label,
+    List<String>? matchPrefixes,
+    bool isAutoGroup = false,
   }) async {
     final normalizedQuery = _normalizeGroupQuery(query);
     if (normalizedQuery.isEmpty ||
@@ -262,6 +265,8 @@ class ContactsProvider with ChangeNotifier {
         label: (label ?? query).trim(),
         query: query.trim(),
         createdAt: DateTime.now(),
+        matchPrefixes: matchPrefixes,
+        isAutoGroup: isAutoGroup,
       ),
     );
 
@@ -295,6 +300,18 @@ class ContactsProvider with ChangeNotifier {
       return;
     }
 
+    await _persistSavedGroups();
+    notifyListeners();
+  }
+
+  Future<void> replaceAutoGroupsForSection(
+    String sectionKey,
+    List<SavedContactGroup> groups,
+  ) async {
+    _savedContactGroups.removeWhere(
+      (group) => group.sectionKey == sectionKey && group.isAutoGroup,
+    );
+    _savedContactGroups.addAll(groups);
     await _persistSavedGroups();
     notifyListeners();
   }
@@ -486,6 +503,7 @@ class ContactsProvider with ChangeNotifier {
     if (existingContact == null) {
       var newContact = incomingContact.copyWith(
         isNew: true,
+        nameOverride: existingContact?.nameOverride,
         telemetry: mergedTelemetry,
         outPathLen:
             retainedRoute?.signedEncodedPathLen ?? incomingContact.outPathLen,
@@ -514,6 +532,7 @@ class ContactsProvider with ChangeNotifier {
 
     var updatedContact = incomingContact.copyWith(
       isNew: false,
+      nameOverride: existingContact.nameOverride,
       advertHistory: existingContact.advertHistory,
       telemetry: mergedTelemetry,
       outPathLen:
@@ -1019,6 +1038,26 @@ class ContactsProvider with ChangeNotifier {
       outPathLen: -1,
       outPath: Uint8List(0),
     );
+    _persistContacts();
+    notifyListeners();
+  }
+
+  void setContactNameOverride(String publicKeyHex, String? overrideName) {
+    final contact = _contacts[publicKeyHex];
+    if (contact == null) {
+      return;
+    }
+
+    final normalizedOverride = overrideName?.trim();
+    final nextOverride =
+        (normalizedOverride == null || normalizedOverride.isEmpty)
+        ? null
+        : normalizedOverride;
+    if (contact.nameOverride == nextOverride) {
+      return;
+    }
+
+    _contacts[publicKeyHex] = contact.copyWith(nameOverride: nextOverride);
     _persistContacts();
     notifyListeners();
   }

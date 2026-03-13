@@ -11,6 +11,7 @@ import 'package:latlong2/latlong.dart';
 /// Service for persisting messages to local storage
 class MessageStorageService {
   static const String _messagesKey = 'stored_messages';
+  static const String _removedSarMarkerIdsKey = 'removed_sar_marker_ids';
   static const String _messageContactLocationsKey =
       'stored_message_contact_locations';
   static const String _messageReceptionDetailsKey =
@@ -269,9 +270,33 @@ class MessageStorageService {
       await prefs.remove(_messageReceptionDetailsKey);
       await prefs.remove(_messageTransferDetailsKey);
       await prefs.remove(_messageRouteMetadataKey);
+      await prefs.remove(_removedSarMarkerIdsKey);
       debugPrint('✅ [MessageStorage] Cleared all stored messages');
     } catch (e) {
       debugPrint('❌ [MessageStorage] Error clearing messages: $e');
+    }
+  }
+
+  Future<Set<String>> loadRemovedSarMarkerIds() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final ids = prefs.getStringList(_removedSarMarkerIdsKey) ?? const [];
+      return ids.toSet();
+    } catch (e) {
+      debugPrint('❌ [MessageStorage] Error loading removed SAR marker IDs: $e');
+      return const <String>{};
+    }
+  }
+
+  Future<void> saveRemovedSarMarkerIds(Set<String> ids) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_removedSarMarkerIdsKey, ids.toList()..sort());
+      debugPrint(
+        '✅ [MessageStorage] Saved ${ids.length} removed SAR marker IDs',
+      );
+    } catch (e) {
+      debugPrint('❌ [MessageStorage] Error saving removed SAR marker IDs: $e');
     }
   }
 

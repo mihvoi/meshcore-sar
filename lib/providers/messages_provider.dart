@@ -22,6 +22,7 @@ import 'helpers/message_retry_manager.dart';
 class MessagesProvider with ChangeNotifier {
   final List<Message> _messages = [];
   final Map<String, SarMarker> _sarMarkers = {};
+  final Set<String> _removedSarMarkerIds = <String>{};
   final MessageStorageService _storageService = MessageStorageService();
   final NotificationService _notificationService = NotificationService();
   bool _isInitialized = false;
@@ -125,6 +126,7 @@ class MessagesProvider with ChangeNotifier {
       _messages.where((m) => m.isSystemMessage).toList();
 
   List<SarMarker> get sarMarkers => _sarMarkers.values.toList();
+  Set<String> get removedSarMarkerIds => Set.unmodifiable(_removedSarMarkerIds);
 
   List<SarMarker> get foundPersonMarkers =>
       sarMarkers.where((m) => m.type == SarMarkerType.foundPerson).toList();
@@ -298,6 +300,8 @@ class MessagesProvider with ChangeNotifier {
           .loadMessageTransferDetails();
       final storedRouteMetadata = await _storageService
           .loadMessageRouteMetadata();
+      final storedRemovedSarMarkerIds = await _storageService
+          .loadRemovedSarMarkerIds();
       _messageContactLocations
         ..clear()
         ..addAll(storedContactLocations);
@@ -310,6 +314,9 @@ class MessagesProvider with ChangeNotifier {
       _messageRouteMetadata
         ..clear()
         ..addAll(storedRouteMetadata);
+      _removedSarMarkerIds
+        ..clear()
+        ..addAll(storedRemovedSarMarkerIds);
 
       // Add stored messages with enhancement to ensure SAR detection
       for (final message in storedMessages) {
@@ -357,7 +364,7 @@ class MessagesProvider with ChangeNotifier {
         // Extract SAR markers
         if (enhancedMessage.isSarMarker) {
           final marker = enhancedMessage.toSarMarker();
-          if (marker != null) {
+          if (marker != null && !_removedSarMarkerIds.contains(marker.id)) {
             _sarMarkers[marker.id] = marker;
           }
         }
@@ -537,29 +544,22 @@ class MessagesProvider with ChangeNotifier {
     // - Mesh network retransmissions
     // - Multiple paths in the network
     // - Syncing messages from device queue
-    if (_isDuplicate(finalMessage)) {
+    final duplicateIndex = _findDuplicateMessageIndex(finalMessage);
+    if (duplicateIndex != -1) {
       debugPrint(
         '⚠️ [MessagesProvider] Duplicate message detected, skipping: ${finalMessage.id}',
       );
       debugPrint(
         '   Text: ${finalMessage.text.substring(0, finalMessage.text.length > 50 ? 50 : finalMessage.text.length)}...',
       );
-      final existingIndex = _messages.indexWhere(
-        (existing) =>
-            existing.messageType == finalMessage.messageType &&
-            existing.senderTimestamp == finalMessage.senderTimestamp &&
-            existing.text == finalMessage.text,
-      );
-      if (existingIndex != -1) {
-        final existingId = _messages[existingIndex].id;
-        if (contactLocationSnapshot != null) {
-          _messageContactLocations[existingId] = contactLocationSnapshot;
-        }
-        if (receptionDetailsSnapshot != null) {
-          _messageReceptionDetails[existingId] = receptionDetailsSnapshot;
-        }
-        _persistMessages();
+      final existingId = _messages[duplicateIndex].id;
+      if (contactLocationSnapshot != null) {
+        _messageContactLocations[existingId] = contactLocationSnapshot;
       }
+      if (receptionDetailsSnapshot != null) {
+        _messageReceptionDetails[existingId] = receptionDetailsSnapshot;
+      }
+      _persistMessages();
       return; // Skip duplicate
     }
 
@@ -574,7 +574,7 @@ class MessagesProvider with ChangeNotifier {
     // If it's a SAR marker message, extract and store the marker
     if (finalMessage.isSarMarker) {
       final marker = finalMessage.toSarMarker();
-      if (marker != null) {
+      if (marker != null && !_removedSarMarkerIds.contains(marker.id)) {
         _sarMarkers[marker.id] = marker;
 
         // Trigger urgent notification for received SAR messages (not sent by user)
@@ -598,50 +598,48 @@ class MessagesProvider with ChangeNotifier {
   /// Messages are considered duplicates if they have:
   /// 1. Same sender public key prefix (for contact messages)
   /// 2. Same channel index (for channel messages)
-  /// 3. Same sender timestamp
-  /// 4. Same text content
+  /// 3. Same text content
   ///
   /// Note: Sent messages (isSentMessage=true) are NEVER duplicates
   /// because they can be retried with different message IDs
-  bool _isDuplicate(Message message) {
+  int _findDuplicateMessageIndex(Message message) {
     // Sent messages (our own messages) should never be considered duplicates
     // They can be retried multiple times with different IDs
     if (message.isSentMessage) {
+      return -1;
+    }
+
+    for (int index = 0; index < _messages.length; index++) {
+      final existing = _messages[index];
+      if (!_matchesDuplicateScope(existing, message) ||
+          existing.text != message.text) {
+        continue;
+      }
+      return index;
+    }
+
+    return -1;
+  }
+
+  bool _matchesDuplicateScope(Message existing, Message message) {
+    if (existing.messageType != message.messageType) {
       return false;
     }
 
-    return _messages.any((existing) {
-      // Check message type matches
-      if (existing.messageType != message.messageType) {
+    if (message.isContactMessage) {
+      return existing.senderKeyShort == message.senderKeyShort;
+    }
+
+    if (message.isChannelMessage) {
+      if (existing.channelIdx != message.channelIdx) {
         return false;
       }
+      final existingSender = existing.senderKeyShort ?? existing.senderName;
+      final incomingSender = message.senderKeyShort ?? message.senderName;
+      return existingSender == incomingSender;
+    }
 
-      // Check sender matches
-      if (message.isContactMessage) {
-        // For contact messages, compare sender public key prefix
-        if (existing.senderKeyShort != message.senderKeyShort) {
-          return false;
-        }
-      } else if (message.isChannelMessage) {
-        // For channel messages, compare channel index
-        if (existing.channelIdx != message.channelIdx) {
-          return false;
-        }
-      }
-
-      // Check timestamp matches (sender timestamp is the unique identifier from the sender)
-      if (existing.senderTimestamp != message.senderTimestamp) {
-        return false;
-      }
-
-      // Check text content matches
-      if (existing.text != message.text) {
-        return false;
-      }
-
-      // All criteria match - this is a duplicate
-      return true;
-    });
+    return true;
   }
 
   /// Add multiple messages
@@ -654,7 +652,7 @@ class MessagesProvider with ChangeNotifier {
       final enhancedMessage = SarMessageParser.enhanceMessage(message);
 
       // Check for duplicates
-      if (_isDuplicate(enhancedMessage)) {
+      if (_findDuplicateMessageIndex(enhancedMessage) != -1) {
         duplicateCount++;
         continue; // Skip duplicate
       }
@@ -664,7 +662,7 @@ class MessagesProvider with ChangeNotifier {
 
       if (enhancedMessage.isSarMarker) {
         final marker = enhancedMessage.toSarMarker();
-        if (marker != null) {
+        if (marker != null && !_removedSarMarkerIds.contains(marker.id)) {
           _sarMarkers[marker.id] = marker;
         }
       }
@@ -886,15 +884,33 @@ class MessagesProvider with ChangeNotifier {
     return _sarMarkers[id];
   }
 
+  Message? getMessageById(String id) {
+    final index = _messages.indexWhere((message) => message.id == id);
+    if (index == -1) return null;
+    return _messages[index];
+  }
+
   /// Get recent SAR markers (within last hour)
   List<SarMarker> getRecentSarMarkers() {
     return sarMarkers.where((m) => m.isRecent).toList();
   }
 
   /// Remove a SAR marker
-  void removeSarMarker(String id) {
+  Future<void> removeSarMarker(String id) async {
     _sarMarkers.remove(id);
+    _removedSarMarkerIds.add(id);
+    await _storageService.saveRemovedSarMarkerIds(_removedSarMarkerIds);
     notifyListeners();
+  }
+
+  Future<void> removeSarMarkerPermanently(String id) async {
+    final hasBackingMessage = _messages.any((message) => message.id == id);
+    if (hasBackingMessage) {
+      deleteMessage(id);
+      return;
+    }
+
+    await removeSarMarker(id);
   }
 
   /// Mark all messages as read
@@ -984,6 +1000,7 @@ class MessagesProvider with ChangeNotifier {
         final marker = message.toSarMarker();
         if (marker != null) {
           _sarMarkers.remove(marker.id);
+          _removedSarMarkerIds.add(marker.id);
         }
       }
 
@@ -1006,6 +1023,7 @@ class MessagesProvider with ChangeNotifier {
       debugPrint('🗑️ [MessagesProvider] Message $messageId deleted');
 
       _persistMessages();
+      unawaited(_storageService.saveRemovedSarMarkerIds(_removedSarMarkerIds));
       notifyListeners();
     }
   }
@@ -1030,17 +1048,21 @@ class MessagesProvider with ChangeNotifier {
   void clearMessages() {
     _messages.clear();
     _sarMarkers.clear();
+    _removedSarMarkerIds.clear();
     _messageContactLocations.clear();
     _messageReceptionDetails.clear();
     _messageTransferDetails.clear();
     _messageRouteMetadata.clear();
     _persistMessages();
+    unawaited(_storageService.saveRemovedSarMarkerIds(_removedSarMarkerIds));
     notifyListeners();
   }
 
   /// Clear all SAR markers
-  void clearSarMarkers() {
+  Future<void> clearSarMarkers() async {
+    _removedSarMarkerIds.addAll(_sarMarkers.keys);
     _sarMarkers.clear();
+    await _storageService.saveRemovedSarMarkerIds(_removedSarMarkerIds);
     notifyListeners();
   }
 
@@ -1048,11 +1070,13 @@ class MessagesProvider with ChangeNotifier {
   void clearAll() {
     _messages.clear();
     _sarMarkers.clear();
+    _removedSarMarkerIds.clear();
     _messageContactLocations.clear();
     _messageReceptionDetails.clear();
     _messageTransferDetails.clear();
     _messageRouteMetadata.clear();
     _persistMessages();
+    unawaited(_storageService.saveRemovedSarMarkerIds(_removedSarMarkerIds));
     notifyListeners();
   }
 
@@ -1213,7 +1237,7 @@ class MessagesProvider with ChangeNotifier {
     }
 
     // Check for duplicates (shouldn't happen for sent messages, but be safe)
-    if (_isDuplicate(enhancedMessage)) {
+    if (_findDuplicateMessageIndex(enhancedMessage) != -1) {
       debugPrint(
         '⚠️ [MessagesProvider] Duplicate sent message detected, skipping: ${enhancedMessage.id}',
       );
@@ -1238,7 +1262,7 @@ class MessagesProvider with ChangeNotifier {
     // If it's a SAR marker message, extract and store the marker
     if (sendingMessage.isSarMarker) {
       final marker = sendingMessage.toSarMarker();
-      if (marker != null) {
+      if (marker != null && !_removedSarMarkerIds.contains(marker.id)) {
         debugPrint('  ✅ SAR Marker created:');
         debugPrint('     marker.id: ${marker.id}');
         debugPrint('     marker.notes: "${marker.notes}"');

@@ -218,7 +218,8 @@ class LiveTrafficSummary {
     final visibleEntries = filteredEntries.reversed.take(maxVisibleEntries).toList();
     const txCount = 0;
     final totalCount = rxCount;
-    final packetsPerMinute = totalCount;
+    final packetsPerMinute =
+        ((totalCount * Duration.secondsPerMinute) / window.inSeconds).round();
 
     return LiveTrafficSnapshot(
       windowStart: effectiveStart,

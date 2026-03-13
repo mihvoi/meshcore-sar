@@ -318,104 +318,115 @@ class ContactTile extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.message_outlined),
-              title: Text(l10n.messages),
-              enabled: canMessage,
-              onTap: !canMessage
-                  ? null
-                  : () async {
-                      Navigator.pop(sheetContext);
-                      await _openMessagesForContact(context, contact);
-                    },
-            ),
-            if (contact.displayLocation != null)
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
               ListTile(
-                leading: const Icon(Icons.map_outlined),
-                title: Text(l10n.viewOnMap),
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  _showContactOnMap(context, contact);
-                },
-              ),
-            if (contact.type == ContactType.room && !contact.isPublicChannel)
-              ListTile(
-                leading: const Icon(Icons.login),
-                title: Text(
-                  context
-                              .read<ConnectionProvider>()
-                              .getRoomLoginState(contact.publicKeyPrefix)
-                              ?.isLoggedIn ==
-                          true
-                      ? AppLocalizations.of(context)!.reLoginToRoom
-                      : AppLocalizations.of(context)!.loginToRoom,
-                ),
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  _showRoomLoginDialog(context, contact);
-                },
-              ),
-            if (canAddToSensors)
-              ListTile(
-                leading: Icon(
-                  isInSensors ? Icons.sensors : Icons.sensors_outlined,
-                ),
-                title: Text(
-                  isInSensors
-                      ? l10n.contactInSensors
-                      : l10n.contactAddToSensors,
-                ),
-                enabled: !isInSensors,
-                onTap: isInSensors
+                leading: const Icon(Icons.message_outlined),
+                title: Text(l10n.messages),
+                enabled: canMessage,
+                onTap: !canMessage
                     ? null
                     : () async {
                         Navigator.pop(sheetContext);
-                        await _addContactToSensors(context, contact);
+                        await _openMessagesForContact(context, contact);
                       },
               ),
-            if (canSetPath)
-              ListTile(
-                leading: const Icon(Icons.alt_route),
-                title: Text(l10n.contactSetPath),
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  _showSetRouteDialog(context, contact);
-                },
-              ),
-            if (!contact.isChannel)
-              ListTile(
-                leading: const Icon(Icons.route),
-                title: const Text('Trace'),
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  _showTraceSheet(context, contact);
-                },
-              ),
-            if (!contact.isPublicChannel)
-              ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
-                title: Text(
-                  contact.isChannel ? l10n.deleteChannel : l10n.deleteContact,
-                  style: const TextStyle(color: Colors.red),
+              if (contact.displayLocation != null)
+                ListTile(
+                  leading: const Icon(Icons.map_outlined),
+                  title: Text(l10n.viewOnMap),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _showContactOnMap(context, contact);
+                  },
                 ),
-                onTap: () async {
-                  Navigator.pop(sheetContext);
-                  await Future<void>.delayed(Duration.zero);
-                  if (!context.mounted) return;
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (contact.type == ContactType.room && !contact.isPublicChannel)
+                ListTile(
+                  leading: const Icon(Icons.login),
+                  title: Text(
+                    context
+                                .read<ConnectionProvider>()
+                                .getRoomLoginState(contact.publicKeyPrefix)
+                                ?.isLoggedIn ==
+                            true
+                        ? AppLocalizations.of(context)!.reLoginToRoom
+                        : AppLocalizations.of(context)!.loginToRoom,
+                  ),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _showRoomLoginDialog(context, contact);
+                  },
+                ),
+              if (canAddToSensors)
+                ListTile(
+                  leading: Icon(
+                    isInSensors ? Icons.sensors : Icons.sensors_outlined,
+                  ),
+                  title: Text(
+                    isInSensors
+                        ? l10n.contactInSensors
+                        : l10n.contactAddToSensors,
+                  ),
+                  enabled: !isInSensors,
+                  onTap: isInSensors
+                      ? null
+                      : () async {
+                          Navigator.pop(sheetContext);
+                          await _addContactToSensors(context, contact);
+                        },
+                ),
+              if (canSetPath)
+                ListTile(
+                  leading: const Icon(Icons.alt_route),
+                  title: Text(l10n.contactSetPath),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _showSetRouteDialog(context, contact);
+                  },
+                ),
+              if (!contact.isChannel)
+                ListTile(
+                  leading: const Icon(Icons.route),
+                  title: const Text('Trace'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _showTraceSheet(context, contact);
+                  },
+                ),
+              if (!contact.isPublicChannel)
+                ListTile(
+                  leading: const Icon(Icons.edit_outlined),
+                  title: const Text('Edit name'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _showNameOverrideDialog(context, contact);
+                  },
+                ),
+              if (!contact.isPublicChannel)
+                ListTile(
+                  leading: const Icon(Icons.delete, color: Colors.red),
+                  title: Text(
+                    contact.isChannel ? l10n.deleteChannel : l10n.deleteContact,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                  onTap: () async {
+                    Navigator.pop(sheetContext);
+                    await Future<void>.delayed(Duration.zero);
                     if (!context.mounted) return;
-                    if (contact.isChannel) {
-                      _showDeleteChannelDialog(context, contact);
-                    } else {
-                      _showDeleteConfirmation(context, contact);
-                    }
-                  });
-                },
-              ),
-          ],
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (!context.mounted) return;
+                      if (contact.isChannel) {
+                        _showDeleteChannelDialog(context, contact);
+                      } else {
+                        _showDeleteConfirmation(context, contact);
+                      }
+                    });
+                  },
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -553,6 +564,61 @@ class ContactTile extends StatelessWidget {
         );
       }
     }
+  }
+
+  Future<void> _showNameOverrideDialog(
+    BuildContext context,
+    Contact contact,
+  ) async {
+    final controller = TextEditingController(text: contact.nameOverride ?? '');
+    final l10n = AppLocalizations.of(context)!;
+
+    final result = await showDialog<String?>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Edit name'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: controller,
+              autofocus: true,
+              textInputAction: TextInputAction.done,
+              decoration: InputDecoration(
+                labelText: 'Custom name',
+                hintText: contact.advName,
+                helperText: 'Leave blank to use the advertised name.',
+              ),
+              onSubmitted: (value) {
+                Navigator.of(dialogContext).pop(value);
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(l10n.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(controller.text),
+            child: Text(l10n.save),
+          ),
+        ],
+      ),
+    );
+
+    controller.dispose();
+
+    if (result == null || !context.mounted) {
+      return;
+    }
+
+    context.read<ContactsProvider>().setContactNameOverride(
+      contact.publicKeyHex,
+      result,
+    );
   }
 
   Future<void> _showSetRouteDialog(
