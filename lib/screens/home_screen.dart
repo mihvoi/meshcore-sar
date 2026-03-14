@@ -12,6 +12,7 @@ import '../providers/contacts_provider.dart';
 import '../theme/app_theme.dart';
 import 'messages_tab.dart';
 import 'contacts_tab.dart';
+import 'discovery_screen.dart';
 import 'sensors_tab.dart';
 import 'map_tab.dart';
 import 'repeaters_map_screen.dart';
@@ -705,6 +706,39 @@ class _HomeScreenState extends State<HomeScreen>
                                 builder: (context) =>
                                     const RepeatersMapScreen(),
                                 fullscreenDialog: true,
+                              ),
+                            );
+                          });
+                        },
+                      ),
+                    );
+
+                    items.add(
+                      PopupMenuItem(
+                        child: Row(
+                          children: [
+                            const Icon(Icons.person_search),
+                            const SizedBox(width: 8),
+                            Consumer<ContactsProvider>(
+                              builder: (context, contactsProvider, child) {
+                                final pendingCount =
+                                    contactsProvider.pendingAdverts.length;
+                                return Text(
+                                  pendingCount > 0
+                                      ? 'Discovery ($pendingCount)'
+                                      : 'Discovery',
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                        onTap: () {
+                          final navigator = Navigator.of(context);
+                          Future.delayed(Duration.zero, () {
+                            if (!mounted) return;
+                            navigator.push(
+                              MaterialPageRoute(
+                                builder: (context) => const DiscoveryScreen(),
                               ),
                             );
                           });

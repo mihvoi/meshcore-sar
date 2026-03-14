@@ -10,7 +10,9 @@ import 'package:latlong2/latlong.dart';
 class ContactStorageService {
   static const String _contactsKey = 'stored_contacts';
   static const String _contactGroupsKey = 'stored_contact_groups';
+  static const String _pendingAdvertsKey = 'stored_pending_adverts';
   static const int _maxStoredContacts = 500; // Store up to 500 contacts
+  static const int _maxStoredPendingAdverts = 500;
 
   /// Save contacts to persistent storage
   Future<void> saveContacts(List<Contact> contacts) async {
@@ -123,6 +125,47 @@ class ContactStorageService {
     } catch (e) {
       debugPrint('❌ [ContactStorage] Error loading contact groups: $e');
       return [];
+    }
+  }
+
+  Future<void> savePendingAdverts(List<Map<String, dynamic>> adverts) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final limitedList = adverts.length > _maxStoredPendingAdverts
+          ? adverts.sublist(adverts.length - _maxStoredPendingAdverts)
+          : adverts;
+      await prefs.setString(_pendingAdvertsKey, jsonEncode(limitedList));
+      debugPrint(
+        '✅ [ContactStorage] Saved ${limitedList.length} pending adverts to storage',
+      );
+    } catch (e) {
+      debugPrint('❌ [ContactStorage] Error saving pending adverts: $e');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> loadPendingAdverts() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = prefs.getString(_pendingAdvertsKey);
+      if (jsonString == null || jsonString.isEmpty) {
+        return const [];
+      }
+
+      final jsonList = jsonDecode(jsonString) as List<dynamic>;
+      return jsonList.whereType<Map<String, dynamic>>().toList();
+    } catch (e) {
+      debugPrint('❌ [ContactStorage] Error loading pending adverts: $e');
+      return const [];
+    }
+  }
+
+  Future<void> clearPendingAdverts() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_pendingAdvertsKey);
+      debugPrint('✅ [ContactStorage] Cleared all stored pending adverts');
+    } catch (e) {
+      debugPrint('❌ [ContactStorage] Error clearing pending adverts: $e');
     }
   }
 

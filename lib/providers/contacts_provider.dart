@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
@@ -66,6 +67,8 @@ class ContactsProvider with ChangeNotifier {
   bool _isInitialized = false;
   bool _isPersisting = false;
   bool _persistRequested = false;
+  bool _isPersistingPendingAdverts = false;
+  bool _persistPendingAdvertsRequested = false;
 
   // Add default public channel on initialization
   ContactsProvider() {
@@ -85,6 +88,7 @@ class ContactsProvider with ChangeNotifier {
       );
       final storedContacts = await _storageService.loadContacts();
       final storedGroups = await _storageService.loadContactGroups();
+      final storedPendingAdverts = await _storageService.loadPendingAdverts();
 
       // Add stored contacts (excluding any with all-zeros public key)
       const publicChannelKey =
@@ -101,6 +105,7 @@ class ContactsProvider with ChangeNotifier {
       _savedContactGroups
         ..clear()
         ..addAll(storedGroups);
+      _restorePendingAdverts(storedPendingAdverts);
       debugPrint(
         '✅ [ContactsProvider] Early loaded ${storedContacts.length} persisted contacts and ${storedGroups.length} groups',
       );
@@ -133,6 +138,7 @@ class ContactsProvider with ChangeNotifier {
         excludePublicKey: devicePublicKey,
       );
       final storedGroups = await _storageService.loadContactGroups();
+      final storedPendingAdverts = await _storageService.loadPendingAdverts();
 
       // Add stored contacts (excluding any with all-zeros public key)
       const publicChannelKey =
@@ -149,6 +155,10 @@ class ContactsProvider with ChangeNotifier {
       _savedContactGroups
         ..clear()
         ..addAll(storedGroups);
+      _restorePendingAdverts(
+        storedPendingAdverts,
+        devicePublicKey: devicePublicKey,
+      );
       debugPrint(
         '✅ [ContactsProvider] Loaded ${storedContacts.length} persisted contacts and ${storedGroups.length} groups',
       );
@@ -212,19 +222,30 @@ class ContactsProvider with ChangeNotifier {
     try {
       while (_persistRequested) {
         _persistRequested = false;
-        // Don't persist the public channel pseudo-contact (all zeros key)
-        const publicChannelKey =
-            '0000000000000000000000000000000000000000000000000000000000000000';
-        final contactsToSave = _contacts.entries
-            .where((entry) => entry.key != publicChannelKey)
-            .map((entry) => entry.value)
-            .toList();
-        await _storageService.saveContacts(contactsToSave);
+        await _storageService.saveContacts(_contactsForStorage());
       }
     } catch (e) {
       debugPrint('❌ [ContactsProvider] Error persisting contacts: $e');
     } finally {
       _isPersisting = false;
+    }
+  }
+
+  Future<void> _persistPendingAdverts() async {
+    _persistPendingAdvertsRequested = true;
+    if (_isPersistingPendingAdverts) return;
+    _isPersistingPendingAdverts = true;
+    try {
+      while (_persistPendingAdvertsRequested) {
+        _persistPendingAdvertsRequested = false;
+        await _storageService.savePendingAdverts(
+          _pendingAdverts.values.map(_pendingAdvertToJson).toList(),
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ [ContactsProvider] Error persisting pending adverts: $e');
+    } finally {
+      _isPersistingPendingAdverts = false;
     }
   }
 
@@ -450,6 +471,7 @@ class ContactsProvider with ChangeNotifier {
       '   ✅ Contact added/updated. Total contacts: ${_contacts.length}, channels: ${channels.length}',
     );
     _persistContacts();
+    _persistPendingAdverts();
     notifyListeners();
     debugPrint('   🔔 notifyListeners() called');
   }
@@ -481,6 +503,7 @@ class ContactsProvider with ChangeNotifier {
       );
     }
     _persistContacts();
+    _persistPendingAdverts();
     notifyListeners();
   }
 
@@ -1073,9 +1096,9 @@ class ContactsProvider with ChangeNotifier {
 
   /// Add or refresh a pending advert entry from PUSH_CODE_ADVERT (0x80).
   /// Excludes self key and existing contacts.
-  void addPendingAdvert(Uint8List publicKey, {Uint8List? devicePublicKey}) {
+  bool addPendingAdvert(Uint8List publicKey, {Uint8List? devicePublicKey}) {
     if (devicePublicKey != null && publicKey.matches(devicePublicKey)) {
-      return;
+      return false;
     }
 
     final keyHex = publicKey
@@ -1083,20 +1106,26 @@ class ContactsProvider with ChangeNotifier {
         .join('');
     if (_contacts.containsKey(keyHex)) {
       _pendingAdverts.remove(keyHex);
-      return;
+      _persistPendingAdverts();
+      return false;
     }
 
     final existing = _pendingAdverts[keyHex];
     final now = DateTime.now();
     if (existing != null) {
       _pendingAdverts[keyHex] = existing.copyWith(receivedAt: now);
+      _persistPendingAdverts();
+      notifyListeners();
+      return false;
     } else {
       _pendingAdverts[keyHex] = PendingAdvert(
         publicKey: Uint8List.fromList(publicKey),
         receivedAt: now,
       );
+      _persistPendingAdverts();
+      notifyListeners();
+      return true;
     }
-    notifyListeners();
   }
 
   /// Find contact by name
@@ -1155,6 +1184,7 @@ class ContactsProvider with ChangeNotifier {
     _pendingAdverts.clear();
     _ensurePublicChannelExists();
     _persistContacts();
+    _persistPendingAdverts();
     notifyListeners();
   }
 
@@ -1177,12 +1207,81 @@ class ContactsProvider with ChangeNotifier {
     _contacts.remove(publicKeyHex);
     _pendingAdverts.remove(publicKeyHex);
     _persistContacts();
+    _persistPendingAdverts();
     notifyListeners();
   }
 
   /// Get storage statistics
   Future<Map<String, dynamic>> getStorageStats() async {
     return await _storageService.getStorageStats();
+  }
+
+  Future<void> persistNow() async {
+    await _storageService.saveContacts(_contactsForStorage());
+  }
+
+  List<Contact> _contactsForStorage() {
+    // Don't persist the public channel pseudo-contact (all zeros key)
+    const publicChannelKey =
+        '0000000000000000000000000000000000000000000000000000000000000000';
+    return _contacts.entries
+        .where((entry) => entry.key != publicChannelKey)
+        .map((entry) => entry.value)
+        .toList();
+  }
+
+  void _restorePendingAdverts(
+    List<Map<String, dynamic>> storedPendingAdverts, {
+    Uint8List? devicePublicKey,
+  }) {
+    _pendingAdverts.clear();
+    for (final json in storedPendingAdverts) {
+      final advert = _pendingAdvertFromJson(json);
+      if (advert == null) continue;
+      if (devicePublicKey != null &&
+          advert.publicKey.matches(devicePublicKey)) {
+        continue;
+      }
+      if (_contacts.containsKey(advert.publicKeyHex)) {
+        continue;
+      }
+      _pendingAdverts[advert.publicKeyHex] = advert;
+    }
+  }
+
+  Map<String, dynamic> _pendingAdvertToJson(PendingAdvert advert) {
+    return {
+      'publicKey': base64Encode(advert.publicKey),
+      'receivedAtMillis': advert.receivedAt.millisecondsSinceEpoch,
+      'signedEncodedPathLen': advert.signedEncodedPathLen,
+      'paddedPathBytes': advert.paddedPathBytes == null
+          ? null
+          : base64Encode(advert.paddedPathBytes!),
+    };
+  }
+
+  PendingAdvert? _pendingAdvertFromJson(Map<String, dynamic> json) {
+    try {
+      return PendingAdvert(
+        publicKey: Uint8List.fromList(
+          base64Decode(json['publicKey'] as String),
+        ),
+        receivedAt: DateTime.fromMillisecondsSinceEpoch(
+          json['receivedAtMillis'] as int,
+        ),
+        signedEncodedPathLen: json['signedEncodedPathLen'] as int?,
+        paddedPathBytes: json['paddedPathBytes'] == null
+            ? null
+            : Uint8List.fromList(
+                base64Decode(json['paddedPathBytes'] as String),
+              ),
+      );
+    } catch (e) {
+      debugPrint(
+        '❌ [ContactsProvider] Error parsing pending advert from JSON: $e',
+      );
+      return null;
+    }
   }
 
   /// Get contact count by type

@@ -1130,19 +1130,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           _buildSectionHeader('Messaging'),
           _buildSettingsCard([
-            Consumer<AppProvider>(
-              builder: (context, appProvider, child) => SwitchListTile(
-                secondary: const Icon(Icons.person_add_alt_1),
-                title: const Text('Auto-add discovered contacts'),
-                subtitle: const Text(
-                  'Automatically fetch and add new contacts when they are discovered',
-                ),
-                value: appProvider.autoAddDiscoveredContacts,
-                onChanged: (value) async {
-                  await appProvider.toggleAutoAddDiscoveredContacts(value);
-                },
-              ),
-            ),
             ListTile(
               leading: const Icon(Icons.alt_route),
               title: const Text('Route path byte size'),

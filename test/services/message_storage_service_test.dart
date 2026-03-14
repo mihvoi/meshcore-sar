@@ -78,6 +78,7 @@ void main() {
           senderToReceiptMs: 1200,
           estimatedTransmitMs: 800,
           postTransmitDelayMs: 400,
+          receivedCopies: 3,
         ),
       },
     );
@@ -95,6 +96,7 @@ void main() {
     expect(restored.senderToReceiptMs, 1200);
     expect(restored.estimatedTransmitMs, 800);
     expect(restored.postTransmitDelayMs, 400);
+    expect(restored.receivedCopies, 3);
     expect(
       restored.packetLoggedAt,
       DateTime.fromMillisecondsSinceEpoch(1700000100400),

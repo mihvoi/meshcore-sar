@@ -17,6 +17,7 @@ import '../services/nearest_router_selector.dart';
 import '../services/packet_capture_storage_service.dart';
 import '../services/path_history_service.dart';
 import '../services/route_hash_preferences.dart';
+import '../services/notification_service.dart';
 import '../models/contact.dart';
 import '../models/message.dart';
 import '../models/ble_packet_log.dart';
@@ -59,6 +60,9 @@ class _DirectMessageRouteSession {
 /// Main App Provider - coordinates all other providers
 class AppProvider with ChangeNotifier {
   static const int _maxDirectPayloadHops = 3;
+  static const double _lowBatteryThresholdPercent = 30.0;
+  static const double _lowBatteryResetThresholdPercent = 35.0;
+  static const Duration _lowBatteryCheckInterval = Duration(minutes: 5);
   @visibleForTesting
   static bool isDeletedChannelInfo(
     int channelIdx,
@@ -88,6 +92,7 @@ class AppProvider with ChangeNotifier {
       LocationTrackingService();
   final PacketCaptureStorageService packetCaptureStorageService =
       PacketCaptureStorageService();
+  final NotificationService _notificationService = NotificationService();
 
   bool _isInitialized = false;
   bool get isInitialized => _isInitialized;
@@ -117,8 +122,6 @@ class AppProvider with ChangeNotifier {
   bool get isVoiceNoiseSuppressionEnabled => _isVoiceNoiseSuppressionEnabled;
   double _messageFontScale = 1.0;
   double get messageFontScale => _messageFontScale;
-  bool _autoAddDiscoveredContacts = false;
-  bool get autoAddDiscoveredContacts => _autoAddDiscoveredContacts;
   bool _autoRouteRotationEnabled =
       MessagingRoutePreferences.defaultAutoRouteRotationEnabled;
   bool get autoRouteRotationEnabled => _autoRouteRotationEnabled;
@@ -150,11 +153,13 @@ class AppProvider with ChangeNotifier {
   _pendingMediaSwarmResponses = {};
   bool _fastLocationScreenActive = false;
   Timer? _packetCaptureFlushTimer;
+  Timer? _lowBatteryCheckTimer;
   String? _lastPersistedPacketSignature;
   bool _isPersistingPacketCapture = false;
   bool _wasDeviceConnected = false;
   bool _hasCompletedConnectionBootstrap = false;
   bool _isReconnectSyncInProgress = false;
+  final Set<String> _lowBatteryNotifiedNodeIds = <String>{};
 
   AppProvider({
     required this.connectionProvider,
@@ -181,10 +186,10 @@ class AppProvider with ChangeNotifier {
     _loadVoiceEchoCancellationEnabled();
     _loadVoiceNoiseSuppressionEnabled();
     _loadMessageFontScale();
-    _loadAutoAddDiscoveredContacts();
     _loadMessagingRouteSettings();
     unawaited(_pathHistoryService.initialize());
     _startPacketCapturePersistence();
+    _startLowBatteryWatcher();
     _syncDrawingsOnStartup(); // Sync drawings immediately after providers load
     _isInitialized = true;
   }
@@ -195,6 +200,86 @@ class AppProvider with ChangeNotifier {
       unawaited(_flushPacketCaptureLogs());
     });
     unawaited(_flushPacketCaptureLogs());
+  }
+
+  void _startLowBatteryWatcher() {
+    _lowBatteryCheckTimer?.cancel();
+    _lowBatteryCheckTimer = Timer.periodic(_lowBatteryCheckInterval, (_) {
+      unawaited(_checkLowBatteryAlerts());
+    });
+    unawaited(_checkLowBatteryAlerts());
+  }
+
+  Future<void> _checkLowBatteryAlerts() async {
+    final recoveredIds = <String>{};
+
+    final deviceBattery = connectionProvider.deviceInfo.batteryPercent;
+    if (deviceBattery != null &&
+        deviceBattery > _lowBatteryResetThresholdPercent) {
+      recoveredIds.add('device');
+    }
+
+    for (final contact in contactsProvider.contacts) {
+      if (contact.isChannel) continue;
+      final battery = contact.displayBattery;
+      if (battery == null) continue;
+      if (battery > _lowBatteryResetThresholdPercent) {
+        recoveredIds.add(contact.publicKeyHex);
+      }
+    }
+
+    if (recoveredIds.isNotEmpty) {
+      _lowBatteryNotifiedNodeIds.removeAll(recoveredIds);
+    }
+
+    if (connectionProvider.deviceInfo.isConnected && deviceBattery != null) {
+      await _notifyLowBatteryIfNeeded(
+        nodeId: 'device',
+        nodeName:
+            connectionProvider.deviceInfo.selfName?.trim().isNotEmpty == true
+            ? connectionProvider.deviceInfo.selfName!.trim()
+            : (connectionProvider.deviceInfo.displayName ?? 'Connected device'),
+        batteryPercent: deviceBattery,
+        isCurrentDevice: true,
+      );
+    }
+
+    for (final contact in contactsProvider.contacts) {
+      if (contact.isChannel) continue;
+      final battery = contact.displayBattery;
+      if (battery == null) continue;
+
+      await _notifyLowBatteryIfNeeded(
+        nodeId: contact.publicKeyHex,
+        nodeName: contact.displayName,
+        batteryPercent: battery,
+        isCurrentDevice: false,
+      );
+    }
+  }
+
+  Future<void> _notifyLowBatteryIfNeeded({
+    required String nodeId,
+    required String nodeName,
+    required double batteryPercent,
+    required bool isCurrentDevice,
+  }) async {
+    if (batteryPercent >= _lowBatteryThresholdPercent) {
+      return;
+    }
+    if (_lowBatteryNotifiedNodeIds.contains(nodeId)) {
+      return;
+    }
+
+    final shown = await _notificationService.showLowBatteryNotification(
+      nodeId: nodeId,
+      nodeName: nodeName,
+      batteryPercent: batteryPercent,
+      isCurrentDevice: isCurrentDevice,
+    );
+    if (shown) {
+      _lowBatteryNotifiedNodeIds.add(nodeId);
+    }
   }
 
   String _packetLogSignature(BlePacketLog log) {
@@ -251,7 +336,8 @@ class AppProvider with ChangeNotifier {
   Future<void> _syncDrawingsOnStartup() async {
     // Wait for both MessagesProvider and DrawingProvider to finish initializing
     int attempts = 0;
-    while ((!messagesProvider.isInitialized || !drawingProvider.isInitialized) &&
+    while ((!messagesProvider.isInitialized ||
+            !drawingProvider.isInitialized) &&
         attempts < 40) {
       await Future.delayed(const Duration(milliseconds: 50));
       attempts++;
@@ -646,30 +732,6 @@ class AppProvider with ChangeNotifier {
       notifyListeners();
     } catch (e) {
       debugPrint('Error saving message font scale setting: $e');
-    }
-  }
-
-  /// Load auto-add discovered contacts setting from shared preferences.
-  Future<void> _loadAutoAddDiscoveredContacts() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      _autoAddDiscoveredContacts =
-          prefs.getBool('auto_add_discovered_contacts') ?? false;
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error loading auto-add discovered contacts setting: $e');
-    }
-  }
-
-  /// Toggle auto-add discovered contacts on/off.
-  Future<void> toggleAutoAddDiscoveredContacts(bool enabled) async {
-    try {
-      _autoAddDiscoveredContacts = enabled;
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('auto_add_discovered_contacts', enabled);
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error saving auto-add discovered contacts setting: $e');
     }
   }
 
@@ -1432,20 +1494,22 @@ class AppProvider with ChangeNotifier {
           }
         });
       } else {
-        if (_autoAddDiscoveredContacts) {
-          debugPrint('   Unknown contact - auto-add enabled, fetching details');
-          Future.delayed(const Duration(milliseconds: 100), () {
-            if (connectionProvider.deviceInfo.isConnected) {
-              connectionProvider.getContact(publicKey);
-            }
-          });
-        } else {
-          contactsProvider.addPendingAdvert(
-            publicKey,
-            devicePublicKey: connectionProvider.deviceInfo.publicKey,
-          );
-          debugPrint(
-            '   Unknown contact - added to pending adverts list and waiting for details',
+        final isNewPendingAdvert = contactsProvider.addPendingAdvert(
+          publicKey,
+          devicePublicKey: connectionProvider.deviceInfo.publicKey,
+        );
+        debugPrint(
+          '   Unknown contact - added to pending adverts list and waiting for manual resolution',
+        );
+        if (isNewPendingAdvert) {
+          final keyHex = publicKey
+              .take(6)
+              .map((b) => b.toRadixString(16).padLeft(2, '0'))
+              .join();
+          unawaited(
+            _notificationService.showContactDiscoveredNotification(
+              contactKey: keyHex,
+            ),
           );
         }
       }
@@ -3074,6 +3138,7 @@ class AppProvider with ChangeNotifier {
     _imageMissingRetryAttempts.clear();
     _voiceSessionSenderKey6.clear();
     _imageSessionSenderKey6.clear();
+    _lowBatteryNotifiedNodeIds.clear();
     notifyListeners();
   }
 
@@ -3094,6 +3159,7 @@ class AppProvider with ChangeNotifier {
   @override
   void dispose() {
     _packetCaptureFlushTimer?.cancel();
+    _lowBatteryCheckTimer?.cancel();
     unawaited(_flushPacketCaptureLogs());
     // Remove connection state listener
     connectionProvider.removeListener(_handleConnectionStateChange);

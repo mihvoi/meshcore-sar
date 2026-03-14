@@ -45,6 +45,7 @@ import 'system_message_bubble.dart';
 /// - Grouped messages (expandable recipient list)
 class MessageBubble extends StatefulWidget {
   final Message message;
+  final int receivedCopies;
   final VoidCallback? onTap;
   final VoidCallback? onReply;
   final bool isHighlighted;
@@ -56,6 +57,7 @@ class MessageBubble extends StatefulWidget {
   const MessageBubble({
     super.key,
     required this.message,
+    this.receivedCopies = 1,
     this.onTap,
     this.onReply,
     this.isHighlighted = false,
@@ -576,6 +578,7 @@ class _MessageBubbleState extends State<MessageBubble> {
       'Sender to receipt ms: ${receptionDetails?.senderToReceiptMs ?? '-'}',
       'Estimated transmit ms: ${receptionDetails?.estimatedTransmitMs ?? '-'}',
       'Post-transmit delay ms: ${receptionDetails?.postTransmitDelayMs ?? '-'}',
+      'Received copies: ${widget.receivedCopies}',
       'Expected ACK tag: ${widget.message.expectedAckTag ?? '-'}',
       'Suggested timeout ms: ${widget.message.suggestedTimeoutMs ?? '-'}',
       'Round-trip ms: ${widget.message.roundTripTimeMs ?? '-'}',
@@ -845,6 +848,12 @@ class _MessageBubbleState extends State<MessageBubble> {
                                 value: _formatDurationMs(
                                   receptionDetails!.postTransmitDelayMs!,
                                 ),
+                              ),
+                            if (widget.receivedCopies > 1)
+                              _detailRow(
+                                context,
+                                label: 'Received copies',
+                                value: '${widget.receivedCopies}',
                               ),
                             if (widget.message.suggestedTimeoutMs != null)
                               _detailRow(

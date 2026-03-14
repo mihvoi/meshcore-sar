@@ -131,7 +131,7 @@ class _ContactTraceSheetState extends State<ContactTraceSheet> {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
                     trace.routeHashes.isEmpty
-                        ? 'Direct route to ${widget.contact.displayName}'
+                        ? 'No relay path saved for ${widget.contact.displayName}'
                         : 'Route from saved contact path (${trace.routeHashes.length} hop${trace.routeHashes.length == 1 ? '' : 's'})',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
@@ -199,14 +199,7 @@ class _ContactTraceSheetState extends State<ContactTraceSheet> {
                                                   child: CircleAvatar(
                                                     radius: 16,
                                                     backgroundColor:
-                                                        entry.key == 0
-                                                        ? Colors.green
-                                                        : (entry.key ==
-                                                                  concreteNodes
-                                                                          .length -
-                                                                      1
-                                                              ? Colors.red
-                                                              : Colors.blue),
+                                                        Colors.blue,
                                                     child: Text(
                                                       '${entry.key + 1}',
                                                       style: const TextStyle(
@@ -236,7 +229,7 @@ class _ContactTraceSheetState extends State<ContactTraceSheet> {
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Text(
-                          'Route',
+                          'Relay path',
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                       ),
@@ -263,11 +256,7 @@ class _ContactTraceSheetState extends State<ContactTraceSheet> {
                               : null,
                           leading: CircleAvatar(
                             radius: 14,
-                            backgroundColor: entry.key == 0
-                                ? Colors.green
-                                : (entry.key == routeEntries.length - 1
-                                      ? Colors.red
-                                      : Colors.blue),
+                            backgroundColor: Colors.blue,
                             child: Text(
                               '${entry.key + 1}',
                               style: const TextStyle(
@@ -279,7 +268,7 @@ class _ContactTraceSheetState extends State<ContactTraceSheet> {
                           ),
                           title: Text(entry.value.label),
                           subtitle: Text(
-                            '${_routeRoleLabel(entry.key, routeEntries.length)}${entry.value.keyLabel == null ? '' : ' • ${entry.value.keyLabel}'}${entry.value.matchSummary == null ? '' : ' • ${entry.value.matchSummary}'}${entry.value.resolved.cycleSummary == null ? '' : ' • ${entry.value.resolved.cycleSummary}'}',
+                            'Relay${entry.value.keyLabel == null ? '' : ' • ${entry.value.keyLabel}'}${entry.value.matchSummary == null ? '' : ' • ${entry.value.matchSummary}'}${entry.value.resolved.cycleSummary == null ? '' : ' • ${entry.value.resolved.cycleSummary}'}',
                           ),
                           trailing: entry.value.resolved.canCycle
                               ? const Icon(Icons.sync_alt)
@@ -326,44 +315,18 @@ class _ContactTraceSheetState extends State<ContactTraceSheet> {
   }
 
   List<_RouteDisplayEntry> _displayRouteEntries(_ContactTraceResult trace) {
-    final entries = <_RouteDisplayEntry>[];
-    if (trace.sender.node != null) {
-      entries.add(
-        _RouteDisplayEntry.fromResolved(
-          trace.sender,
-          target: const _RouteEntryTarget.sender(),
-        ),
+    return trace.matchedRelayNodes.asMap().entries.map((entry) {
+      final resolved = entry.value;
+      final node = resolved.node;
+      final hashHex = trace.routeHashes[entry.key].toUpperCase();
+      return _RouteDisplayEntry(
+        resolved: resolved,
+        label: node?.name ?? 'Unknown',
+        keyLabel: node != null ? _prefixKeyLabel(node.publicKey) : hashHex,
+        matchSummary: resolved.matchSummary,
+        target: _RouteEntryTarget.relayNode(entry.key),
       );
-    }
-    entries.addAll(
-      trace.matchedRelayNodes.asMap().entries.map((entry) {
-        final resolved = entry.value;
-        final node = resolved.node;
-        final hashHex = trace.routeHashes[entry.key].toUpperCase();
-        return _RouteDisplayEntry(
-          resolved: resolved,
-          label: node?.name ?? 'Unknown',
-          keyLabel: node != null ? _prefixKeyLabel(node.publicKey) : hashHex,
-          matchSummary: resolved.matchSummary,
-          target: _RouteEntryTarget.relayNode(entry.key),
-        );
-      }),
-    );
-    if (trace.recipient.node != null) {
-      entries.add(
-        _RouteDisplayEntry.fromResolved(
-          trace.recipient,
-          target: const _RouteEntryTarget.recipient(),
-        ),
-      );
-    }
-    return entries;
-  }
-
-  String _routeRoleLabel(int index, int total) {
-    if (index == 0) return 'Sender';
-    if (index == total - 1) return 'Recipient';
-    return 'Relay';
+    }).toList();
   }
 
   String _prefixKeyLabel(String publicKey) =>
@@ -527,20 +490,6 @@ class _ContactTraceResult {
 
   _ContactTraceResult cycleEntry(_RouteEntryTarget target) {
     switch (target.kind) {
-      case _RouteEntryKind.sender:
-        return _ContactTraceResult(
-          sender: sender.cycle(),
-          recipient: recipient,
-          routeHashes: routeHashes,
-          matchedRelayNodes: matchedRelayNodes,
-        );
-      case _RouteEntryKind.recipient:
-        return _ContactTraceResult(
-          sender: sender,
-          recipient: recipient.cycle(),
-          routeHashes: routeHashes,
-          matchedRelayNodes: matchedRelayNodes,
-        );
       case _RouteEntryKind.relayNode:
         final updated = matchedRelayNodes.toList();
         updated[target.index] = updated[target.index].cycle();
@@ -570,26 +519,9 @@ class _RouteDisplayEntry {
   });
 
   MeshMapNode? get node => resolved.node;
-
-  factory _RouteDisplayEntry.fromResolved(
-    ResolvedTraceNode resolved, {
-    required _RouteEntryTarget target,
-  }) {
-    final node = resolved.node!;
-    return _RouteDisplayEntry(
-      resolved: resolved,
-      label: node.name,
-      keyLabel: node.publicKey.substring(
-        0,
-        math.min(12, node.publicKey.length),
-      ),
-      matchSummary: resolved.matchSummary,
-      target: target,
-    );
-  }
 }
 
-enum _RouteEntryKind { sender, recipient, relayNode }
+enum _RouteEntryKind { relayNode }
 
 class _RouteEntryTarget {
   final _RouteEntryKind kind;
@@ -597,8 +529,6 @@ class _RouteEntryTarget {
 
   const _RouteEntryTarget._(this.kind, [this.index = 0]);
 
-  const _RouteEntryTarget.sender() : this._(_RouteEntryKind.sender);
-  const _RouteEntryTarget.recipient() : this._(_RouteEntryKind.recipient);
   const _RouteEntryTarget.relayNode(int index)
     : this._(_RouteEntryKind.relayNode, index);
 }

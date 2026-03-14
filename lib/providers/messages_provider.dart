@@ -18,6 +18,8 @@ import '../utils/image_message_parser.dart';
 import '../l10n/app_localizations.dart';
 import 'helpers/message_retry_manager.dart';
 
+typedef DisplayMessageEntry = ({Message message, int occurrenceCount});
+
 /// Messages Provider - manages message history and SAR markers
 class MessagesProvider with ChangeNotifier {
   static const Duration _channelEchoWarningDelay = Duration(seconds: 12);
@@ -591,8 +593,12 @@ class MessagesProvider with ChangeNotifier {
       if (contactLocationSnapshot != null) {
         _messageContactLocations[existingId] = contactLocationSnapshot;
       }
+      _messageReceptionDetails[existingId] =
+          MessageReceptionDetails.mergeDuplicate(
+            existing: _messageReceptionDetails[existingId],
+            incoming: receptionDetailsSnapshot,
+          );
       if (receptionDetailsSnapshot != null) {
-        _messageReceptionDetails[existingId] = receptionDetailsSnapshot;
         final existingMessage = _messages[duplicateIndex];
         final duplicatePathBytes = receptionDetailsSnapshot.pathBytes;
         if (existingMessage.pathBytes == null &&
@@ -775,7 +781,13 @@ class MessagesProvider with ChangeNotifier {
       enhancedMessage = _resolveSenderNameIfNeeded(enhancedMessage);
 
       // Check for duplicates
-      if (_findDuplicateMessageIndex(enhancedMessage) != -1) {
+      final duplicateIndex = _findDuplicateMessageIndex(enhancedMessage);
+      if (duplicateIndex != -1) {
+        final existingId = _messages[duplicateIndex].id;
+        _messageReceptionDetails[existingId] =
+            MessageReceptionDetails.mergeDuplicate(
+              existing: _messageReceptionDetails[existingId],
+            );
         duplicateCount++;
         continue; // Skip duplicate
       }
@@ -1026,7 +1038,9 @@ class MessagesProvider with ChangeNotifier {
   /// overlapping serialization and redundant SharedPreferences writes.
   Future<void> _persistMessages() async {
     _persistRequested = true;
-    if (_isPersisting) return; // A write is in flight; it will pick up our changes.
+    if (_isPersisting) {
+      return; // A write is in flight; it will pick up our changes.
+    }
     _isPersisting = true;
     try {
       while (_persistRequested) {
@@ -1120,6 +1134,35 @@ class MessagesProvider with ChangeNotifier {
       ..sort((a, b) => b.sentAt.compareTo(a.sentAt));
     return sorted.take(count).toList();
   }
+
+  List<DisplayMessageEntry> buildDisplayMessages(Iterable<Message> messages) {
+    final entries = <DisplayMessageEntry>[];
+
+    for (final message in messages) {
+      final occurrenceCount = _messageOccurrenceCount(message);
+      final existingIndex = entries.indexWhere(
+        (entry) =>
+            entry.message.text == message.text &&
+            _matchesDuplicateScope(entry.message, message),
+      );
+
+      if (existingIndex == -1) {
+        entries.add((message: message, occurrenceCount: occurrenceCount));
+        continue;
+      }
+
+      final existingEntry = entries[existingIndex];
+      entries[existingIndex] = (
+        message: existingEntry.message,
+        occurrenceCount: existingEntry.occurrenceCount + occurrenceCount,
+      );
+    }
+
+    return entries;
+  }
+
+  int _messageOccurrenceCount(Message message) =>
+      _messageReceptionDetails[message.id]?.receivedCopies ?? 1;
 
   /// Get messages from last N hours
   List<Message> getMessagesSince(Duration duration) {

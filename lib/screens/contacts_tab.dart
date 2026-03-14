@@ -34,8 +34,6 @@ class ContactsTab extends StatefulWidget {
 
 class _ContactsTabState extends State<ContactsTab> {
   Position? _currentPosition;
-  final Set<String> _resolvingAdvertKeys = <String>{};
-  bool _isResolvingPendingBatch = false;
   final Map<ContactSection, String> _sectionFilters = {
     ContactSection.teamMembers: '',
     ContactSection.repeaters: '',
@@ -99,57 +97,6 @@ class _ContactsTabState extends State<ContactsTab> {
     await _getCurrentLocation();
   }
 
-  Future<void> _handleResolveAdvert(PendingAdvert advert) async {
-    final keyHex = advert.publicKeyHex;
-    if (_resolvingAdvertKeys.contains(keyHex)) return;
-
-    setState(() {
-      _resolvingAdvertKeys.add(keyHex);
-    });
-
-    try {
-      await context.read<ConnectionProvider>().getContact(advert.publicKey);
-    } finally {
-      if (mounted) {
-        setState(() {
-          _resolvingAdvertKeys.remove(keyHex);
-        });
-      }
-    }
-  }
-
-  void _schedulePendingAdvertResolution(
-    List<PendingAdvert> pendingAdverts,
-    ConnectionProvider connectionProvider,
-  ) {
-    if (_isResolvingPendingBatch ||
-        !connectionProvider.deviceInfo.isConnected ||
-        pendingAdverts.isEmpty) {
-      return;
-    }
-
-    final advertsToResolve = pendingAdverts
-        .where((advert) => !_resolvingAdvertKeys.contains(advert.publicKeyHex))
-        .toList();
-    if (advertsToResolve.isEmpty) {
-      return;
-    }
-
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted || _isResolvingPendingBatch) return;
-
-      _isResolvingPendingBatch = true;
-      try {
-        for (final advert in advertsToResolve) {
-          if (!mounted) break;
-          await _handleResolveAdvert(advert);
-        }
-      } finally {
-        _isResolvingPendingBatch = false;
-      }
-    });
-  }
-
   /// Calculate distance between two points in meters
   double _calculateDistanceInMeters(
     double lat1,
@@ -179,15 +126,6 @@ class _ContactsTabState extends State<ContactsTab> {
     } else {
       return '${(meters / 1000).toStringAsFixed(1)}km';
     }
-  }
-
-  String _formatRelativeTime(BuildContext context, DateTime when) {
-    final l10n = AppLocalizations.of(context)!;
-    final diff = DateTime.now().difference(when);
-    if (diff.inMinutes < 1) return l10n.justNow;
-    if (diff.inMinutes < 60) return l10n.minutesAgo(diff.inMinutes);
-    if (diff.inHours < 24) return l10n.hoursAgo(diff.inHours);
-    return l10n.daysAgo(diff.inDays);
   }
 
   List<Contact> _filterContactsForSection(
@@ -593,7 +531,6 @@ class _ContactsTabState extends State<ContactsTab> {
       body: Consumer<ContactsProvider>(
         builder: (context, contactsProvider, child) {
           final messagesProvider = context.watch<MessagesProvider>();
-          final connectionProvider = context.watch<ConnectionProvider>();
           final allChatContacts = _sortContacts(
             contactsProvider.chatContacts,
             ContactSection.teamMembers,
@@ -673,17 +610,12 @@ class _ContactsTabState extends State<ContactsTab> {
           final showRepeatersSection = allRepeaters.isNotEmpty;
           final showRoomsSection = allRooms.isNotEmpty;
           final showChannelsSection = allChannels.isNotEmpty;
-          final pendingAdverts = contactsProvider.pendingAdverts;
-
-          _schedulePendingAdvertResolution(pendingAdverts, connectionProvider);
-
           // Check if there are any displayable contacts
           final hasDisplayableContacts =
               allChatContacts.isNotEmpty ||
               allRepeaters.isNotEmpty ||
               allRooms.isNotEmpty ||
-              allChannels.isNotEmpty ||
-              pendingAdverts.isNotEmpty;
+              allChannels.isNotEmpty;
 
           if (!hasDisplayableContacts) {
             return Center(
@@ -835,27 +767,6 @@ class _ContactsTabState extends State<ContactsTab> {
                     ..._buildContactSectionItems(
                       _excludeGroupedContacts(rooms, visibleSavedRoomGroups),
                     ),
-                  const Divider(height: 32),
-                ],
-
-                // Pending adverts are kept below resolved sections while we load details.
-                if (pendingAdverts.isNotEmpty) ...[
-                  _SectionHeader(
-                    title: l10n.pending,
-                    count: pendingAdverts.length,
-                    icon: Icons.person_search,
-                  ),
-                  ...pendingAdverts.map(
-                    (advert) => _PendingAdvertTile(
-                      advert: advert,
-                      subtitle:
-                          '${l10n.publicKey}: ${advert.shortDisplayKey}\n${l10n.lastSeen}: ${_formatRelativeTime(context, advert.receivedAt)}',
-                      isResolving: _resolvingAdvertKeys.contains(
-                        advert.publicKeyHex,
-                      ),
-                      onResolve: () => _handleResolveAdvert(advert),
-                    ),
-                  ),
                   const Divider(height: 32),
                 ],
 
@@ -1262,46 +1173,6 @@ class _ContactsTabState extends State<ContactsTab> {
 enum ContactSortMode { lastSeen, distance }
 
 enum ContactSection { teamMembers, repeaters, rooms, channels }
-
-class _PendingAdvertTile extends StatelessWidget {
-  final PendingAdvert advert;
-  final String subtitle;
-  final bool isResolving;
-  final VoidCallback onResolve;
-
-  const _PendingAdvertTile({
-    required this.advert,
-    required this.subtitle,
-    required this.isResolving,
-    required this.onResolve,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: const CircleAvatar(child: Icon(Icons.campaign_outlined)),
-        title: Text(
-          advert.shortDisplayKey,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Text(subtitle),
-        trailing: isResolving
-            ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : IconButton(
-                icon: const Icon(Icons.person_add_alt_1),
-                tooltip: 'Resolve contact',
-                onPressed: onResolve,
-              ),
-      ),
-    );
-  }
-}
 
 class _RenderedSavedGroup {
   final SavedContactGroup group;

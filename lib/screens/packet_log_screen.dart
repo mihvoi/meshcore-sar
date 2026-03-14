@@ -777,13 +777,7 @@ class _DecodedRouteSection extends StatelessWidget {
               ),
             )
             .toList();
-        final originalSender = resolvedPath.isEmpty ? null : resolvedPath.first;
-
-        return _RouteSection(
-          route: decodedRoute,
-          path: resolvedPath,
-          originalSender: originalSender,
-        );
+        return _RouteSection(route: decodedRoute, path: resolvedPath);
       },
     );
   }
@@ -827,13 +821,8 @@ class _DecodedRouteSection extends StatelessWidget {
 class _RouteSection extends StatelessWidget {
   final DecodedLogRxRoute route;
   final List<ResolvedNodeHash> path;
-  final ResolvedNodeHash? originalSender;
 
-  const _RouteSection({
-    required this.route,
-    required this.path,
-    required this.originalSender,
-  });
+  const _RouteSection({required this.route, required this.path});
 
   @override
   Widget build(BuildContext context) {
@@ -879,12 +868,6 @@ class _RouteSection extends StatelessWidget {
                 value:
                     '${route.hashSize} byte${route.hashSize == 1 ? '' : 's'}',
               ),
-              if (originalSender != null)
-                _FactCard(
-                  icon: Icons.person_pin_circle,
-                  label: 'Original sender',
-                  value: _nodeLabel(originalSender!),
-                ),
             ],
           ),
           const SizedBox(height: 12),

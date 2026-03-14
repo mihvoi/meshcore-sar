@@ -31,6 +31,8 @@ class NotificationService {
   static const int _sarNotificationId = 1000;
   static const int _messageNotificationId = 2000;
   static const int _updateNotificationId = 3000;
+  static const int _batteryNotificationId = 4000;
+  static const int _discoveryNotificationId = 5000;
 
   // Notification channels
   static const String _urgentChannelId = 'sar_urgent';
@@ -47,6 +49,16 @@ class NotificationService {
   static const String _updateChannelName = 'App Updates';
   static const String _updateChannelDescription =
       'Notifications for available app updates';
+
+  static const String _batteryChannelId = 'battery_alerts';
+  static const String _batteryChannelName = 'Battery Alerts';
+  static const String _batteryChannelDescription =
+      'Notifications when a device or contact battery is low';
+
+  static const String _discoveryChannelId = 'discovery_alerts';
+  static const String _discoveryChannelName = 'Discovery Alerts';
+  static const String _discoveryChannelDescription =
+      'Notifications when new contacts are discovered';
 
   bool get messageNotificationsEnabled => _messageNotificationsEnabled;
   bool get sarNotificationsEnabled => _sarNotificationsEnabled;
@@ -237,9 +249,31 @@ class NotificationService {
         showBadge: true,
       );
 
+      const batteryChannel = AndroidNotificationChannel(
+        _batteryChannelId,
+        _batteryChannelName,
+        description: _batteryChannelDescription,
+        importance: Importance.high,
+        playSound: true,
+        enableVibration: true,
+        showBadge: true,
+      );
+
+      const discoveryChannel = AndroidNotificationChannel(
+        _discoveryChannelId,
+        _discoveryChannelName,
+        description: _discoveryChannelDescription,
+        importance: Importance.high,
+        playSound: true,
+        enableVibration: true,
+        showBadge: true,
+      );
+
       await androidPlugin.createNotificationChannel(urgentChannel);
       await androidPlugin.createNotificationChannel(messagesChannel);
       await androidPlugin.createNotificationChannel(updateChannel);
+      await androidPlugin.createNotificationChannel(batteryChannel);
+      await androidPlugin.createNotificationChannel(discoveryChannel);
       debugPrint('✅ [NotificationService] Created notification channels');
     } catch (e) {
       debugPrint('⚠️ [NotificationService] Error creating channels: $e');
@@ -705,6 +739,156 @@ class NotificationService {
       debugPrint(
         '❌ [NotificationService] Error showing update notification: $e',
       );
+    }
+  }
+
+  Future<bool> showLowBatteryNotification({
+    required String nodeId,
+    required String nodeName,
+    required double batteryPercent,
+    required bool isCurrentDevice,
+  }) async {
+    if (!_isInitialized) {
+      debugPrint(
+        '⚠️ [NotificationService] Not initialized, skipping notification',
+      );
+      return false;
+    }
+
+    if (!_permissionGranted) {
+      debugPrint(
+        '⚠️ [NotificationService] Permission not granted, skipping notification',
+      );
+      return false;
+    }
+    if (!_messageNotificationsEnabled) {
+      debugPrint('ℹ️ [NotificationService] Message notifications disabled');
+      return false;
+    }
+    if (_shouldSuppressForegroundNotifications()) {
+      debugPrint(
+        'ℹ️ [NotificationService] App in foreground, skipping low battery notification',
+      );
+      return false;
+    }
+
+    final roundedPercent = batteryPercent.round().clamp(0, 100);
+    final title = isCurrentDevice
+        ? 'Device battery low'
+        : 'Contact battery low';
+    final body = isCurrentDevice
+        ? '$nodeName battery is at $roundedPercent%.'
+        : '$nodeName is at $roundedPercent% battery.';
+    final notificationId =
+        _batteryNotificationId + ((nodeId.hashCode & 0x7fffffff) % 1000);
+
+    try {
+      final androidDetails = AndroidNotificationDetails(
+        _batteryChannelId,
+        _batteryChannelName,
+        channelDescription: _batteryChannelDescription,
+        importance: Importance.high,
+        priority: Priority.high,
+        ticker: title,
+        playSound: true,
+        enableVibration: true,
+        showWhen: true,
+        when: DateTime.now().millisecondsSinceEpoch,
+        styleInformation: BigTextStyleInformation(
+          body,
+          contentTitle: title,
+          summaryText: '$roundedPercent%',
+        ),
+      );
+
+      final darwinDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+        sound: 'default',
+        threadIdentifier: 'battery_alerts',
+        subtitle: '$roundedPercent%',
+      );
+
+      final notificationDetails = NotificationDetails(
+        android: androidDetails,
+        iOS: darwinDetails,
+      );
+
+      await _notificationsPlugin.show(
+        id: notificationId,
+        title: title,
+        body: body,
+        notificationDetails: notificationDetails,
+        payload: 'battery:$nodeId',
+      );
+
+      debugPrint(
+        '✅ [NotificationService] Showed low battery notification for $nodeName ($roundedPercent%)',
+      );
+      return true;
+    } catch (e) {
+      debugPrint(
+        '❌ [NotificationService] Error showing low battery notification: $e',
+      );
+      return false;
+    }
+  }
+
+  Future<bool> showContactDiscoveredNotification({
+    required String contactKey,
+  }) async {
+    if (!_isInitialized) return false;
+    if (!_permissionGranted) return false;
+    if (!_messageNotificationsEnabled) return false;
+    if (_shouldSuppressForegroundNotifications()) return false;
+
+    final shortKey = contactKey.length > 12
+        ? contactKey.substring(0, 12).toUpperCase()
+        : contactKey.toUpperCase();
+    final title = 'New contact discovered';
+    final body = 'New contact $shortKey is available in Discovery.';
+    final notificationId =
+        _discoveryNotificationId + ((contactKey.hashCode & 0x7fffffff) % 1000);
+
+    try {
+      final androidDetails = AndroidNotificationDetails(
+        _discoveryChannelId,
+        _discoveryChannelName,
+        channelDescription: _discoveryChannelDescription,
+        importance: Importance.high,
+        priority: Priority.high,
+        ticker: title,
+        playSound: true,
+        enableVibration: true,
+        showWhen: true,
+        when: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final darwinDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+        sound: 'default',
+        threadIdentifier: 'discovery_alerts',
+      );
+
+      await _notificationsPlugin.show(
+        id: notificationId,
+        title: title,
+        body: body,
+        notificationDetails: NotificationDetails(
+          android: androidDetails,
+          iOS: darwinDetails,
+        ),
+        payload: 'discovery:$contactKey',
+      );
+      return true;
+    } catch (e) {
+      debugPrint(
+        '❌ [NotificationService] Error showing discovery notification: $e',
+      );
+      return false;
     }
   }
 }

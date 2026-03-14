@@ -163,9 +163,13 @@ class _MessagesTabState extends State<MessagesTab> {
 
   void _scrollToMessage(String messageId) {
     final messagesProvider = context.read<MessagesProvider>();
-    final messages = _getFilteredMessages(messagesProvider);
+    final messages = messagesProvider.buildDisplayMessages(
+      _getFilteredMessages(messagesProvider),
+    );
 
-    final messageIndex = messages.indexWhere((m) => m.id == messageId);
+    final messageIndex = messages.indexWhere(
+      (entry) => entry.message.id == messageId,
+    );
 
     if (messageIndex != -1 && _scrollController.hasClients) {
       // Calculate position - accounting for reverse list
@@ -2019,7 +2023,9 @@ class _MessagesTabState extends State<MessagesTab> {
     return Consumer<MessagesProvider>(
       builder: (context, messagesProvider, child) {
         _syncChannelAutoReadTimer(messagesProvider);
-        final messages = _getFilteredMessages(messagesProvider);
+        final messages = messagesProvider.buildDisplayMessages(
+          _getFilteredMessages(messagesProvider),
+        );
         final bottomInset = MediaQuery.of(context).viewPadding.bottom;
         final composerBottomPadding = bottomInset > 0 ? 2.0 : 10.0;
 

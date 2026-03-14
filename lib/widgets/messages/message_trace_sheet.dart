@@ -154,8 +154,8 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
                     trace.mode == TraceMode.packetPath
-                        ? 'Route from packet path bytes'
-                        : 'Route inferred from hop count (${widget.message.pathLen})',
+                        ? 'Relay path from packet path bytes'
+                        : 'Relay path inferred from hop count (${widget.message.pathLen})',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ),
@@ -222,14 +222,7 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
                                                   child: CircleAvatar(
                                                     radius: 16,
                                                     backgroundColor:
-                                                        entry.key == 0
-                                                        ? Colors.green
-                                                        : (entry.key ==
-                                                                  concretePathNodes
-                                                                          .length -
-                                                                      1
-                                                              ? Colors.red
-                                                              : Colors.blue),
+                                                        Colors.blue,
                                                     child: Text(
                                                       '${entry.key + 1}',
                                                       style: const TextStyle(
@@ -259,7 +252,7 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Text(
-                          'Route',
+                          'Relay path',
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                       ),
@@ -286,11 +279,7 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
                               : null,
                           leading: CircleAvatar(
                             radius: 14,
-                            backgroundColor: entry.key == 0
-                                ? Colors.green
-                                : (entry.key == routeEntries.length - 1
-                                      ? Colors.red
-                                      : Colors.blue),
+                            backgroundColor: Colors.blue,
                             child: Text(
                               '${entry.key + 1}',
                               style: const TextStyle(
@@ -302,7 +291,7 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
                           ),
                           title: Text(entry.value.label),
                           subtitle: Text(
-                            '${_routeRoleLabel(entry.key, routeEntries.length)}${entry.value.keyLabel == null ? '' : ' • ${entry.value.keyLabel}'}${entry.value.matchSummary == null ? '' : ' • ${entry.value.matchSummary}'}${entry.value.resolved.cycleSummary == null ? '' : ' • ${entry.value.resolved.cycleSummary}'}',
+                            'Relay${entry.value.keyLabel == null ? '' : ' • ${entry.value.keyLabel}'}${entry.value.matchSummary == null ? '' : ' • ${entry.value.matchSummary}'}${entry.value.resolved.cycleSummary == null ? '' : ' • ${entry.value.resolved.cycleSummary}'}',
                           ),
                           trailing: entry.value.resolved.canCycle
                               ? const Icon(Icons.sync_alt)
@@ -365,28 +354,8 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
   }
 
   List<_RouteDisplayEntry> _displayRouteEntries(_TraceResult trace) {
-    final pathNodes = trace.matchedPathNodes
-        .map((entry) => entry.node)
-        .whereType<MeshMapNode>()
-        .toList();
-    if (pathNodes.isEmpty) {
-      return [
-        if (trace.sender.node != null)
-          _RouteDisplayEntry.fromResolved(
-            trace.sender,
-            target: const _RouteEntryTarget.sender(),
-          ),
-        if (trace.recipient.node != null &&
-            trace.recipient.node!.publicKey != trace.sender.node?.publicKey)
-          _RouteDisplayEntry.fromResolved(
-            trace.recipient,
-            target: const _RouteEntryTarget.recipient(),
-          ),
-      ];
-    }
-
     if (trace.mode == TraceMode.packetPath) {
-      final entries = trace.matchedPathNodes.asMap().entries.map((entry) {
+      return trace.matchedPathNodes.asMap().entries.map((entry) {
         final hashHex = trace.pathHashes[entry.key].toUpperCase();
         return _RouteDisplayEntry(
           resolved: entry.value,
@@ -398,53 +367,23 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
           target: _RouteEntryTarget.pathNode(entry.key),
         );
       }).toList();
-      final lastKey = pathNodes.last.publicKey;
-      return [
-        ...entries,
-        if (trace.recipient.node != null &&
-            trace.recipient.node!.publicKey != lastKey)
-          _RouteDisplayEntry.fromResolved(
-            trace.recipient,
-            target: const _RouteEntryTarget.recipient(),
-          ),
-      ];
     }
 
-    final firstKey = pathNodes.first.publicKey;
-    final lastKey = pathNodes.last.publicKey;
-    return [
-      if (trace.sender.node != null && trace.sender.node!.publicKey != firstKey)
-        _RouteDisplayEntry.fromResolved(
-          trace.sender,
-          target: const _RouteEntryTarget.sender(),
-        ),
-      ...trace.matchedPathNodes
-          .asMap()
-          .entries
-          .where((entry) => entry.value.node != null)
-          .map(
-            (entry) => _RouteDisplayEntry.fromResolved(
-              entry.value,
-              target: _RouteEntryTarget.pathNode(entry.key),
-            ),
+    return trace.matchedPathNodes
+        .asMap()
+        .entries
+        .where((entry) => entry.value.node != null)
+        .map(
+          (entry) => _RouteDisplayEntry.fromResolved(
+            entry.value,
+            target: _RouteEntryTarget.pathNode(entry.key),
           ),
-      if (trace.recipient.node != null &&
-          trace.recipient.node!.publicKey != lastKey)
-        _RouteDisplayEntry.fromResolved(
-          trace.recipient,
-          target: const _RouteEntryTarget.recipient(),
-        ),
-    ];
+        )
+        .toList();
   }
 
   String _prefixKeyLabel(String publicKey) =>
       publicKey.substring(0, math.min(12, publicKey.length));
-
-  String _routeRoleLabel(int index, int total) {
-    if (index == 0) return 'Sender';
-    if (index == total - 1) return 'Recipient';
-    return 'Relay';
-  }
 
   String? _toPrefixHex(List<int>? key) {
     if (key == null || key.isEmpty) return null;
@@ -521,7 +460,7 @@ class _MessageTraceSheetState extends State<MessageTraceSheet> {
       final hopHashes = LogRxRouteDecoder.splitHopHashes(
         packetPath,
         hashSize: hashSize,
-      ).reversed.toList();
+      );
       final matched = _matchNodesFromPathHashes(
         nodes: nodes,
         localPublicKeys: localPublicKeys,
@@ -731,22 +670,6 @@ class _TraceResult {
 
   _TraceResult cycleEntry(_RouteEntryTarget target) {
     switch (target.kind) {
-      case _RouteEntryKind.sender:
-        return _TraceResult(
-          mode: mode,
-          sender: sender.cycle(),
-          recipient: recipient,
-          pathHashes: pathHashes,
-          matchedPathNodes: matchedPathNodes,
-        );
-      case _RouteEntryKind.recipient:
-        return _TraceResult(
-          mode: mode,
-          sender: sender,
-          recipient: recipient.cycle(),
-          pathHashes: pathHashes,
-          matchedPathNodes: matchedPathNodes,
-        );
       case _RouteEntryKind.pathNode:
         final updated = matchedPathNodes.toList();
         updated[target.index] = updated[target.index].cycle();
@@ -796,7 +719,7 @@ class _RouteDisplayEntry {
   }
 }
 
-enum _RouteEntryKind { sender, recipient, pathNode }
+enum _RouteEntryKind { pathNode }
 
 class _RouteEntryTarget {
   final _RouteEntryKind kind;
@@ -804,8 +727,6 @@ class _RouteEntryTarget {
 
   const _RouteEntryTarget._(this.kind, [this.index = 0]);
 
-  const _RouteEntryTarget.sender() : this._(_RouteEntryKind.sender);
-  const _RouteEntryTarget.recipient() : this._(_RouteEntryKind.recipient);
   const _RouteEntryTarget.pathNode(int index)
     : this._(_RouteEntryKind.pathNode, index);
 }

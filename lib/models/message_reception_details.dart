@@ -30,6 +30,7 @@ class MessageReceptionDetails {
   final int? senderToReceiptMs;
   final int? estimatedTransmitMs;
   final int? postTransmitDelayMs;
+  final int receivedCopies;
 
   const MessageReceptionDetails({
     required this.capturedAt,
@@ -40,6 +41,7 @@ class MessageReceptionDetails {
     this.senderToReceiptMs,
     this.estimatedTransmitMs,
     this.postTransmitDelayMs,
+    this.receivedCopies = 1,
   });
 
   String? get pathBytesHex => pathBytes == null || pathBytes!.isEmpty
@@ -56,7 +58,58 @@ class MessageReceptionDetails {
       'senderToReceiptMs': senderToReceiptMs,
       'estimatedTransmitMs': estimatedTransmitMs,
       'postTransmitDelayMs': postTransmitDelayMs,
+      'receivedCopies': receivedCopies,
     };
+  }
+
+  MessageReceptionDetails copyWith({
+    DateTime? capturedAt,
+    DateTime? packetLoggedAt,
+    int? rssiDbm,
+    double? snrDb,
+    List<int>? pathBytes,
+    int? senderToReceiptMs,
+    int? estimatedTransmitMs,
+    int? postTransmitDelayMs,
+    int? receivedCopies,
+  }) {
+    return MessageReceptionDetails(
+      capturedAt: capturedAt ?? this.capturedAt,
+      packetLoggedAt: packetLoggedAt ?? this.packetLoggedAt,
+      rssiDbm: rssiDbm ?? this.rssiDbm,
+      snrDb: snrDb ?? this.snrDb,
+      pathBytes: pathBytes ?? this.pathBytes,
+      senderToReceiptMs: senderToReceiptMs ?? this.senderToReceiptMs,
+      estimatedTransmitMs: estimatedTransmitMs ?? this.estimatedTransmitMs,
+      postTransmitDelayMs: postTransmitDelayMs ?? this.postTransmitDelayMs,
+      receivedCopies: receivedCopies ?? this.receivedCopies,
+    );
+  }
+
+  static MessageReceptionDetails mergeDuplicate({
+    MessageReceptionDetails? existing,
+    MessageReceptionDetails? incoming,
+  }) {
+    final base =
+        existing ??
+        incoming ??
+        MessageReceptionDetails(capturedAt: DateTime.now());
+
+    return base.copyWith(
+      capturedAt: incoming?.capturedAt ?? existing?.capturedAt,
+      packetLoggedAt: incoming?.packetLoggedAt ?? existing?.packetLoggedAt,
+      rssiDbm: incoming?.rssiDbm ?? existing?.rssiDbm,
+      snrDb: incoming?.snrDb ?? existing?.snrDb,
+      pathBytes: incoming?.pathBytes ?? existing?.pathBytes,
+      senderToReceiptMs:
+          incoming?.senderToReceiptMs ?? existing?.senderToReceiptMs,
+      estimatedTransmitMs:
+          incoming?.estimatedTransmitMs ?? existing?.estimatedTransmitMs,
+      postTransmitDelayMs:
+          incoming?.postTransmitDelayMs ?? existing?.postTransmitDelayMs,
+      receivedCopies:
+          (existing?.receivedCopies ?? 1) + (incoming?.receivedCopies ?? 1),
+    );
   }
 
   static MessageReceptionDetails? fromJson(Map<String, dynamic> json) {
@@ -81,6 +134,7 @@ class MessageReceptionDetails {
       senderToReceiptMs: json['senderToReceiptMs'] as int?,
       estimatedTransmitMs: json['estimatedTransmitMs'] as int?,
       postTransmitDelayMs: json['postTransmitDelayMs'] as int?,
+      receivedCopies: json['receivedCopies'] as int? ?? 1,
     );
   }
 }

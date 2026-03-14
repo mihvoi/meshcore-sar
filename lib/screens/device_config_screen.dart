@@ -1,8 +1,14 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import '../models/device_info.dart';
+import '../models/channel.dart';
+import '../models/contact.dart';
+import '../providers/channels_provider.dart';
 import '../providers/connection_provider.dart';
+import '../providers/contacts_provider.dart';
 import '../services/validation_service.dart';
 import '../l10n/app_localizations.dart';
 
@@ -14,6 +20,10 @@ class DeviceConfigScreen extends StatefulWidget {
 }
 
 class _DeviceConfigScreenState extends State<DeviceConfigScreen> {
+  static const int _bulkDeleteBatchSize = 8;
+  static const Duration _bulkDeleteInterItemDelay = Duration(milliseconds: 120);
+  static const Duration _bulkDeleteBatchDelay = Duration(milliseconds: 700);
+  static const Duration _bulkDeleteFinalSyncDelay = Duration(milliseconds: 900);
   static const List<_RadioPreset> _radioPresets = [
     _RadioPreset(
       id: 'australia',
@@ -169,9 +179,12 @@ class _DeviceConfigScreenState extends State<DeviceConfigScreen> {
 
   bool _telemetryEnabled = false;
   bool _repeatEnabled = false;
+  bool _autoAddDiscoveredContactsEnabled = true;
   bool _showCustomRadioSettings = false;
   bool _isSavingPublicInfo = false;
   bool _isSavingRadioSettings = false;
+  bool _isClearingContacts = false;
+  bool _isClearingChannels = false;
   bool _publicInfoSaved = false;
   bool _radioSettingsSaved = false;
   String? _publicInfoError;
@@ -252,6 +265,8 @@ class _DeviceConfigScreenState extends State<DeviceConfigScreen> {
 
     // Initialize repeat mode from device info (firmware v9+)
     _repeatEnabled = deviceInfo.clientRepeat ?? false;
+    _autoAddDiscoveredContactsEnabled =
+        !(deviceInfo.manualAddContacts ?? false);
 
     // Fetch allowed repeat frequencies on open if device supports repeat mode
     if (deviceInfo.clientRepeat != null &&
@@ -377,7 +392,6 @@ class _DeviceConfigScreenState extends State<DeviceConfigScreen> {
 
   Future<void> _savePublicInfo() async {
     final connectionProvider = context.read<ConnectionProvider>();
-    final deviceInfo = connectionProvider.deviceInfo;
     final validator = ValidationService();
 
     setState(() {
@@ -387,6 +401,8 @@ class _DeviceConfigScreenState extends State<DeviceConfigScreen> {
     });
 
     try {
+      final manualAddContacts = _autoAddDiscoveredContactsEnabled ? 0 : 1;
+
       // Save name
       if (_nameController.text.isNotEmpty) {
         await connectionProvider.setAdvertName(_nameController.text);
@@ -425,7 +441,7 @@ class _DeviceConfigScreenState extends State<DeviceConfigScreen> {
         // Set telemetry modes to "Allow All" (mode 2 for both base and location)
         final telemetryModes = 0x0A; // binary: 00001010 (base=2, location=2)
         await connectionProvider.setOtherParams(
-          manualAddContacts: deviceInfo.manualAddContacts == true ? 1 : 0,
+          manualAddContacts: manualAddContacts,
           telemetryModes: telemetryModes,
           advertLocationPolicy: 1,
         );
@@ -436,7 +452,7 @@ class _DeviceConfigScreenState extends State<DeviceConfigScreen> {
         // Set telemetry modes to "Deny" (mode 0)
         final telemetryModes = 0x00;
         await connectionProvider.setOtherParams(
-          manualAddContacts: deviceInfo.manualAddContacts == true ? 1 : 0,
+          manualAddContacts: manualAddContacts,
           telemetryModes: telemetryModes,
           advertLocationPolicy: 0,
         );
@@ -687,6 +703,205 @@ class _DeviceConfigScreenState extends State<DeviceConfigScreen> {
     }
   }
 
+  Future<void> _confirmClearAllContacts() async {
+    final contacts = context
+        .read<ContactsProvider>()
+        .contacts
+        .where((contact) => !contact.isChannel)
+        .toList();
+    if (contacts.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No device contacts to clear.')),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Clear all contacts'),
+        content: Text(
+          'This will remove ${contacts.length} contact${contacts.length == 1 ? '' : 's'} from the connected device. Channels and radio settings will not be changed.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(AppLocalizations.of(context)!.cancel),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Clear contacts'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    final connectionProvider = context.read<ConnectionProvider>();
+    final contactsProvider = context.read<ContactsProvider>();
+    connectionProvider.clearError();
+
+    setState(() {
+      _isClearingContacts = true;
+    });
+
+    try {
+      var processed = 0;
+      for (final contact in List<Contact>.from(contacts)) {
+        await contactsProvider.removeContact(
+          contact.publicKeyHex,
+          onRemoveFromDevice: connectionProvider.removeContact,
+        );
+        processed++;
+        await Future.delayed(_bulkDeleteInterItemDelay);
+        if (processed % _bulkDeleteBatchSize == 0) {
+          await Future.delayed(_bulkDeleteBatchDelay);
+        }
+      }
+
+      // Flush the updated local contact set to storage immediately.
+      await contactsProvider.persistNow();
+      await Future.delayed(_bulkDeleteFinalSyncDelay);
+      await connectionProvider.getContacts();
+      if (connectionProvider.error != null) {
+        throw Exception(connectionProvider.error!);
+      }
+
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            'Cleared ${contacts.length} contact${contacts.length == 1 ? '' : 's'} from the device.',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Failed to clear contacts: $e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isClearingContacts = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _confirmClearAllChannels() async {
+    final channels = context
+        .read<ChannelsProvider>()
+        .channels
+        .where((channel) => !channel.isPublicChannel && channel.name.isNotEmpty)
+        .toList();
+    if (channels.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No custom channels to clear.')),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Clear all channels'),
+        content: Text(
+          'This will remove ${channels.length} custom channel${channels.length == 1 ? '' : 's'} from the connected device. Contacts and radio settings will not be changed.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(AppLocalizations.of(context)!.cancel),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Clear channels'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    final connectionProvider = context.read<ConnectionProvider>();
+    final channelsProvider = context.read<ChannelsProvider>();
+    final contactsProvider = context.read<ContactsProvider>();
+    connectionProvider.clearError();
+
+    setState(() {
+      _isClearingChannels = true;
+    });
+
+    try {
+      var processed = 0;
+      for (final channel in List<Channel>.from(channels)) {
+        await connectionProvider.deleteChannel(channel.index);
+        processed++;
+        await Future.delayed(_bulkDeleteInterItemDelay);
+        if (processed % _bulkDeleteBatchSize == 0) {
+          await Future.delayed(_bulkDeleteBatchDelay);
+        }
+      }
+
+      // Force local channel/contact cache cleanup before the device resync.
+      for (final channel in channels) {
+        channelsProvider.removeChannel(channel.index);
+        final publicKeyBytes = Uint8List(32);
+        publicKeyBytes[0] = 0xFF;
+        publicKeyBytes[1] = channel.index;
+        final publicKeyHex = publicKeyBytes
+            .map((b) => b.toRadixString(16).padLeft(2, '0'))
+            .join('');
+        await contactsProvider.removeContact(publicKeyHex);
+      }
+
+      await contactsProvider.persistNow();
+      await Future.delayed(_bulkDeleteFinalSyncDelay);
+      await connectionProvider.syncChannels();
+      if (connectionProvider.error != null) {
+        throw Exception(connectionProvider.error!);
+      }
+
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            'Cleared ${channels.length} custom channel${channels.length == 1 ? '' : 's'} from the device.',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Failed to clear channels: $e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isClearingChannels = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final deviceInfo = context.watch<ConnectionProvider>().deviceInfo;
@@ -788,6 +1003,28 @@ class _DeviceConfigScreenState extends State<DeviceConfigScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    _SettingHighlightCard(
+                      icon: _autoAddDiscoveredContactsEnabled
+                          ? Icons.person_add_alt_1
+                          : Icons.person_add_disabled,
+                      title: 'Auto-add discovered contacts',
+                      description:
+                          'Control whether the device automatically stores newly discovered contacts.',
+                      accentColor: _autoAddDiscoveredContactsEnabled
+                          ? colorScheme.primary
+                          : colorScheme.onSurfaceVariant,
+                      trailing: Switch(
+                        value: _autoAddDiscoveredContactsEnabled,
+                        onChanged: (value) {
+                          setState(() {
+                            _autoAddDiscoveredContactsEnabled = value;
+                            _publicInfoSaved = false;
+                            _publicInfoError = null;
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 18),
                     _SettingHighlightCard(
                       icon: _telemetryEnabled
                           ? Icons.travel_explore
@@ -1232,8 +1469,58 @@ class _DeviceConfigScreenState extends State<DeviceConfigScreen> {
                     const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _isClearingContacts || _isClearingChannels
+                            ? null
+                            : _confirmClearAllContacts,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: colorScheme.error,
+                          side: BorderSide(color: colorScheme.error),
+                          minimumSize: const Size.fromHeight(52),
+                        ),
+                        icon: _isClearingContacts
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.people_alt_outlined),
+                        label: const Text('Clear all contacts'),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _isClearingContacts || _isClearingChannels
+                            ? null
+                            : _confirmClearAllChannels,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: colorScheme.error,
+                          side: BorderSide(color: colorScheme.error),
+                          minimumSize: const Size.fromHeight(52),
+                        ),
+                        icon: _isClearingChannels
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.forum_outlined),
+                        label: const Text('Clear all channels'),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
                       child: FilledButton.icon(
-                        onPressed: _confirmFactoryReset,
+                        onPressed: _isClearingContacts || _isClearingChannels
+                            ? null
+                            : _confirmFactoryReset,
                         style: FilledButton.styleFrom(
                           backgroundColor: colorScheme.error,
                           foregroundColor: colorScheme.onError,

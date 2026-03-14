@@ -4,6 +4,7 @@ import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meshcore_sar_app/models/contact.dart';
 import 'package:meshcore_sar_app/models/message.dart';
+import 'package:meshcore_sar_app/models/message_reception_details.dart';
 import 'package:meshcore_sar_app/models/path_selection.dart';
 import 'package:meshcore_sar_app/providers/helpers/message_retry_manager.dart';
 import 'package:meshcore_sar_app/providers/messages_provider.dart';
@@ -345,6 +346,88 @@ void main() {
 
       expect(provider.messages, hasLength(1));
       expect(provider.messages.single.id, equals('c-prefix'));
+    });
+
+    test('duplicate incoming message increments received copy count', () {
+      final provider = MessagesProvider();
+      final sender = Uint8List.fromList([7, 7, 4, 1, 7, 2]);
+
+      provider.addMessage(
+        Message(
+          id: 'copy-1',
+          messageType: MessageType.contact,
+          pathLen: 1,
+          textType: MessageTextType.plain,
+          senderTimestamp: 1700000600,
+          text: 'same payload',
+          receivedAt: DateTime.now(),
+          senderPublicKeyPrefix: sender,
+        ),
+        receptionDetailsSnapshot: MessageReceptionDetails(
+          capturedAt: DateTime.now(),
+        ),
+      );
+      provider.addMessage(
+        Message(
+          id: 'copy-2',
+          messageType: MessageType.contact,
+          pathLen: 1,
+          textType: MessageTextType.plain,
+          senderTimestamp: 1700000601,
+          text: 'same payload',
+          receivedAt: DateTime.now(),
+          senderPublicKeyPrefix: sender,
+        ),
+        receptionDetailsSnapshot: MessageReceptionDetails(
+          capturedAt: DateTime.now(),
+        ),
+      );
+
+      expect(provider.messages, hasLength(1));
+      expect(
+        provider.getMessageReceptionDetails('copy-1')?.receivedCopies,
+        equals(2),
+      );
+    });
+
+    test('display list collapses stored duplicates and sums copy counts', () {
+      final provider = MessagesProvider();
+      final sender = Uint8List.fromList([5, 4, 3, 2, 1, 0]);
+
+      provider.addMessages([
+        Message(
+          id: 'dup-a',
+          messageType: MessageType.channel,
+          channelIdx: 0,
+          pathLen: 1,
+          textType: MessageTextType.plain,
+          senderTimestamp: 1700000705,
+          text: 'same payload',
+          senderName: 'Klemen',
+          receivedAt: DateTime.now(),
+          senderPublicKeyPrefix: sender,
+        ),
+        Message(
+          id: 'dup-b',
+          messageType: MessageType.channel,
+          channelIdx: 0,
+          pathLen: 2,
+          textType: MessageTextType.plain,
+          senderTimestamp: 1700000700,
+          text: 'same payload',
+          senderName: 'Klemen',
+          receivedAt: DateTime.now(),
+          senderPublicKeyPrefix: sender,
+        ),
+      ]);
+
+      final display = provider.buildDisplayMessages(
+        provider.getRecentMessages(),
+      );
+
+      expect(display, hasLength(1));
+      expect(display.single.message.id, equals('dup-a'));
+      expect(display.single.occurrenceCount, equals(2));
     });
 
     test('missing ACK schedules a delayed retransmission', () {

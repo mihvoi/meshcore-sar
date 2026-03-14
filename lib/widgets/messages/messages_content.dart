@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../models/message.dart';
+import '../../providers/messages_provider.dart';
 import '../common/bidirectional_refresh.dart';
 import '../../widgets/messages/message_bubble.dart';
 
 class MessagesContent extends StatelessWidget {
   static const double defaultPadding = 8;
 
-  final List<Message> messages;
+  final List<DisplayMessageEntry> messages;
   final ScrollController scrollController;
   final String? highlightedMessageId;
   final double bottomContentPadding;
@@ -84,11 +85,13 @@ class MessagesContent extends StatelessWidget {
               ),
               itemCount: messages.length,
               itemBuilder: (context, index) {
-                final message = messages[index];
+                final entry = messages[index];
+                final message = entry.message;
 
                 return MessageBubble(
                   key: ValueKey(message.id),
                   message: message,
+                  receivedCopies: entry.occurrenceCount,
                   isHighlighted: message.id == highlightedMessageId,
                   onNavigateToMap: onNavigateToMap,
                   onTap: onMessageTap == null

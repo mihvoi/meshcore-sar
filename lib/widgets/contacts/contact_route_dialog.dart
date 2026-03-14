@@ -1,16 +1,17 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart' as flutter_map;
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
-import 'dart:math' as math;
 
 import '../../models/contact.dart';
-import '../../providers/connection_provider.dart';
+import '../../models/path_history.dart';
 import '../../providers/app_provider.dart';
+import '../../providers/connection_provider.dart';
 import '../../services/contact_route_resolver.dart';
 import '../../services/path_history_service.dart';
 import '../../services/route_hash_preferences.dart';
-import '../../models/path_history.dart';
 
 class ContactRouteDialogResult {
   final ParsedContactRoute? route;
@@ -53,19 +54,11 @@ class ContactRouteDialog extends StatefulWidget {
     required Contact contact,
     required List<Contact> availableContacts,
   }) {
-    return showModalBottomSheet<ContactRouteDialogResult>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-          ),
-          child: ContactRouteDialog(
-            contact: contact,
-            availableContacts: availableContacts,
-          ),
+    return Navigator.of(context).push<ContactRouteDialogResult>(
+      MaterialPageRoute(
+        builder: (context) => ContactRouteDialog(
+          contact: contact,
+          availableContacts: availableContacts,
         ),
       ),
     );
@@ -77,14 +70,15 @@ class ContactRouteDialog extends StatefulWidget {
 
 class _ContactRouteDialogState extends State<ContactRouteDialog> {
   late final TextEditingController _controller;
+  late final TextEditingController _relaySearchController;
   final PathHistoryService _pathHistoryService = PathHistoryService();
   int _selectedHashSize = RouteHashPreferences.defaultHashSize;
   ParsedContactRoute? _parsedRoute;
   String? _errorText;
   bool _showRoutingInfo = false;
+  bool _showManualEditor = false;
   List<Contact> _selectedMapHops = const [];
   ContactPathHistory? _pathHistory;
-  _RouteEntryMode _entryMode = _RouteEntryMode.map;
 
   @override
   void initState() {
@@ -92,10 +86,9 @@ class _ContactRouteDialogState extends State<ContactRouteDialog> {
     _controller = TextEditingController(
       text: widget.contact.routeCanonicalText,
     );
+    _relaySearchController = TextEditingController();
     _controller.addListener(_reparse);
-    _entryMode = widget.contact.routeCanonicalText.isNotEmpty
-        ? _RouteEntryMode.manual
-        : _RouteEntryMode.map;
+    _showManualEditor = widget.contact.routeCanonicalText.isNotEmpty;
     _loadHashSizePreference();
     _loadPathHistory();
     _reparse();
@@ -103,6 +96,7 @@ class _ContactRouteDialogState extends State<ContactRouteDialog> {
 
   @override
   void dispose() {
+    _relaySearchController.dispose();
     _controller
       ..removeListener(_reparse)
       ..dispose();
@@ -231,7 +225,7 @@ class _ContactRouteDialogState extends State<ContactRouteDialog> {
         TextPosition(offset: _controller.text.length),
       );
       _errorText = null;
-      _entryMode = _RouteEntryMode.map;
+      _showManualEditor = false;
     });
     _reparse();
   }
@@ -247,7 +241,7 @@ class _ContactRouteDialogState extends State<ContactRouteDialog> {
         TextPosition(offset: _controller.text.length),
       );
       _errorText = null;
-      _entryMode = _RouteEntryMode.manual;
+      _showManualEditor = true;
     });
     _reparse();
   }
@@ -416,30 +410,279 @@ class _ContactRouteDialogState extends State<ContactRouteDialog> {
   }
 
   Widget _buildPreviewSection() {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _parsedRoute == null ? 'Route preview' : _parsedRoute!.summary,
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _parsedRoute == null
+                ? 'Pick relays from the list below or open manual edit if you need exact hop tokens.'
+                : '${_parsedRoute!.byteLength} bytes • descriptor 0x${_parsedRoute!.encodedPathLen.toRadixString(16).padLeft(2, '0').toUpperCase()}',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          if (_parsedRoute != null) ...[
+            const SizedBox(height: 10),
+            SelectableText(
+              _parsedRoute!.canonicalText,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontFamily: 'monospace'),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSelectedHopSection() {
+    if (_selectedMapHops.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Theme.of(context).dividerColor),
+        ),
+        child: Text(
+          'No relays selected yet. Add repeaters below or let auto resolve build a route.',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          _parsedRoute == null
-              ? 'Preview: enter or pick a route to validate it.'
-              : 'Preview: ${_parsedRoute!.summary} • ${_parsedRoute!.byteLength} bytes • descriptor 0x${_parsedRoute!.encodedPathLen.toRadixString(16).padLeft(2, '0').toUpperCase()}',
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-        if (_parsedRoute != null) ...[
-          const SizedBox(height: 4),
-          SelectableText(
-            _parsedRoute!.canonicalText,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(fontFamily: 'monospace'),
-          ),
-        ],
+        Text('Selected relays', style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: 8),
+        ..._selectedMapHops.asMap().entries.map((entry) {
+          final index = entry.key;
+          final contact = entry.value;
+          return Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: ListTile(
+              leading: CircleAvatar(child: Text('${index + 1}')),
+              title: Text(contact.displayName),
+              subtitle: Text(
+                _tokenFor(contact, _selectedHashSize),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
+              ),
+              trailing: IconButton(
+                tooltip: 'Remove relay',
+                onPressed: () => _toggleHop(contact),
+                icon: const Icon(Icons.close),
+              ),
+            ),
+          );
+        }),
       ],
     );
   }
 
-  Widget _buildBuilderTab(
-    BuildContext context, {
+  Widget _buildRelayPicker(List<Contact> routeCandidates) {
+    final query = _relaySearchController.text.trim().toLowerCase();
+    final filteredCandidates = routeCandidates.where((contact) {
+      if (query.isEmpty) return true;
+      return contact.displayName.toLowerCase().contains(query) ||
+          _tokenFor(contact, _selectedHashSize).toLowerCase().contains(query);
+    }).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          controller: _relaySearchController,
+          onChanged: (_) => setState(() {}),
+          decoration: const InputDecoration(
+            prefixIcon: Icon(Icons.search),
+            labelText: 'Find relay',
+            hintText: 'Search by name or token',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (filteredCandidates.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Theme.of(context).dividerColor),
+            ),
+            child: Text(
+              'No visible relays match this search.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          )
+        else
+          ...filteredCandidates.map((candidate) {
+            final isSelected = _selectedMapHops.any(
+              (item) => item.publicKeyHex == candidate.publicKeyHex,
+            );
+            final location = candidate.displayLocation;
+            return Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: ListTile(
+                leading: Icon(
+                  isSelected
+                      ? Icons.check_circle
+                      : Icons.radio_button_unchecked,
+                  color: isSelected
+                      ? Theme.of(context).colorScheme.primary
+                      : null,
+                ),
+                title: Text(candidate.displayName),
+                subtitle: Text(
+                  [
+                    _tokenFor(candidate, _selectedHashSize),
+                    if (location != null)
+                      '${location.latitude.toStringAsFixed(4)}, ${location.longitude.toStringAsFixed(4)}',
+                  ].join(' • '),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
+                ),
+                trailing: TextButton(
+                  onPressed: () => _toggleHop(candidate),
+                  child: Text(isSelected ? 'Remove' : 'Add'),
+                ),
+              ),
+            );
+          }),
+      ],
+    );
+  }
+
+  Widget _buildManualEditor() {
+    return ExpansionTile(
+      tilePadding: EdgeInsets.zero,
+      childrenPadding: EdgeInsets.zero,
+      initiallyExpanded: _showManualEditor,
+      onExpansionChanged: (expanded) {
+        setState(() {
+          _showManualEditor = expanded;
+        });
+      },
+      title: const Text('Manual route edit'),
+      subtitle: const Text(
+        'Use this when you need to paste or tweak hop tokens directly.',
+      ),
+      children: [
+        TextField(
+          controller: _controller,
+          textCapitalization: TextCapitalization.characters,
+          decoration: InputDecoration(
+            labelText: 'Route',
+            hintText: _selectedHashSize == 1
+                ? 'AA,BB,CC'
+                : _selectedHashSize == 2
+                ? 'AABB,CCDD'
+                : 'AABBCC,DDEEFF',
+            helperText:
+                'Comma-separated hops. Hash size follows global Settings. Colon form like AA:BB is also accepted.',
+            errorText: _errorText,
+            border: const OutlineInputBorder(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMapPreview({
+    required List<Contact> routeCandidates,
+    required List<LatLng> mapPoints,
+    required List<LatLng> routePoints,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: SizedBox(
+        height: 220,
+        child: mapPoints.length < 2
+            ? const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text(
+                    'Map preview needs your advertised location, the contact location, and visible repeater locations.',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              )
+            : flutter_map.FlutterMap(
+                options: flutter_map.MapOptions(
+                  initialCameraFit: flutter_map.CameraFit.bounds(
+                    bounds: flutter_map.LatLngBounds.fromPoints(mapPoints),
+                    padding: const EdgeInsets.all(32),
+                  ),
+                ),
+                children: [
+                  flutter_map.TileLayer(
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.meshcore.sar',
+                  ),
+                  if (routePoints.length >= 2)
+                    flutter_map.PolylineLayer(
+                      polylines: [
+                        flutter_map.Polyline(
+                          points: routePoints,
+                          strokeWidth: 4,
+                          color: colorScheme.primary,
+                        ),
+                      ],
+                    ),
+                  flutter_map.MarkerLayer(
+                    markers: [
+                      ...routeCandidates.map((candidate) {
+                        final isSelected = _selectedMapHops.any(
+                          (item) => item.publicKeyHex == candidate.publicKeyHex,
+                        );
+                        return flutter_map.Marker(
+                          point: LatLng(
+                            candidate.displayLocation!.latitude,
+                            candidate.displayLocation!.longitude,
+                          ),
+                          width: 64,
+                          height: 70,
+                          child: GestureDetector(
+                            onTap: () => _toggleHop(candidate),
+                            child: _RouteMarkerDot(
+                              label: _tokenFor(candidate, _selectedHashSize),
+                              color: isSelected
+                                  ? colorScheme.primary
+                                  : Colors.blueGrey,
+                            ),
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _buildBuilderTab({
     required List<Contact> routeCandidates,
     required List<LatLng> mapPoints,
     required List<LatLng> routePoints,
@@ -447,174 +690,43 @@ class _ContactRouteDialogState extends State<ContactRouteDialog> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SegmentedButton<_RouteEntryMode>(
-          segments: const [
-            ButtonSegment<_RouteEntryMode>(
-              value: _RouteEntryMode.map,
-              icon: Icon(Icons.map_outlined),
-              label: Text('Map'),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            FilledButton.tonalIcon(
+              onPressed: _resolvePathAutomatically,
+              icon: const Icon(Icons.auto_fix_high),
+              label: const Text('Auto resolve'),
             ),
-            ButtonSegment<_RouteEntryMode>(
-              value: _RouteEntryMode.manual,
-              icon: Icon(Icons.tune),
-              label: Text('Manual'),
+            OutlinedButton.icon(
+              onPressed: _selectedMapHops.isEmpty
+                  ? null
+                  : () {
+                      setState(() {
+                        _selectedMapHops = const [];
+                        _syncControllerFromSelectedHops();
+                      });
+                    },
+              icon: const Icon(Icons.clear_all),
+              label: const Text('Clear relays'),
             ),
           ],
-          selected: {_entryMode},
-          onSelectionChanged: (selection) {
-            setState(() {
-              _entryMode = selection.first;
-            });
-          },
         ),
         const SizedBox(height: 16),
-        if (_entryMode == _RouteEntryMode.manual) ...[
-          TextField(
-            controller: _controller,
-            textCapitalization: TextCapitalization.characters,
-            decoration: InputDecoration(
-              labelText: 'Route',
-              hintText: _selectedHashSize == 1
-                  ? 'AA,BB,CC'
-                  : _selectedHashSize == 2
-                  ? 'AABB,CCDD'
-                  : 'AABBCC,DDEEFF',
-              helperText:
-                  'Enter comma-separated hops. Path byte size comes from global Settings. Colon form like AA:BB is also accepted.',
-              errorText: _errorText,
-              border: const OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 12),
-          _buildPreviewSection(),
-        ] else ...[
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              OutlinedButton.icon(
-                onPressed: _resolvePathAutomatically,
-                icon: const Icon(Icons.auto_fix_high),
-                label: const Text('Resolve Path'),
-              ),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 280),
-                child: Text(
-                  'Tap repeaters on the map to build the path, then review the generated route below.',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 260,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  border: Border.all(color: Theme.of(context).dividerColor),
-                ),
-                child: mapPoints.length < 2
-                    ? const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(16),
-                          child: Text(
-                            'Map path builder needs your advertised location, the contact location, and visible repeater locations.',
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      )
-                    : flutter_map.FlutterMap(
-                        options: flutter_map.MapOptions(
-                          initialCameraFit: flutter_map.CameraFit.bounds(
-                            bounds: flutter_map.LatLngBounds.fromPoints(
-                              mapPoints,
-                            ),
-                            padding: const EdgeInsets.all(32),
-                          ),
-                        ),
-                        children: [
-                          flutter_map.TileLayer(
-                            urlTemplate:
-                                'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                            userAgentPackageName: 'com.meshcore.sar',
-                          ),
-                          if (routePoints.length >= 2)
-                            flutter_map.PolylineLayer(
-                              polylines: [
-                                flutter_map.Polyline(
-                                  points: routePoints,
-                                  strokeWidth: 4,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                              ],
-                            ),
-                          flutter_map.MarkerLayer(
-                            markers: [
-                              ...routeCandidates.map((candidate) {
-                                final isSelected = _selectedMapHops.any(
-                                  (item) =>
-                                      item.publicKeyHex ==
-                                      candidate.publicKeyHex,
-                                );
-                                return flutter_map.Marker(
-                                  point: LatLng(
-                                    candidate.displayLocation!.latitude,
-                                    candidate.displayLocation!.longitude,
-                                  ),
-                                  width: 64,
-                                  height: 70,
-                                  child: GestureDetector(
-                                    onTap: () => _toggleHop(candidate),
-                                    child: _RouteMarkerDot(
-                                      label: _tokenFor(
-                                        candidate,
-                                        _selectedHashSize,
-                                      ),
-                                      color: isSelected
-                                          ? Theme.of(
-                                              context,
-                                            ).colorScheme.primary
-                                          : Colors.blueGrey,
-                                    ),
-                                  ),
-                                );
-                              }),
-                            ],
-                          ),
-                        ],
-                      ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          if (_selectedMapHops.isNotEmpty)
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _selectedMapHops.map((contact) {
-                return InputChip(
-                  label: Text(contact.displayName),
-                  onDeleted: () => _toggleHop(contact),
-                );
-              }).toList(),
-            ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _controller,
-            readOnly: true,
-            decoration: InputDecoration(
-              labelText: 'Generated route',
-              helperText: 'Switch to Manual if you want to edit the hop list.',
-              errorText: _errorText,
-              border: const OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 12),
-          _buildPreviewSection(),
-        ],
+        _buildPreviewSection(),
+        const SizedBox(height: 16),
+        _buildSelectedHopSection(),
+        const SizedBox(height: 16),
+        _buildRelayPicker(routeCandidates),
+        const SizedBox(height: 16),
+        _buildMapPreview(
+          routeCandidates: routeCandidates,
+          mapPoints: mapPoints,
+          routePoints: routePoints,
+        ),
+        const SizedBox(height: 16),
+        _buildManualEditor(),
       ],
     );
   }
@@ -720,39 +832,33 @@ class _ContactRouteDialogState extends State<ContactRouteDialog> {
 
     return DefaultTabController(
       length: 2,
-      child: FractionallySizedBox(
-        heightFactor: 0.85,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Set Route for ${widget.contact.displayName}',
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Choose how to build the route, or reuse one from history.',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 16),
-              const TabBar(
-                tabs: [
-                  Tab(text: 'Build'),
-                  Tab(text: 'History'),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: TabBarView(
-                  children: [
-                    SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('Set Path for ${widget.contact.displayName}'),
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: 'Build'),
+              Tab(text: 'History'),
+            ],
+          ),
+        ),
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Plan the route on its own screen, then save it once the preview looks right.',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      ListView(
                         children: [
                           _buildBuilderTab(
-                            context,
                             routeCandidates: routeCandidates,
                             mapPoints: mapPoints,
                             routePoints: routePoints,
@@ -772,52 +878,60 @@ class _ContactRouteDialogState extends State<ContactRouteDialog> {
                             clearPathOnMaxRetry:
                                 appProvider.clearPathOnMaxRetry,
                           ),
+                          const SizedBox(height: 24),
                         ],
                       ),
-                    ),
-                    SingleChildScrollView(child: _buildHistoryTab()),
-                  ],
+                      ListView(
+                        children: [
+                          _buildHistoryTab(),
+                          const SizedBox(height: 24),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              OverflowBar(
-                alignment: MainAxisAlignment.spaceBetween,
-                spacing: 8,
-                overflowSpacing: 8,
-                children: [
+              ],
+            ),
+          ),
+        ),
+        bottomNavigationBar: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: OverflowBar(
+              alignment: MainAxisAlignment.spaceBetween,
+              spacing: 8,
+              overflowSpacing: 8,
+              children: [
+                if (widget.contact.routeHasPath)
                   TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Cancel'),
-                  ),
-                  if (widget.contact.routeHasPath)
-                    TextButton(
-                      onPressed: () => Navigator.of(
-                        context,
-                      ).pop(const ContactRouteDialogResult.clear()),
-                      child: const Text('Clear Route'),
-                    ),
-                  FilledButton(
-                    onPressed: _parsedRoute == null
-                        ? null
-                        : () => Navigator.of(context).pop(
-                            ContactRouteDialogResult.setWithFallback(
-                              _parsedRoute!,
-                              inferredFallbackLocation:
-                                  _buildSyntheticFallbackLocation(),
-                            ),
+                    onPressed: () => Navigator.of(
+                      context,
+                    ).pop(const ContactRouteDialogResult.clear()),
+                    child: const Text('Clear Route'),
+                  )
+                else
+                  const SizedBox.shrink(),
+                FilledButton(
+                  onPressed: _parsedRoute == null
+                      ? null
+                      : () => Navigator.of(context).pop(
+                          ContactRouteDialogResult.setWithFallback(
+                            _parsedRoute!,
+                            inferredFallbackLocation:
+                                _buildSyntheticFallbackLocation(),
                           ),
-                    child: const Text('Set Route'),
-                  ),
-                ],
-              ),
-            ],
+                        ),
+                  child: const Text('Save Path'),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 }
-
-enum _RouteEntryMode { map, manual }
 
 class _RouteMarkerDot extends StatelessWidget {
   final String label;

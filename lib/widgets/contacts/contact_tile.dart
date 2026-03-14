@@ -325,7 +325,9 @@ class ContactTile extends StatelessWidget {
         contact.type == ContactType.room ||
         contact.type == ContactType.channel;
     final canSetPath =
-        contact.type == ContactType.chat || contact.type == ContactType.room;
+        contact.type == ContactType.chat ||
+        contact.type == ContactType.room ||
+        contact.type == ContactType.repeater;
     final canAddToSensors =
         contact.type == ContactType.chat ||
         contact.type == ContactType.repeater;

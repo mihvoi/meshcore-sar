@@ -2255,7 +2255,7 @@ class ConnectionProvider with ChangeNotifier {
     if (!_activeService.isConnected) {
       _error = 'Not connected to device';
       notifyListeners();
-      return;
+      throw Exception(_error);
     }
 
     try {
@@ -2263,6 +2263,7 @@ class ConnectionProvider with ChangeNotifier {
     } catch (e) {
       _error = 'Failed to remove contact: $e';
       notifyListeners();
+      rethrow;
     }
   }
 
