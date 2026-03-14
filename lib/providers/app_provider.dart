@@ -249,16 +249,13 @@ class AppProvider with ChangeNotifier {
 
   /// Sync drawings from messages on app startup (before BLE connection)
   Future<void> _syncDrawingsOnStartup() async {
-    // Wait for MessagesProvider to finish initializing
-    // DrawingProvider loads around the same time
+    // Wait for both MessagesProvider and DrawingProvider to finish initializing
     int attempts = 0;
-    while (!messagesProvider.isInitialized && attempts < 20) {
+    while ((!messagesProvider.isInitialized || !drawingProvider.isInitialized) &&
+        attempts < 40) {
       await Future.delayed(const Duration(milliseconds: 50));
       attempts++;
     }
-
-    // Give DrawingProvider a moment to finish loading too
-    await Future.delayed(const Duration(milliseconds: 100));
 
     _restoreSessionMetadataFromMessages();
 
@@ -975,9 +972,10 @@ class AppProvider with ChangeNotifier {
       if (AppProvider.shouldIgnoreSelfReplay(
         message: message,
         ownPublicKey: connectionProvider.deviceInfo.publicKey,
-        ownName:
-            connectionProvider.deviceInfo.deviceName ??
-            connectionProvider.deviceInfo.selfName,
+        ownName: _preferredSelfDisplayName(
+          deviceName: connectionProvider.deviceInfo.deviceName,
+          selfName: connectionProvider.deviceInfo.selfName,
+        ),
       )) {
         debugPrint('⏭️ [AppProvider] Ignoring self replay: ${message.id}');
         return;

@@ -22,6 +22,7 @@ class DrawingProvider with ChangeNotifier {
 
   // Completed drawings
   final List<MapDrawing> _drawings = [];
+  bool _isInitialized = false;
 
   // In-progress drawing
   MapDrawing? _currentDrawing;
@@ -53,6 +54,7 @@ class DrawingProvider with ChangeNotifier {
   List<LatLng> get currentLinePoints => List.unmodifiable(_currentLinePoints);
   LatLng? get rectangleStartPoint => _rectangleStartPoint;
   bool get isDrawing => _drawingMode != DrawingMode.none;
+  bool get isInitialized => _isInitialized;
   LatLng? get measurementPoint1 => _measurementPoint1;
   LatLng? get measurementPoint2 => _measurementPoint2;
   double? get measuredDistance => _measuredDistance;
@@ -61,6 +63,7 @@ class DrawingProvider with ChangeNotifier {
   Future<void> initialize() async {
     await _loadPreferences();
     await _loadDrawings();
+    _isInitialized = true;
   }
 
   /// Set drawing mode

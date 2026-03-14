@@ -28,6 +28,8 @@ class MessagesProvider with ChangeNotifier {
   final MessageStorageService _storageService = MessageStorageService();
   final NotificationService _notificationService = NotificationService();
   bool _isInitialized = false;
+  bool _isPersisting = false;
+  bool _persistRequested = false;
   AppLocalizations? _localizations;
   final Map<String, MessageContactLocation> _messageContactLocations = {};
   final Map<String, MessageReceptionDetails> _messageReceptionDetails = {};
@@ -1018,18 +1020,29 @@ class MessagesProvider with ChangeNotifier {
     return '${mib.toStringAsFixed(mib >= 10 ? 0 : 1)} MB';
   }
 
-  /// Persist messages to storage (async, non-blocking)
+  /// Persist messages to storage (async, non-blocking, coalescing).
+  ///
+  /// Multiple rapid calls are coalesced into a single write to avoid
+  /// overlapping serialization and redundant SharedPreferences writes.
   Future<void> _persistMessages() async {
+    _persistRequested = true;
+    if (_isPersisting) return; // A write is in flight; it will pick up our changes.
+    _isPersisting = true;
     try {
-      await _storageService.saveMessages(
-        _messages,
-        messageContactLocations: _messageContactLocations,
-        messageReceptionDetails: _messageReceptionDetails,
-        messageTransferDetails: _messageTransferDetails,
-        messageRouteMetadata: _messageRouteMetadata,
-      );
+      while (_persistRequested) {
+        _persistRequested = false;
+        await _storageService.saveMessages(
+          _messages,
+          messageContactLocations: _messageContactLocations,
+          messageReceptionDetails: _messageReceptionDetails,
+          messageTransferDetails: _messageTransferDetails,
+          messageRouteMetadata: _messageRouteMetadata,
+        );
+      }
     } catch (e) {
       debugPrint('❌ [MessagesProvider] Error persisting messages: $e');
+    } finally {
+      _isPersisting = false;
     }
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import '../models/sar_marker.dart';
 import '../l10n/app_localizations.dart';
@@ -13,9 +14,18 @@ class NotificationService {
 
   final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
+  static const String _prefMessagesEnabled = 'notifications_messages_enabled';
+  static const String _prefSarEnabled = 'notifications_sar_enabled';
+  static const String _prefUpdatesEnabled = 'notifications_updates_enabled';
+  static const String _prefMuteForeground = 'notifications_mute_foreground';
 
   bool _isInitialized = false;
   bool _permissionGranted = false;
+  bool _messageNotificationsEnabled = true;
+  bool _sarNotificationsEnabled = true;
+  bool _updateNotificationsEnabled = true;
+  bool _muteForegroundNotifications = true;
+  AppLifecycleState _lifecycleState = AppLifecycleState.resumed;
 
   // Notification IDs
   static const int _sarNotificationId = 1000;
@@ -38,12 +48,21 @@ class NotificationService {
   static const String _updateChannelDescription =
       'Notifications for available app updates';
 
+  bool get messageNotificationsEnabled => _messageNotificationsEnabled;
+  bool get sarNotificationsEnabled => _sarNotificationsEnabled;
+  bool get updateNotificationsEnabled => _updateNotificationsEnabled;
+  bool get muteForegroundNotifications => _muteForegroundNotifications;
+  bool get isAppInForeground => _lifecycleState == AppLifecycleState.resumed;
+
   /// Initialize notification service
   Future<void> initialize() async {
     if (_isInitialized) return;
 
     try {
       debugPrint('📬 [NotificationService] Initializing...');
+      WidgetsBinding.instance.addObserver(_LifecycleObserver(this));
+      _lifecycleState =
+          WidgetsBinding.instance.lifecycleState ?? AppLifecycleState.resumed;
 
       // Initialize timezone data
       tz.initializeTimeZones();
@@ -74,6 +93,7 @@ class NotificationService {
 
       // Request permissions
       await _requestPermissions();
+      await _loadPreferences();
 
       // Create notification channels (Android)
       await _createNotificationChannels();
@@ -130,6 +150,46 @@ class NotificationService {
     } catch (e) {
       debugPrint('⚠️ [NotificationService] Error requesting permissions: $e');
     }
+  }
+
+  Future<void> _loadPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    _messageNotificationsEnabled = prefs.getBool(_prefMessagesEnabled) ?? true;
+    _sarNotificationsEnabled = prefs.getBool(_prefSarEnabled) ?? true;
+    _updateNotificationsEnabled = prefs.getBool(_prefUpdatesEnabled) ?? true;
+    _muteForegroundNotifications = prefs.getBool(_prefMuteForeground) ?? true;
+  }
+
+  Future<void> setMessageNotificationsEnabled(bool value) async {
+    _messageNotificationsEnabled = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_prefMessagesEnabled, value);
+  }
+
+  Future<void> setSarNotificationsEnabled(bool value) async {
+    _sarNotificationsEnabled = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_prefSarEnabled, value);
+  }
+
+  Future<void> setUpdateNotificationsEnabled(bool value) async {
+    _updateNotificationsEnabled = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_prefUpdatesEnabled, value);
+  }
+
+  Future<void> setMuteForegroundNotifications(bool value) async {
+    _muteForegroundNotifications = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_prefMuteForeground, value);
+  }
+
+  void handleAppLifecycleStateChanged(AppLifecycleState state) {
+    _lifecycleState = state;
+  }
+
+  bool _shouldSuppressForegroundNotifications() {
+    return _muteForegroundNotifications && isAppInForeground;
   }
 
   /// Create notification channels for Android
@@ -219,6 +279,16 @@ class NotificationService {
     if (!_permissionGranted) {
       debugPrint(
         '⚠️ [NotificationService] Permission not granted, skipping notification',
+      );
+      return;
+    }
+    if (!_sarNotificationsEnabled) {
+      debugPrint('ℹ️ [NotificationService] SAR notifications disabled');
+      return;
+    }
+    if (_shouldSuppressForegroundNotifications()) {
+      debugPrint(
+        'ℹ️ [NotificationService] App in foreground, skipping SAR notification',
       );
       return;
     }
@@ -394,6 +464,16 @@ class NotificationService {
       );
       return;
     }
+    if (!_messageNotificationsEnabled) {
+      debugPrint('ℹ️ [NotificationService] Message notifications disabled');
+      return;
+    }
+    if (_shouldSuppressForegroundNotifications()) {
+      debugPrint(
+        'ℹ️ [NotificationService] App in foreground, skipping message notification',
+      );
+      return;
+    }
 
     try {
       // Generate unique notification ID based on timestamp
@@ -547,6 +627,16 @@ class NotificationService {
       );
       return;
     }
+    if (!_updateNotificationsEnabled) {
+      debugPrint('ℹ️ [NotificationService] Update notifications disabled');
+      return;
+    }
+    if (_shouldSuppressForegroundNotifications()) {
+      debugPrint(
+        'ℹ️ [NotificationService] App in foreground, skipping update notification',
+      );
+      return;
+    }
 
     try {
       // Build notification title and body
@@ -616,5 +706,16 @@ class NotificationService {
         '❌ [NotificationService] Error showing update notification: $e',
       );
     }
+  }
+}
+
+class _LifecycleObserver with WidgetsBindingObserver {
+  _LifecycleObserver(this._service);
+
+  final NotificationService _service;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _service.handleAppLifecycleStateChanged(state);
   }
 }

@@ -25,6 +25,7 @@ import '../services/image_preferences.dart';
 import '../services/route_hash_preferences.dart';
 import '../services/image_codec_service.dart';
 import '../services/developer_mode_service.dart';
+import '../services/notification_service.dart';
 import '../utils/sample_data_generator.dart';
 import '../utils/image_message_parser.dart';
 import '../utils/voice_message_parser.dart';
@@ -77,6 +78,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _rotateMapWithHeading = false;
   bool _showMapDebugInfo = false;
   bool _openMapInFullscreen = false;
+  bool _messageNotificationsEnabled = true;
+  bool _sarNotificationsEnabled = true;
+  bool _updateNotificationsEnabled = true;
+  bool _muteForegroundNotifications = true;
   bool _isDeveloperModeEnabled = false;
   DateTime? _onlineTraceCacheUpdatedAt;
   bool _isClearingOnlineTraceCache = false;
@@ -99,6 +104,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadDeveloperMode();
     _loadOnlineTraceCacheStatus();
     _loadMapPreferences();
+    _loadNotificationPreferences();
   }
 
   @override
@@ -133,6 +139,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (!mounted) return;
     setState(() {
       _isDeveloperModeEnabled = isEnabled;
+    });
+  }
+
+  Future<void> _loadNotificationPreferences() async {
+    final service = NotificationService();
+    await service.initialize();
+    if (!mounted) return;
+    setState(() {
+      _messageNotificationsEnabled = service.messageNotificationsEnabled;
+      _sarNotificationsEnabled = service.sarNotificationsEnabled;
+      _updateNotificationsEnabled = service.updateNotificationsEnabled;
+      _muteForegroundNotifications = service.muteForegroundNotifications;
     });
   }
 
@@ -187,8 +205,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
     setState(() {
-      _rotateMapWithHeading =
-          prefs.getBool('map_rotate_with_heading') ?? false;
+      _rotateMapWithHeading = prefs.getBool('map_rotate_with_heading') ?? false;
       _showMapDebugInfo = prefs.getBool('map_show_debug_info') ?? false;
       _openMapInFullscreen = prefs.getBool('map_fullscreen') ?? false;
     });
@@ -1002,6 +1019,72 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ]),
 
+          _buildSectionHeader('Notifications'),
+          _buildSettingsCard([
+            SwitchListTile(
+              secondary: const Icon(Icons.chat_bubble_outline),
+              title: const Text('Message notifications'),
+              subtitle: const Text(
+                'Notify for incoming direct and channel messages',
+              ),
+              value: _messageNotificationsEnabled,
+              onChanged: (value) async {
+                setState(() {
+                  _messageNotificationsEnabled = value;
+                });
+                await NotificationService().setMessageNotificationsEnabled(
+                  value,
+                );
+              },
+            ),
+            SwitchListTile(
+              secondary: const Icon(Icons.warning_amber_outlined),
+              title: const Text('SAR alerts'),
+              subtitle: const Text(
+                'Notify for incoming SAR markers such as found person or fire',
+              ),
+              value: _sarNotificationsEnabled,
+              onChanged: (value) async {
+                setState(() {
+                  _sarNotificationsEnabled = value;
+                });
+                await NotificationService().setSarNotificationsEnabled(value);
+              },
+            ),
+            SwitchListTile(
+              secondary: const Icon(Icons.system_update),
+              title: const Text('Update notifications'),
+              subtitle: const Text(
+                'Notify when a newer app version is available',
+              ),
+              value: _updateNotificationsEnabled,
+              onChanged: (value) async {
+                setState(() {
+                  _updateNotificationsEnabled = value;
+                });
+                await NotificationService().setUpdateNotificationsEnabled(
+                  value,
+                );
+              },
+            ),
+            SwitchListTile(
+              secondary: const Icon(Icons.visibility_off_outlined),
+              title: const Text('Mute while app is open'),
+              subtitle: const Text(
+                'Do not show local notifications while the app is in the foreground',
+              ),
+              value: _muteForegroundNotifications,
+              onChanged: (value) async {
+                setState(() {
+                  _muteForegroundNotifications = value;
+                });
+                await NotificationService().setMuteForegroundNotifications(
+                  value,
+                );
+              },
+            ),
+          ]),
+
           _buildSectionHeader('Navigation'),
           _buildSettingsCard([
             Consumer<AppProvider>(
@@ -1224,9 +1307,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               builder: (context, drawingProvider, child) => SwitchListTile(
                 secondary: const Icon(Icons.fmd_good_outlined),
                 title: const Text('Show SAR markers'),
-                subtitle: const Text(
-                  'Display SAR markers on the main map',
-                ),
+                subtitle: const Text('Display SAR markers on the main map'),
                 value: drawingProvider.showSarMarkers,
                 onChanged: (value) {
                   drawingProvider.toggleSarMarkers();
