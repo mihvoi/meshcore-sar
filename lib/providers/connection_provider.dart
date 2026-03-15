@@ -9,9 +9,7 @@ import 'package:crypto/crypto.dart';
 import '../models/contact.dart';
 import '../models/device_info.dart';
 import '../models/room_login_state.dart';
-import '../models/sse_server_config.dart';
 import 'package:meshcore_client/meshcore_client.dart' hide Contact;
-import '../services/sse_server_service.dart';
 import '../utils/sar_message_parser.dart';
 import 'helpers/room_login_manager.dart';
 import 'helpers/message_delivery_tracker.dart';
@@ -73,7 +71,6 @@ class _PendingContactRequest {
 class ConnectionProvider with ChangeNotifier {
   static const int _controlTypeNodeDiscoverReq = 0x80;
   final MeshCoreBleService _bleService = MeshCoreBleService();
-  final SseServerService _sseServer = SseServerService();
   MeshCoreTcpService? _tcpService;
 
   /// Expose BLE service for background location tracking
@@ -88,10 +85,6 @@ class ConnectionProvider with ChangeNotifier {
   /// Current connection mode
   ConnectionMode _connectionMode = ConnectionMode.ble;
   ConnectionMode get connectionMode => _connectionMode;
-
-  /// SSE server configuration
-  SseServerConfig _sseServerConfig = const SseServerConfig();
-  SseServerConfig get sseServerConfig => _sseServerConfig;
 
   /// TCP host last connected to (for display / reconnection info)
   String? _tcpHost;
@@ -471,11 +464,6 @@ class ConnectionProvider with ChangeNotifier {
         spectrumScanMaxKhz: deviceInfo['spectrumScanMaxKhz'] as int?,
       );
       notifyListeners();
-      if (_sseServer.isRunning) {
-        _sseServer.setDeviceName(
-          _deviceInfo.deviceName ?? _deviceInfo.selfName,
-        );
-      }
     };
 
     service.onSelfInfoReceived = (selfInfo) {
@@ -495,11 +483,6 @@ class ConnectionProvider with ChangeNotifier {
         selfName: selfInfo['selfName'] as String?,
       );
       notifyListeners();
-      if (_sseServer.isRunning) {
-        _sseServer.setDeviceName(
-          _deviceInfo.deviceName ?? _deviceInfo.selfName,
-        );
-      }
     };
 
     service.onBatteryAndStorage = (millivolts, usedKb, totalKb) {
@@ -857,12 +840,19 @@ class ConnectionProvider with ChangeNotifier {
     }
 
     try {
+      _error = null;
       _markSingleContactRequested(
         publicKey,
         source: ContactReceiveSource.requestedSingle,
       );
       await _activeService.getContactByKey(publicKey);
     } catch (e) {
+      final errorText = e.toString();
+      if (_error == 'Not found' || errorText.contains('Not found')) {
+        _error = 'Not found';
+        notifyListeners();
+        return;
+      }
       _error = 'Failed to get contact: $e';
       debugPrint(
         '⚠️ [Provider] Failed to get contact by key, falling back to full contact sync',
@@ -1360,9 +1350,26 @@ class ConnectionProvider with ChangeNotifier {
     }
 
     try {
+      _error = null;
       await _activeService.addOrUpdateContact(contact);
     } catch (e) {
       _error = 'Failed to add/update contact: $e';
+      notifyListeners();
+    }
+  }
+
+  Future<void> importContactAdvert(Uint8List contactAdvertFrame) async {
+    if (!_activeService.isConnected) {
+      _error = 'Not connected to device';
+      notifyListeners();
+      return;
+    }
+
+    try {
+      _error = null;
+      await _activeService.importContact(contactAdvertFrame);
+    } catch (e) {
+      _error = 'Failed to import contact: $e';
       notifyListeners();
     }
   }
@@ -2578,110 +2585,6 @@ class ConnectionProvider with ChangeNotifier {
     return _roomLoginManager.isLoggedIntoRoom(publicKeyPrefix);
   }
 
-  // ============================================================================
-  // SSE Server Methods
-  // ============================================================================
-
-  /// Start SSE server to share BLE device with multiple clients
-  Future<void> startSseServer(SseServerConfig config) async {
-    if (_sseServer.isRunning) {
-      debugPrint('⚠️ [ConnectionProvider] SSE server already running');
-      return;
-    }
-
-    try {
-      debugPrint('🚀 [ConnectionProvider] Starting SSE server...');
-      _sseServerConfig = config;
-
-      // Wire up callbacks
-      _sseServer.onSendMessage = (recipientPublicKey, text) async {
-        // Convert hex string to Uint8List
-        final bytes = <int>[];
-        for (int i = 0; i < recipientPublicKey.length; i += 2) {
-          bytes.add(
-            int.parse(recipientPublicKey.substring(i, i + 2), radix: 16),
-          );
-        }
-        return await sendTextMessage(
-          contactPublicKey: Uint8List.fromList(bytes),
-          text: text,
-        );
-      };
-
-      _sseServer.onSendChannelMessage = (channelIdx, text) async {
-        await sendChannelMessage(channelIdx: channelIdx, text: text);
-      };
-
-      _sseServer.onSyncContacts = () async {
-        await getContacts();
-      };
-
-      await _sseServer.startServer(config);
-
-      // Set initial device name
-      _sseServer.setDeviceName(_deviceInfo.deviceName ?? _deviceInfo.selfName);
-
-      _connectionMode = ConnectionMode.sseServer;
-      notifyListeners();
-
-      debugPrint('✅ [ConnectionProvider] SSE server started');
-    } catch (e) {
-      _error = 'Failed to start SSE server: $e';
-      debugPrint('❌ [ConnectionProvider] Failed to start SSE server: $e');
-      notifyListeners();
-      rethrow;
-    }
-  }
-
-  /// Stop SSE server
-  Future<void> stopSseServer() async {
-    if (!_sseServer.isRunning) {
-      return;
-    }
-
-    debugPrint('🛑 [ConnectionProvider] Stopping SSE server...');
-    await _sseServer.stopServer();
-
-    if (_connectionMode == ConnectionMode.sseServer) {
-      _connectionMode = ConnectionMode.ble;
-    }
-
-    notifyListeners();
-    debugPrint('✅ [ConnectionProvider] SSE server stopped');
-  }
-
-  /// Broadcast message to SSE clients (call this when receiving messages from BLE)
-  void broadcastMessageToSseClients(Message message) {
-    if (_sseServer.isRunning) {
-      _sseServer.broadcastMessage(message);
-    }
-  }
-
-  /// Broadcast contact to SSE clients (call this when receiving contacts from BLE)
-  void broadcastContactToSseClients(Contact contact) {
-    if (_sseServer.isRunning) {
-      _sseServer.broadcastContact(contact);
-    }
-  }
-
-  /// Get SSE server status
-  bool get isSseServerRunning => _sseServer.isRunning;
-
-  /// Get number of connected SSE clients
-  int get sseClientCount => _sseServer.connectedClients;
-
-  /// Set connection mode
-  void setConnectionMode(ConnectionMode mode) {
-    _connectionMode = mode;
-    notifyListeners();
-  }
-
-  /// Update SSE server configuration
-  void updateSseServerConfig(SseServerConfig config) {
-    _sseServerConfig = config;
-    notifyListeners();
-  }
-
   @override
   void dispose() {
     _rxActivityTimer?.cancel();
@@ -2689,7 +2592,6 @@ class ConnectionProvider with ChangeNotifier {
     _stopAckCleanupTimer();
     _bleService.dispose();
     _tcpService?.dispose();
-    _sseServer.stopServer();
     super.dispose();
   }
 }

@@ -31,7 +31,6 @@ import '../utils/image_message_parser.dart';
 import '../utils/voice_message_parser.dart';
 import '../theme/app_theme.dart';
 import '../l10n/app_localizations.dart';
-import '../widgets/connection_mode_selector.dart';
 import '../widgets/update_dialog.dart';
 import 'sar_template_management_screen.dart';
 import 'welcome_wizard_screen.dart';
@@ -80,6 +79,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _openMapInFullscreen = false;
   bool _messageNotificationsEnabled = true;
   bool _sarNotificationsEnabled = true;
+  bool _discoveryNotificationsEnabled = true;
   bool _updateNotificationsEnabled = true;
   bool _muteForegroundNotifications = true;
   bool _isDeveloperModeEnabled = false;
@@ -149,6 +149,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _messageNotificationsEnabled = service.messageNotificationsEnabled;
       _sarNotificationsEnabled = service.sarNotificationsEnabled;
+      _discoveryNotificationsEnabled = service.discoveryNotificationsEnabled;
       _updateNotificationsEnabled = service.updateNotificationsEnabled;
       _muteForegroundNotifications = service.muteForegroundNotifications;
     });
@@ -1052,6 +1053,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
               },
             ),
             SwitchListTile(
+              secondary: const Icon(Icons.contact_page_outlined),
+              title: const Text('Discovery notifications'),
+              subtitle: const Text(
+                'Notify when new contacts appear in Discovery',
+              ),
+              value: _discoveryNotificationsEnabled,
+              onChanged: (value) async {
+                setState(() {
+                  _discoveryNotificationsEnabled = value;
+                });
+                await NotificationService().setDiscoveryNotificationsEnabled(
+                  value,
+                );
+              },
+            ),
+            SwitchListTile(
               secondary: const Icon(Icons.system_update),
               title: const Text('Update notifications'),
               subtitle: const Text(
@@ -1535,11 +1552,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               },
             ),
           ]),
-
-          if (!kIsWeb) ...[
-            _buildSectionHeader('Network Sharing'),
-            const ConnectionModeSelector(),
-          ],
 
           _buildSectionHeader(AppLocalizations.of(context)!.permissionsSection),
           _buildSettingsCard([

@@ -16,6 +16,7 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
   static const String _prefMessagesEnabled = 'notifications_messages_enabled';
   static const String _prefSarEnabled = 'notifications_sar_enabled';
+  static const String _prefDiscoveryEnabled = 'notifications_discovery_enabled';
   static const String _prefUpdatesEnabled = 'notifications_updates_enabled';
   static const String _prefMuteForeground = 'notifications_mute_foreground';
 
@@ -23,6 +24,7 @@ class NotificationService {
   bool _permissionGranted = false;
   bool _messageNotificationsEnabled = true;
   bool _sarNotificationsEnabled = true;
+  bool _discoveryNotificationsEnabled = true;
   bool _updateNotificationsEnabled = true;
   bool _muteForegroundNotifications = true;
   AppLifecycleState _lifecycleState = AppLifecycleState.resumed;
@@ -63,6 +65,7 @@ class NotificationService {
 
   bool get messageNotificationsEnabled => _messageNotificationsEnabled;
   bool get sarNotificationsEnabled => _sarNotificationsEnabled;
+  bool get discoveryNotificationsEnabled => _discoveryNotificationsEnabled;
   bool get updateNotificationsEnabled => _updateNotificationsEnabled;
   bool get muteForegroundNotifications => _muteForegroundNotifications;
   bool get isAppInForeground => _lifecycleState == AppLifecycleState.resumed;
@@ -175,6 +178,8 @@ class NotificationService {
     final prefs = await SharedPreferences.getInstance();
     _messageNotificationsEnabled = prefs.getBool(_prefMessagesEnabled) ?? true;
     _sarNotificationsEnabled = prefs.getBool(_prefSarEnabled) ?? true;
+    _discoveryNotificationsEnabled =
+        prefs.getBool(_prefDiscoveryEnabled) ?? true;
     _updateNotificationsEnabled = prefs.getBool(_prefUpdatesEnabled) ?? true;
     _muteForegroundNotifications = prefs.getBool(_prefMuteForeground) ?? true;
   }
@@ -189,6 +194,12 @@ class NotificationService {
     _sarNotificationsEnabled = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_prefSarEnabled, value);
+  }
+
+  Future<void> setDiscoveryNotificationsEnabled(bool value) async {
+    _discoveryNotificationsEnabled = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_prefDiscoveryEnabled, value);
   }
 
   Future<void> setUpdateNotificationsEnabled(bool value) async {
@@ -854,7 +865,7 @@ class NotificationService {
   }) async {
     if (!_isInitialized) return false;
     if (!_permissionGranted) return false;
-    if (!_messageNotificationsEnabled) return false;
+    if (!_discoveryNotificationsEnabled) return false;
     if (_shouldSuppressForegroundNotifications()) return false;
 
     final shortKey = contactKey.length > 12

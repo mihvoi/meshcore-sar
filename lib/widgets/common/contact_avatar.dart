@@ -108,6 +108,8 @@ class ContactAvatar extends StatelessWidget {
         return Colors.orange;
       case ContactType.room:
         return Colors.purple;
+      case ContactType.sensor:
+        return Colors.green;
       case ContactType.channel:
         return Colors.teal;
     }
@@ -130,6 +132,8 @@ class ContactAvatar extends StatelessWidget {
         return Icons.router;
       case ContactType.room:
         return Icons.meeting_room;
+      case ContactType.sensor:
+        return Icons.sensors;
       case ContactType.channel:
         return Icons.public;
     }

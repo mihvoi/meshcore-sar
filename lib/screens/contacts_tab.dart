@@ -17,6 +17,7 @@ import '../utils/avatar_label_helper.dart';
 import '../widgets/common/contact_avatar.dart';
 import '../widgets/contacts/contact_tile.dart';
 import '../widgets/contacts/add_channel_dialog.dart';
+import 'add_contact_screen.dart';
 
 class ContactsTab extends StatefulWidget {
   final VoidCallback? onNavigateToMap;
@@ -37,6 +38,7 @@ class _ContactsTabState extends State<ContactsTab> {
   final Map<ContactSection, String> _sectionFilters = {
     ContactSection.teamMembers: '',
     ContactSection.repeaters: '',
+    ContactSection.sensors: '',
     ContactSection.rooms: '',
     ContactSection.channels: '',
   };
@@ -44,6 +46,7 @@ class _ContactsTabState extends State<ContactsTab> {
   final Map<ContactSection, ContactSortMode> _sortModes = {
     ContactSection.teamMembers: ContactSortMode.lastSeen,
     ContactSection.repeaters: ContactSortMode.lastSeen,
+    ContactSection.sensors: ContactSortMode.lastSeen,
     ContactSection.rooms: ContactSortMode.lastSeen,
   };
 
@@ -387,6 +390,12 @@ class _ContactsTabState extends State<ContactsTab> {
     );
   }
 
+  Future<void> _openAddContactScreen(BuildContext context) async {
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (context) => const AddContactScreen()));
+  }
+
   Future<void> _showDeleteChannelDialog(
     BuildContext context,
     Contact channel,
@@ -539,6 +548,10 @@ class _ContactsTabState extends State<ContactsTab> {
             contactsProvider.repeaters,
             ContactSection.repeaters,
           );
+          final allSensors = _sortContacts(
+            contactsProvider.sensorContacts,
+            ContactSection.sensors,
+          );
           final allRooms = _sortContacts(
             contactsProvider.rooms,
             ContactSection.rooms,
@@ -580,6 +593,19 @@ class _ContactsTabState extends State<ContactsTab> {
           final showRepeatersOthersGroup =
               visibleSavedRepeaterGroups.length > 1 &&
               ungroupedRepeaters.isNotEmpty;
+          final sensors = _filterContactsForSection(
+            allSensors,
+            ContactSection.sensors,
+          );
+          final savedSensorGroups = _buildSavedGroupsForSection(
+            contactsProvider,
+            allSensors,
+            ContactSection.sensors,
+          );
+          final visibleSavedSensorGroups =
+              _showSavedGroupsForSection(ContactSection.sensors)
+              ? savedSensorGroups
+              : const <_RenderedSavedGroup>[];
           final rooms = _filterContactsForSection(
             allRooms,
             ContactSection.rooms,
@@ -608,12 +634,14 @@ class _ContactsTabState extends State<ContactsTab> {
               : const <_RenderedSavedGroup>[];
           final showTeamMembersSection = allChatContacts.isNotEmpty;
           final showRepeatersSection = allRepeaters.isNotEmpty;
+          final showSensorsSection = allSensors.isNotEmpty;
           final showRoomsSection = allRooms.isNotEmpty;
           final showChannelsSection = allChannels.isNotEmpty;
           // Check if there are any displayable contacts
           final hasDisplayableContacts =
               allChatContacts.isNotEmpty ||
               allRepeaters.isNotEmpty ||
+              allSensors.isNotEmpty ||
               allRooms.isNotEmpty ||
               allChannels.isNotEmpty;
 
@@ -638,6 +666,18 @@ class _ContactsTabState extends State<ContactsTab> {
                     style: Theme.of(context).textTheme.bodyMedium,
                     textAlign: TextAlign.center,
                   ),
+                  if (context
+                      .watch<ConnectionProvider>()
+                      .deviceInfo
+                      .isConnected)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16),
+                      child: OutlinedButton.icon(
+                        onPressed: () => _openAddContactScreen(context),
+                        icon: const Icon(Icons.person_add_alt_1_outlined),
+                        label: const Text('Add Contact'),
+                      ),
+                    ),
                 ],
               ),
             );
@@ -743,6 +783,36 @@ class _ContactsTabState extends State<ContactsTab> {
                   const Divider(height: 32),
                 ],
 
+                // Sensors
+                if (showSensorsSection) ...[
+                  _SectionHeader(
+                    title: 'Sensors',
+                    count: sensors.length,
+                    icon: Icons.sensors,
+                    trailing: _buildSortMenu(context, ContactSection.sensors),
+                  ),
+                  _buildSectionFilterField(
+                    context,
+                    ContactSection.sensors,
+                    contactsProvider,
+                  ),
+                  ..._buildSavedGroupCards(
+                    visibleSavedSensorGroups,
+                    ContactSection.sensors,
+                  ),
+                  if (sensors.isEmpty &&
+                      _sectionHasActiveFilter(ContactSection.sensors))
+                    _buildNoFilterResults(context)
+                  else
+                    ..._buildContactSectionItems(
+                      _excludeGroupedContacts(
+                        sensors,
+                        visibleSavedSensorGroups,
+                      ),
+                    ),
+                  const Divider(height: 32),
+                ],
+
                 // Rooms
                 if (showRoomsSection) ...[
                   _SectionHeader(
@@ -811,16 +881,36 @@ class _ContactsTabState extends State<ContactsTab> {
                       horizontal: 16,
                       vertical: 8,
                     ),
-                    child: OutlinedButton.icon(
-                      onPressed: () => _showAddChannelDialog(context),
-                      icon: const Icon(Icons.add_circle_outline),
-                      label: Text(l10n.addChannel),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => _openAddContactScreen(context),
+                            icon: const Icon(Icons.person_add_alt_1_outlined),
+                            label: const Text('Add Contact'),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 12,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => _showAddChannelDialog(context),
+                            icon: const Icon(Icons.add_circle_outline),
+                            label: Text(l10n.addChannel),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 12,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
               ],
@@ -1172,7 +1262,7 @@ class _ContactsTabState extends State<ContactsTab> {
 
 enum ContactSortMode { lastSeen, distance }
 
-enum ContactSection { teamMembers, repeaters, rooms, channels }
+enum ContactSection { teamMembers, repeaters, sensors, rooms, channels }
 
 class _RenderedSavedGroup {
   final SavedContactGroup group;

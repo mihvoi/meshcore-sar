@@ -44,7 +44,7 @@ dependencies:
   meshcore_client:
     git:
       url: https://github.com/dz0ny/meshcore_client.git
-      ref: "813f5b3"
+      ref: "f600789fac7f743b1c7db8aa24e441405413f669"
 
   # Codec2 ultra-low-bitrate speech codec (FFI plugin)
   codec2_flutter:
@@ -117,10 +117,6 @@ dependencies:
 
   # XML parsing for GPX import/export
   xml: ^6.5.0
-
-  # SSE web server for multi-user support
-  shelf: ^1.4.0
-  shelf_router: ^1.1.0
 
   # Network Service Discovery (Bonjour/mDNS)
   nsd: ^4.0.3

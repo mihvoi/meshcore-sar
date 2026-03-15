@@ -42,89 +42,100 @@ class MapMarkerService {
     double mapRotation = 0,
     Position? userPosition,
   }) {
-    return contacts.map((contact) {
-      final location = contact.displayLocation;
-      if (location == null) return null;
+    return contacts
+        .map((contact) {
+          final location = contact.displayLocation;
+          if (location == null) return null;
 
-      return Marker(
-        point: location,
-        width: 80,
-        height: 100,
-        rotate: false, // Don't rotate the entire marker with map
-        child: Transform.rotate(
-          angle: -mapRotation * pi / 180,
-          child: GestureDetector(
-            onTap: onTap != null ? () => onTap(contact) : null,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Location update time indicator
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                  decoration: BoxDecoration(
-                    color: getLocationAgeColor(contact),
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                  child: Text(
-                    contact.timeSinceLocationUpdate,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 9,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                // Marker icon
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: contact.type == ContactType.channel ||
-                            contact.type == ContactType.room
-                        ? BoxShape.rectangle
-                        : BoxShape.circle,
-                    borderRadius: contact.type == ContactType.channel ||
-                            contact.type == ContactType.room
-                        ? BorderRadius.circular(14)
-                        : null,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.3),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
+          return Marker(
+            point: location,
+            width: 80,
+            height: 100,
+            rotate: false, // Don't rotate the entire marker with map
+            child: Transform.rotate(
+              angle: -mapRotation * pi / 180,
+              child: GestureDetector(
+                onTap: onTap != null ? () => onTap(contact) : null,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Location update time indicator
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 1,
                       ),
-                    ],
-                  ),
-                  padding: const EdgeInsets.all(2),
-                  child: ContactAvatar(contact: contact, radius: 16),
-                ),
-                const SizedBox(height: 2),
-                // Name label (without emoji)
-                Container(
-                  constraints: const BoxConstraints(maxWidth: 80),
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.7),
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                  child: Text(
-                    contact.displayName,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 9,
-                      fontWeight: FontWeight.bold,
+                      decoration: BoxDecoration(
+                        color: getLocationAgeColor(contact),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                      child: Text(
+                        contact.timeSinceLocationUpdate,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                    textAlign: TextAlign.center,
-                  ),
+                    const SizedBox(height: 2),
+                    // Marker icon
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape:
+                            contact.type == ContactType.channel ||
+                                contact.type == ContactType.room
+                            ? BoxShape.rectangle
+                            : BoxShape.circle,
+                        borderRadius:
+                            contact.type == ContactType.channel ||
+                                contact.type == ContactType.room
+                            ? BorderRadius.circular(14)
+                            : null,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.3),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      padding: const EdgeInsets.all(2),
+                      child: ContactAvatar(contact: contact, radius: 16),
+                    ),
+                    const SizedBox(height: 2),
+                    // Name label (without emoji)
+                    Container(
+                      constraints: const BoxConstraints(maxWidth: 80),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 1,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.7),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                      child: Text(
+                        contact.displayName,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
-        ),
-      );
-    }).whereType<Marker>().toList();
+          );
+        })
+        .whereType<Marker>()
+        .toList();
   }
 
   /// Generate markers for SAR events.
@@ -157,7 +168,10 @@ class MapMarkerService {
               children: [
                 // Time ago label
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 1,
+                  ),
                   decoration: BoxDecoration(
                     color: getSarMarkerColor(marker.type),
                     borderRadius: BorderRadius.circular(3),
@@ -188,7 +202,7 @@ class MapMarkerService {
                   ),
                   padding: const EdgeInsets.all(6),
                   child: Text(
-                    marker.emoji,  // Use custom emoji if available
+                    marker.emoji, // Use custom emoji if available
                     style: const TextStyle(fontSize: 18),
                   ),
                 ),
@@ -196,13 +210,17 @@ class MapMarkerService {
                 // Type label
                 Container(
                   constraints: const BoxConstraints(maxWidth: 90),
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 1,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.7),
                     borderRadius: BorderRadius.circular(3),
                   ),
                   child: Text(
-                    marker.displayName,  // Uses notes if available, otherwise type.displayName
+                    marker
+                        .displayName, // Uses notes if available, otherwise type.displayName
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 9,
@@ -269,7 +287,8 @@ class MapMarkerService {
     final dLat = (lat2 - lat1) * pi / 180;
     final dLon = (lon2 - lon1) * pi / 180;
 
-    final a = sin(dLat / 2) * sin(dLat / 2) +
+    final a =
+        sin(dLat / 2) * sin(dLat / 2) +
         cos(lat1 * pi / 180) *
             cos(lat2 * pi / 180) *
             sin(dLon / 2) *
@@ -299,8 +318,8 @@ class MapMarkerService {
     final lat2Rad = lat2 * pi / 180;
 
     final y = sin(dLon) * cos(lat2Rad);
-    final x = cos(lat1Rad) * sin(lat2Rad) -
-        sin(lat1Rad) * cos(lat2Rad) * cos(dLon);
+    final x =
+        cos(lat1Rad) * sin(lat2Rad) - sin(lat1Rad) * cos(lat2Rad) * cos(dLon);
 
     final bearing = atan2(y, x) * 180 / pi;
     return (bearing + 360) % 360;
@@ -368,6 +387,8 @@ class MapMarkerService {
         return Colors.deepPurple; // Purple for repeaters
       case ContactType.room:
         return Colors.teal; // Teal for rooms
+      case ContactType.sensor:
+        return Colors.green; // Green for sensors
       case ContactType.channel:
         return Colors.orange; // Orange for channels
       case ContactType.none:
@@ -389,6 +410,8 @@ class MapMarkerService {
         return Icons.router; // Router icon for repeaters
       case ContactType.room:
         return Icons.forum; // Forum/chat icon for rooms
+      case ContactType.sensor:
+        return Icons.sensors; // Sensors icon for sensor nodes
       case ContactType.channel:
         return Icons.public; // Public icon for channels
       case ContactType.none:
@@ -466,7 +489,8 @@ class MapMarkerService {
     }
 
     if (allPoints.isEmpty) {
-      return defaultCenter ?? const LatLng(46.0569, 14.5058); // Ljubljana, Slovenia
+      return defaultCenter ??
+          const LatLng(46.0569, 14.5058); // Ljubljana, Slovenia
     }
 
     double lat = 0, lng = 0;

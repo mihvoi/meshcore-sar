@@ -10,6 +10,7 @@ import 'package:meshcore_sar_app/providers/map_provider.dart';
 import 'package:meshcore_sar_app/providers/messages_provider.dart';
 import 'package:meshcore_sar_app/providers/sensors_provider.dart';
 import 'package:meshcore_sar_app/widgets/contacts/contact_tile.dart';
+import 'package:meshcore_sar_app/widgets/sensors/sensor_telemetry_card.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -40,14 +41,21 @@ void main() {
     );
   }
 
-  Future<void> pumpTile(WidgetTester tester, Contact contact) async {
+  Future<void> pumpTile(
+    WidgetTester tester,
+    Contact contact, {
+    SensorsProvider? sensorsProvider,
+  }) async {
+    final resolvedSensorsProvider = sensorsProvider ?? SensorsProvider();
     await tester.pumpWidget(
       MultiProvider(
         providers: [
           ChangeNotifierProvider(create: (_) => ConnectionProvider()),
           ChangeNotifierProvider(create: (_) => ContactsProvider()),
           ChangeNotifierProvider(create: (_) => MessagesProvider()),
-          ChangeNotifierProvider(create: (_) => SensorsProvider()),
+          ChangeNotifierProvider<SensorsProvider>.value(
+            value: resolvedSensorsProvider,
+          ),
           ChangeNotifierProvider(create: (_) => MapProvider()),
         ],
         child: MaterialApp(
@@ -103,5 +111,80 @@ void main() {
 
     expect(find.text(contact.publicKeyShort), findsNothing);
     expect(find.byIcon(Icons.key_outlined), findsNothing);
+  });
+
+  testWidgets('sensor contacts can be added to sensors', (tester) async {
+    await pumpTile(
+      tester,
+      buildContact(name: 'WX Station', type: ContactType.sensor),
+    );
+
+    await tester.tap(find.text('WX Station'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Add to Sensors'), findsOneWidget);
+  });
+
+  testWidgets('sensor preview shows telemetry card', (tester) async {
+    final contact = buildContact(name: 'WX Station', type: ContactType.sensor)
+        .copyWith(
+          telemetry: ContactTelemetry(
+            batteryPercentage: 84,
+            temperature: 21.5,
+            humidity: 58.0,
+            extraSensorData: const {
+              '__source_channel:battery': 1,
+              '__source_channel:temperature': 1,
+              '__source_channel:humidity': 1,
+              'co2': 415.0,
+              'illuminance_2': 500.0,
+              'current_2': 0.015,
+              'power_2': 0.25,
+              'distance_2': 1.234,
+            },
+            timestamp: DateTime.now().subtract(const Duration(minutes: 1)),
+          ),
+        );
+
+    await pumpTile(tester, contact);
+
+    await tester.tap(find.text('WX Station'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Preview'), findsOneWidget);
+
+    await tester.tap(find.text('Preview'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Battery'), findsOneWidget);
+    expect(find.text('84%'), findsOneWidget);
+    expect(find.text('Temperature'), findsOneWidget);
+    expect(find.text('21.5°C'), findsOneWidget);
+    expect(find.text('CO2'), findsOneWidget);
+    expect(find.text('415 ppm'), findsOneWidget);
+    expect(find.text('Illuminance'), findsOneWidget);
+    expect(find.text('~4.2 W/m2 daylight'), findsOneWidget);
+    expect(find.text('Current'), findsOneWidget);
+    expect(find.text('15 mA'), findsOneWidget);
+    expect(find.text('Power'), findsOneWidget);
+    expect(find.text('Distance'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('sensor_metric_channel_battery')),
+      findsOneWidget,
+    );
+    expect(
+      find.text('ch1'),
+      findsWidgets,
+    );
+    expect(
+      find.byKey(const ValueKey('sensor_metric_channel_extra:illuminance_2')),
+      findsOneWidget,
+    );
+
+    final sensorCardSize = tester.getSize(find.byType(SensorTelemetryCard));
+    final batteryTileSize = tester.getSize(
+      find.byKey(const ValueKey('sensor_metric_battery')),
+    );
+    expect(batteryTileSize.width, greaterThan(sensorCardSize.width * 0.8));
   });
 }

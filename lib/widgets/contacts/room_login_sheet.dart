@@ -147,6 +147,10 @@ class _RoomLoginSheetState extends State<RoomLoginSheet> {
           try {
             // Manually add the room contact to the radio's flash storage
             await connectionProvider.addOrUpdateContact(widget.contact);
+            final addError = connectionProvider.error;
+            if (addError != null) {
+              throw Exception(addError);
+            }
 
             debugPrint(
               '✅ [RoomLogin] Room contact added via CMD_ADD_UPDATE_CONTACT',

@@ -450,6 +450,9 @@ class ContactsProvider with ChangeNotifier {
   List<Contact> get repeaters =>
       contacts.where((c) => c.isRepeater).toList()..sort(_sortByLastSeen);
 
+  List<Contact> get sensorContacts =>
+      contacts.where((c) => c.isSensor).toList()..sort(_sortByLastSeen);
+
   List<Contact> get rooms =>
       contacts.where((c) => c.isRoom).toList()..sort(_sortByLastSeen);
 
@@ -553,6 +556,7 @@ class ContactsProvider with ChangeNotifier {
     );
 
     _contacts[contact.publicKeyHex] = updatedContact;
+    _pendingAdverts.remove(contact.publicKeyHex);
     debugPrint(
       '   ✅ Contact added/updated. Total contacts: ${_contacts.length}, channels: ${channels.length}',
     );
@@ -581,6 +585,7 @@ class ContactsProvider with ChangeNotifier {
         incomingContact: contact,
         existingContact: existingContact,
       );
+      _pendingAdverts.remove(contact.publicKeyHex);
     }
     if (excluded > 0) {
       debugPrint(
@@ -1526,6 +1531,7 @@ class ContactsProvider with ChangeNotifier {
     return {
       'chat': chatContacts.length,
       'repeater': repeaters.length,
+      'sensor': sensorContacts.length,
       'room': rooms.length,
       'total': contacts.length,
     };

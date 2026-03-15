@@ -31,7 +31,9 @@ void main() {
   Future<void> pumpAvatar(WidgetTester tester, Contact contact) async {
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(body: Center(child: ContactAvatar(contact: contact))),
+        home: Scaffold(
+          body: Center(child: ContactAvatar(contact: contact)),
+        ),
       ),
     );
   }
@@ -85,7 +87,11 @@ void main() {
   testWidgets('renders non-hash label avatar for channels', (tester) async {
     await pumpAvatar(
       tester,
-      buildContact(name: 'Command Net', type: ContactType.channel, secondByte: 3),
+      buildContact(
+        name: 'Command Net',
+        type: ContactType.channel,
+        secondByte: 3,
+      ),
     );
 
     expect(find.text('CN'), findsOneWidget);
@@ -102,5 +108,16 @@ void main() {
     expect(find.text('JS'), findsOneWidget);
     expect(find.byType(CircleAvatar), findsOneWidget);
     expect(find.byIcon(Icons.person), findsNothing);
+  });
+
+  testWidgets('renders sensor icon avatar for sensor contacts', (tester) async {
+    await pumpAvatar(
+      tester,
+      buildContact(name: 'WX Station', type: ContactType.sensor),
+    );
+
+    expect(find.byType(CircleAvatar), findsOneWidget);
+    expect(find.byIcon(Icons.sensors), findsOneWidget);
+    expect(find.text('WS'), findsNothing);
   });
 }

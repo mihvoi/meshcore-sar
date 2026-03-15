@@ -57,6 +57,25 @@ void main() {
     );
   }
 
+  Contact buildSensor({required int seed, required String name}) {
+    final publicKey = Uint8List(32);
+    publicKey[0] = seed;
+    publicKey[1] = seed + 1;
+
+    return Contact(
+      publicKey: publicKey,
+      type: ContactType.sensor,
+      flags: 0,
+      outPathLen: -1,
+      outPath: Uint8List(0),
+      advName: name,
+      lastAdvert: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      advLat: 46056000 + seed,
+      advLon: 14505000 + seed,
+      lastMod: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+    );
+  }
+
   Future<void> pumpContactsTab(
     WidgetTester tester, {
     List<Contact> contacts = const [],
@@ -191,5 +210,15 @@ void main() {
     expect(find.text('AL-'), findsOneWidget);
     expect(find.text('Others'), findsNothing);
     expect(find.text('Lone Relay'), findsOneWidget);
+  });
+
+  testWidgets('sensor contacts render in their own section', (tester) async {
+    await pumpContactsTab(
+      tester,
+      contacts: [buildSensor(seed: 60, name: 'WX Station')],
+    );
+
+    expect(find.text('Sensors'), findsOneWidget);
+    expect(find.text('WX Station'), findsOneWidget);
   });
 }

@@ -16,6 +16,7 @@ import 'contact_route_dialog.dart';
 import 'contact_trace_sheet.dart';
 import 'room_login_sheet.dart';
 import '../common/contact_avatar.dart';
+import '../sensors/sensor_telemetry_card.dart';
 import '../../utils/toast_logger.dart';
 import '../../l10n/app_localizations.dart';
 
@@ -327,10 +328,13 @@ class ContactTile extends StatelessWidget {
     final canSetPath =
         contact.type == ContactType.chat ||
         contact.type == ContactType.room ||
-        contact.type == ContactType.repeater;
+        contact.type == ContactType.repeater ||
+        contact.type == ContactType.sensor;
     final canAddToSensors =
         contact.type == ContactType.chat ||
-        contact.type == ContactType.repeater;
+        contact.type == ContactType.repeater ||
+        contact.type == ContactType.sensor;
+    final canPreviewSensor = contact.isSensor;
     final sensorsProvider = context.read<SensorsProvider>();
     final isInSensors = sensorsProvider.isWatched(contact.publicKeyHex);
 
@@ -379,6 +383,17 @@ class ContactTile extends StatelessWidget {
                   onTap: () {
                     Navigator.pop(sheetContext);
                     _showRoomLoginDialog(context, contact);
+                  },
+                ),
+              if (canPreviewSensor)
+                ListTile(
+                  leading: const Icon(Icons.visibility_outlined),
+                  title: const Text('Preview'),
+                  onTap: () async {
+                    Navigator.pop(sheetContext);
+                    await Future<void>.delayed(Duration.zero);
+                    if (!context.mounted) return;
+                    await _showSensorPreviewSheet(context, contact);
                   },
                 ),
               if (canAddToSensors)
@@ -450,6 +465,53 @@ class ContactTile extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Future<void> _showSensorPreviewSheet(
+    BuildContext context,
+    Contact contact,
+  ) async {
+    final publicKeyHex = contact.publicKeyHex;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => Consumer2<ContactsProvider, SensorsProvider>(
+        builder: (context, contactsProvider, sensorsProvider, child) {
+          Contact? liveContact;
+          for (final entry in contactsProvider.contacts) {
+            if (entry.publicKeyHex == publicKeyHex) {
+              liveContact = entry;
+              break;
+            }
+          }
+
+          final previewContact = liveContact ?? contact;
+          final visibleFields = sensorMetricKeysFor(previewContact);
+          final fieldOrder = sensorsProvider.metricOrderFor(
+            publicKeyHex,
+            visibleFields,
+          );
+
+          return SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+              child: SensorTelemetryCard(
+                contact: previewContact,
+                state: sensorsProvider.stateFor(publicKeyHex),
+                visibleFields: visibleFields,
+                fieldOrder: fieldOrder,
+                labelOverrides: sensorsProvider.labelOverridesFor(publicKeyHex),
+                fieldSpans: sensorFullWidthFieldSpans(visibleFields),
+                margin: EdgeInsets.zero,
+                emptyMetricsMessage: 'No telemetry fields available yet.',
+              ),
+            ),
+          );
+        },
       ),
     );
   }

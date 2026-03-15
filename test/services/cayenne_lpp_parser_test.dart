@@ -360,6 +360,78 @@ void main() {
       expect(accel['z'], closeTo(2.0, 0.001));
     });
 
+    test('extended MeshCore LPP types decode to structured extra data', () {
+      const lppGenericSensor = 100;
+      const lppCurrent = 117;
+      const lppFrequency = 118;
+      const lppAltitude = 121;
+      const lppConcentration = 125;
+      const lppPower = 128;
+      const lppSpeed = 129;
+      const lppDistance = 130;
+      const lppEnergy = 131;
+      const lppDirection = 132;
+      const lppUnixTime = 133;
+      const lppColour = 135;
+      const lppSwitch = 142;
+
+      final payload = Uint8List.fromList([
+        2, lppGenericSensor, 0x00, 0x00, 0x01, 0x2C, // 300
+        3, lppCurrent, 0x00, 0x0F, // 0.015 A
+        4, lppFrequency, 0x00, 0x00, 0x03, 0xE8, // 1000 Hz
+        5, lppAltitude, 0x01, 0xF4, // 500 m
+        6, lppConcentration, 0x01, 0x9F, // 415 ppm
+        7, lppPower, 0x00, 0xFA, // 250 W
+        8, lppSpeed, 0x04, 0xD2, // 12.34 m/s
+        9, lppDistance, 0x00, 0x00, 0x04, 0xD2, // 1.234 m
+        10, lppEnergy, 0x00, 0x00, 0x04, 0xD2, // 1.234 kWh
+        11, lppDirection, 0x01, 0x0E, // 270 deg
+        12, lppUnixTime, 0x65, 0xF0, 0x00, 0x00, // 1710221312
+        13, lppColour, 0xFF, 0x80, 0x40, // #FF8040
+        14, lppSwitch, 0x01, // on
+      ]);
+
+      final decoded = CayenneLppParser.parse(payload);
+
+      expect(decoded.extraSensorData, isNotNull);
+      expect(decoded.extraSensorData!['generic_sensor_2'], equals(300.0));
+      expect(decoded.extraSensorData!['current_3'], closeTo(0.015, 0.0001));
+      expect(decoded.extraSensorData!['frequency_4'], equals(1000.0));
+      expect(decoded.extraSensorData!['altitude_5'], equals(500.0));
+      expect(decoded.extraSensorData!['concentration_6'], equals(415.0));
+      expect(decoded.extraSensorData!['power_7'], equals(250.0));
+      expect(decoded.extraSensorData!['speed_8'], closeTo(12.34, 0.001));
+      expect(decoded.extraSensorData!['distance_9'], closeTo(1.234, 0.0001));
+      expect(decoded.extraSensorData!['energy_10'], closeTo(1.234, 0.0001));
+      expect(decoded.extraSensorData!['direction_11'], equals(270.0));
+      expect(decoded.extraSensorData!['unixtime_12'], equals(1710227456));
+      expect(
+        decoded.extraSensorData!['colour_13'],
+        equals({'r': 255, 'g': 128, 'b': 64}),
+      );
+      expect(decoded.extraSensorData!['switch_14'], equals(1));
+    });
+
+    test(
+      'percentage battery and non-battery voltage channels are preserved separately',
+      () {
+        const lppPercentage = 120;
+
+        final payload = Uint8List.fromList([
+          1, lppPercentage, 66, // battery %
+          2, MeshCoreConstants.lppVoltageSensor, 0x01, 0x81, // 3.85 V
+          2, MeshCoreConstants.lppTemperatureSensor, 0x00, 0xEB, // 23.5 C
+        ]);
+
+        final decoded = CayenneLppParser.parse(payload);
+
+        expect(decoded.batteryPercentage, equals(66.0));
+        expect(decoded.extraSensorData!['voltage_2'], closeTo(3.85, 0.001));
+        expect(decoded.temperature, closeTo(23.5, 0.1));
+        expect(decoded.extraSensorData!['temperature_2'], closeTo(23.5, 0.1));
+      },
+    );
+
     test('unknown sensor type is skipped gracefully', () {
       final buffer = ByteData(5);
       buffer.setUint8(0, 0);

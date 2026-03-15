@@ -42,6 +42,7 @@ class CompassContactList extends StatelessWidget {
     // Split contacts by type
     final persons = <Map<String, dynamic>>[];
     final repeaters = <Map<String, dynamic>>[];
+    final sensors = <Map<String, dynamic>>[];
     final rooms = <Map<String, dynamic>>[];
 
     // Calculate bearings and distances for each contact
@@ -70,6 +71,8 @@ class CompassContactList extends StatelessWidget {
 
       if (contact.isRepeater) {
         repeaters.add(item);
+      } else if (contact.isSensor) {
+        sensors.add(item);
       } else if (contact.isRoom) {
         rooms.add(item);
       } else {
@@ -78,9 +81,18 @@ class CompassContactList extends StatelessWidget {
     }
 
     // Sort each list by distance
-    persons.sort((a, b) => (a['distance'] as double).compareTo(b['distance'] as double));
-    repeaters.sort((a, b) => (a['distance'] as double).compareTo(b['distance'] as double));
-    rooms.sort((a, b) => (a['distance'] as double).compareTo(b['distance'] as double));
+    persons.sort(
+      (a, b) => (a['distance'] as double).compareTo(b['distance'] as double),
+    );
+    repeaters.sort(
+      (a, b) => (a['distance'] as double).compareTo(b['distance'] as double),
+    );
+    sensors.sort(
+      (a, b) => (a['distance'] as double).compareTo(b['distance'] as double),
+    );
+    rooms.sort(
+      (a, b) => (a['distance'] as double).compareTo(b['distance'] as double),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -91,17 +103,34 @@ class CompassContactList extends StatelessWidget {
             padding: const EdgeInsets.only(left: 16, bottom: 8, top: 4),
             child: Text(
               l10n.teamMembers,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
           ),
-          ...persons.map((item) => _buildContactTile(
+          ...persons.map(
+            (item) => _buildContactTile(
+              context,
+              item,
+              Icons.groups,
+              Theme.of(context).colorScheme.primary,
+            ),
+          ),
+        ],
+        if (showContacts && sensors.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.only(left: 16, bottom: 8, top: 12),
+            child: Text(
+              'Sensors',
+              style: Theme.of(
                 context,
-                item,
-                Icons.groups,
-                Theme.of(context).colorScheme.primary,
-              )),
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+          ),
+          ...sensors.map(
+            (item) =>
+                _buildContactTile(context, item, Icons.sensors, Colors.green),
+          ),
         ],
         // Repeaters section
         if (showRepeaters && repeaters.isNotEmpty) ...[
@@ -109,17 +138,15 @@ class CompassContactList extends StatelessWidget {
             padding: const EdgeInsets.only(left: 16, bottom: 8, top: 12),
             child: Text(
               l10n.repeaters,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
           ),
-          ...repeaters.map((item) => _buildContactTile(
-                context,
-                item,
-                Icons.router,
-                Colors.purple,
-              )),
+          ...repeaters.map(
+            (item) =>
+                _buildContactTile(context, item, Icons.router, Colors.purple),
+          ),
         ],
         // Rooms section
         if (rooms.isNotEmpty) ...[
@@ -127,17 +154,19 @@ class CompassContactList extends StatelessWidget {
             padding: const EdgeInsets.only(left: 16, bottom: 8, top: 12),
             child: Text(
               l10n.rooms,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
           ),
-          ...rooms.map((item) => _buildContactTile(
-                context,
-                item,
-                Icons.meeting_room,
-                Colors.teal,
-              )),
+          ...rooms.map(
+            (item) => _buildContactTile(
+              context,
+              item,
+              Icons.meeting_room,
+              Colors.teal,
+            ),
+          ),
         ],
       ],
     );
@@ -161,24 +190,14 @@ class CompassContactList extends StatelessWidget {
             : Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(8),
         border: selectedContact == contact
-            ? Border.all(
-                color: Theme.of(context).colorScheme.primary,
-                width: 2,
-              )
+            ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2)
             : null,
       ),
       child: ListTile(
         dense: true,
         leading: contact.roleEmoji != null
-            ? Text(
-                contact.roleEmoji!,
-                style: const TextStyle(fontSize: 24),
-              )
-            : Icon(
-                defaultIcon,
-                color: iconColor,
-                size: 24,
-              ),
+            ? Text(contact.roleEmoji!, style: const TextStyle(fontSize: 24))
+            : Icon(defaultIcon, color: iconColor, size: 24),
         title: Text(contact.displayName),
         subtitle: Text(
           '${_bearingToCardinal(bearing)} • ${_formatDistance(distance)}',
@@ -190,16 +209,16 @@ class CompassContactList extends StatelessWidget {
           children: [
             Text(
               '${bearing.round()}°',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold),
             ),
             if (heading != null)
               Text(
                 _formatRelativeBearing(bearing, heading!, context),
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Colors.grey,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.labelSmall?.copyWith(color: Colors.grey),
               ),
           ],
         ),
@@ -217,15 +236,14 @@ class CompassContactList extends StatelessWidget {
   }
 
   // Calculate bearing between two points (in degrees)
-  double _calculateBearing(
-      double lat1, double lon1, double lat2, double lon2) {
+  double _calculateBearing(double lat1, double lon1, double lat2, double lon2) {
     final dLon = (lon2 - lon1) * pi / 180;
     final lat1Rad = lat1 * pi / 180;
     final lat2Rad = lat2 * pi / 180;
 
     final y = sin(dLon) * cos(lat2Rad);
-    final x = cos(lat1Rad) * sin(lat2Rad) -
-        sin(lat1Rad) * cos(lat2Rad) * cos(dLon);
+    final x =
+        cos(lat1Rad) * sin(lat2Rad) - sin(lat1Rad) * cos(lat2Rad) * cos(dLon);
 
     final bearing = atan2(y, x) * 180 / pi;
     return (bearing + 360) % 360;
@@ -233,12 +251,17 @@ class CompassContactList extends StatelessWidget {
 
   // Calculate distance between two points (in meters)
   double _calculateDistance(
-      double lat1, double lon1, double lat2, double lon2) {
+    double lat1,
+    double lon1,
+    double lat2,
+    double lon2,
+  ) {
     const R = 6371000; // Earth's radius in meters
     final dLat = (lat2 - lat1) * pi / 180;
     final dLon = (lon2 - lon1) * pi / 180;
 
-    final a = sin(dLat / 2) * sin(dLat / 2) +
+    final a =
+        sin(dLat / 2) * sin(dLat / 2) +
         cos(lat1 * pi / 180) *
             cos(lat2 * pi / 180) *
             sin(dLon / 2) *
@@ -262,7 +285,11 @@ class CompassContactList extends StatelessWidget {
     }
   }
 
-  String _formatRelativeBearing(double bearing, double heading, BuildContext context) {
+  String _formatRelativeBearing(
+    double bearing,
+    double heading,
+    BuildContext context,
+  ) {
     final l10n = AppLocalizations.of(context)!;
     // Calculate relative bearing (how much to turn from current heading)
     double relative = bearing - heading;

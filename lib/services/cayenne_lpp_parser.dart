@@ -5,6 +5,22 @@ import 'package:meshcore_client/meshcore_client.dart';
 /// Cayenne LPP (Low Power Payload) data parser
 /// Used for decoding telemetry sensor data from MeshCore devices
 class CayenneLppParser {
+  static const int _selfTelemetryChannel = 1;
+  static const int _lppGenericSensor = 100;
+  static const int _lppCurrent = 117;
+  static const int _lppFrequency = 118;
+  static const int _lppPercentage = 120;
+  static const int _lppAltitude = 121;
+  static const int _lppConcentration = 125;
+  static const int _lppPower = 128;
+  static const int _lppSpeed = 129;
+  static const int _lppDistance = 130;
+  static const int _lppEnergy = 131;
+  static const int _lppDirection = 132;
+  static const int _lppUnixTime = 133;
+  static const int _lppColour = 135;
+  static const int _lppSwitch = 142;
+
   /// Parse Cayenne LPP data into ContactTelemetry
   static ContactTelemetry parse(Uint8List data) {
     debugPrint('  [CayenneLPP] Parsing LPP data...');
@@ -25,7 +41,8 @@ class CayenneLppParser {
 
     int fieldCount = 0;
     while (reader.hasRemaining) {
-      if (fieldCount > 0 && _isZeroPaddedTail(data, reader.remainingBytesCount)) {
+      if (fieldCount > 0 &&
+          _isZeroPaddedTail(data, reader.remainingBytesCount)) {
         debugPrint(
           '    Detected zero-padded telemetry tail, stopping parse at position '
           '${data.length - reader.remainingBytesCount}',
@@ -65,14 +82,16 @@ class CayenneLppParser {
             final value = rawValue / 100.0;
             debugPrint('      Analog Input (raw): $rawValue');
             debugPrint('      Analog Input (volts): ${value}V');
-            extraSensorData['analog_input_$channel'] = value;
-            // If this is a battery reading
-            if (channel == 0 || channel == 1) {
+            if (_isBatteryChannel(channel)) {
               batteryMilliVolts = value * 1000;
               batteryPercentage = _calculateBatteryPercentage(value);
+              extraSensorData[_sourceChannelKey('battery')] = channel;
+              extraSensorData[_sourceChannelKey('voltage')] = channel;
               debugPrint(
                 '      → Battery: ${batteryPercentage.toStringAsFixed(1)}% (${batteryMilliVolts.toStringAsFixed(0)}mV)',
               );
+            } else {
+              extraSensorData['analog_input_$channel'] = value;
             }
             break;
 
@@ -85,7 +104,7 @@ class CayenneLppParser {
             break;
 
           case MeshCoreConstants.lppIlluminanceSensor:
-            final value = reader.readUInt16BE();
+            final value = reader.readUInt16BE().toDouble();
             debugPrint('      Illuminance: $value lux');
             extraSensorData['illuminance_$channel'] = value;
             break;
@@ -98,18 +117,36 @@ class CayenneLppParser {
 
           case MeshCoreConstants.lppTemperatureSensor:
             final rawValue = reader.readInt16BE();
-            temperature = rawValue / 10.0;
+            final value = rawValue / 10.0;
             debugPrint('      Temperature (raw): $rawValue');
-            debugPrint(
-              '      Temperature: ${temperature.toStringAsFixed(1)}°C',
-            );
+            debugPrint('      Temperature: ${value.toStringAsFixed(1)}°C');
+            if (channel == _selfTelemetryChannel) {
+              temperature = value;
+              extraSensorData[_sourceChannelKey('temperature')] = channel;
+            } else {
+              extraSensorData['temperature_$channel'] = value;
+              if (temperature == null) {
+                temperature = value;
+                extraSensorData[_sourceChannelKey('temperature')] = channel;
+              }
+            }
             break;
 
           case MeshCoreConstants.lppHumiditySensor:
             final rawValue = reader.readByte();
-            humidity = rawValue / 2.0;
+            final value = rawValue / 2.0;
             debugPrint('      Humidity (raw): $rawValue');
-            debugPrint('      Humidity: ${humidity.toStringAsFixed(1)}%');
+            debugPrint('      Humidity: ${value.toStringAsFixed(1)}%');
+            if (channel == _selfTelemetryChannel) {
+              humidity = value;
+              extraSensorData[_sourceChannelKey('humidity')] = channel;
+            } else {
+              extraSensorData['humidity_$channel'] = value;
+              if (humidity == null) {
+                humidity = value;
+                extraSensorData[_sourceChannelKey('humidity')] = channel;
+              }
+            }
             break;
 
           case MeshCoreConstants.lppAccelerometer:
@@ -126,9 +163,19 @@ class CayenneLppParser {
 
           case MeshCoreConstants.lppBarometer:
             final rawValue = reader.readUInt16BE();
-            pressure = rawValue / 10.0;
+            final value = rawValue / 10.0;
             debugPrint('      Barometer (raw): $rawValue');
-            debugPrint('      Barometer: ${pressure.toStringAsFixed(1)} hPa');
+            debugPrint('      Barometer: ${value.toStringAsFixed(1)} hPa');
+            if (channel == _selfTelemetryChannel) {
+              pressure = value;
+              extraSensorData[_sourceChannelKey('pressure')] = channel;
+            } else {
+              extraSensorData['pressure_$channel'] = value;
+              if (pressure == null) {
+                pressure = value;
+                extraSensorData[_sourceChannelKey('pressure')] = channel;
+              }
+            }
             break;
 
           case MeshCoreConstants.lppVoltageSensor:
@@ -136,12 +183,17 @@ class CayenneLppParser {
             final value = rawValue / 100.0;
             debugPrint('      Voltage (raw): $rawValue');
             debugPrint('      Voltage: ${value}V');
-            // Treat voltage sensor as battery reading
-            batteryMilliVolts = value * 1000;
-            batteryPercentage = _calculateBatteryPercentage(value);
-            debugPrint(
-              '      → Battery: ${batteryPercentage.toStringAsFixed(1)}% (${batteryMilliVolts.toStringAsFixed(0)}mV)',
-            );
+            if (_isBatteryChannel(channel)) {
+              batteryMilliVolts = value * 1000;
+              batteryPercentage = _calculateBatteryPercentage(value);
+              extraSensorData[_sourceChannelKey('battery')] = channel;
+              extraSensorData[_sourceChannelKey('voltage')] = channel;
+              debugPrint(
+                '      → Battery: ${batteryPercentage.toStringAsFixed(1)}% (${batteryMilliVolts.toStringAsFixed(0)}mV)',
+              );
+            } else {
+              extraSensorData['voltage_$channel'] = value;
+            }
             break;
 
           case MeshCoreConstants.lppGyrometer:
@@ -194,7 +246,109 @@ class CayenneLppParser {
             }
 
             gpsLocation = LatLng(lat, lon);
+            extraSensorData[_sourceChannelKey('gps')] = channel;
             extraSensorData['altitude_$channel'] = alt;
+            break;
+
+          case _lppGenericSensor:
+            final value = _readUInt32BE(reader).toDouble();
+            debugPrint('      Generic Sensor: $value');
+            extraSensorData['generic_sensor_$channel'] = value;
+            break;
+
+          case _lppCurrent:
+            final rawValue = reader.readInt16BE();
+            final value = rawValue / 1000.0;
+            debugPrint('      Current (raw): $rawValue');
+            debugPrint('      Current: ${value}A');
+            extraSensorData['current_$channel'] = value;
+            break;
+
+          case _lppFrequency:
+            final value = _readUInt32BE(reader).toDouble();
+            debugPrint('      Frequency: ${value}Hz');
+            extraSensorData['frequency_$channel'] = value;
+            break;
+
+          case _lppPercentage:
+            final value = reader.readByte().toDouble();
+            debugPrint('      Percentage: $value%');
+            if (_isBatteryChannel(channel)) {
+              batteryPercentage = value;
+              extraSensorData[_sourceChannelKey('battery')] = channel;
+            } else {
+              extraSensorData['percentage_$channel'] = value;
+            }
+            break;
+
+          case _lppAltitude:
+            final rawValue = reader.readInt16BE();
+            final value = rawValue.toDouble();
+            debugPrint('      Altitude: ${value}m');
+            extraSensorData['altitude_$channel'] = value;
+            break;
+
+          case _lppConcentration:
+            final value = reader.readUInt16BE().toDouble();
+            debugPrint('      Concentration: ${value}ppm');
+            extraSensorData['concentration_$channel'] = value;
+            break;
+
+          case _lppPower:
+            final value = reader.readUInt16BE().toDouble();
+            debugPrint('      Power: ${value}W');
+            extraSensorData['power_$channel'] = value;
+            break;
+
+          case _lppSpeed:
+            final rawValue = reader.readUInt16BE();
+            final value = rawValue / 100.0;
+            debugPrint('      Speed: ${value}m/s');
+            extraSensorData['speed_$channel'] = value;
+            break;
+
+          case _lppDistance:
+            final rawValue = _readUInt32BE(reader);
+            final value = rawValue / 1000.0;
+            debugPrint('      Distance: ${value}m');
+            extraSensorData['distance_$channel'] = value;
+            break;
+
+          case _lppEnergy:
+            final rawValue = _readUInt32BE(reader);
+            final value = rawValue / 1000.0;
+            debugPrint('      Energy: ${value}kWh');
+            extraSensorData['energy_$channel'] = value;
+            break;
+
+          case _lppDirection:
+            final value = reader.readUInt16BE().toDouble();
+            debugPrint('      Direction: $value°');
+            extraSensorData['direction_$channel'] = value;
+            break;
+
+          case _lppUnixTime:
+            final value = _readUInt32BE(reader);
+            debugPrint('      Unix time: $value');
+            extraSensorData['unixtime_$channel'] = value;
+            break;
+
+          case _lppColour:
+            final red = reader.readByte();
+            final green = reader.readByte();
+            final blue = reader.readByte();
+            debugPrint('      Colour: r=$red, g=$green, b=$blue');
+            extraSensorData['colour_$channel'] = {
+              'r': red,
+              'g': green,
+              'b': blue,
+            };
+            break;
+
+          case _lppSwitch:
+            final value = reader.readByte();
+            debugPrint('      Switch: $value');
+            extraSensorData['switch_$channel'] = value;
             break;
 
           default:
@@ -257,6 +411,16 @@ class CayenneLppParser {
     if (voltage >= 4.2) return 100.0;
     return ((voltage - 3.0) / 1.2) * 100.0;
   }
+
+  static bool _isBatteryChannel(int channel) =>
+      channel == 0 || channel == _selfTelemetryChannel;
+
+  static int _readUInt32BE(BufferReader reader) {
+    final bytes = reader.readBytes(4);
+    return (bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3];
+  }
+
+  static String _sourceChannelKey(String fieldKey) => '__source_channel:$fieldKey';
 
   static bool _isZeroPaddedTail(Uint8List data, int remainingBytes) {
     final start = data.length - remainingBytes;

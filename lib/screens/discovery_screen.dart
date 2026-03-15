@@ -125,15 +125,29 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
       final connectionProvider = context.read<ConnectionProvider>();
       final contactsProvider = context.read<ContactsProvider>();
 
-      await connectionProvider.getContact(advert.publicKey);
-      if (connectionProvider.error == 'Not found') {
-        connectionProvider.clearError();
-        final fallbackContact = _contactFromPendingAdvert(advert);
-        await connectionProvider.addOrUpdateContact(fallbackContact);
-        contactsProvider.addOrUpdateContact(
-          fallbackContact,
-          devicePublicKey: connectionProvider.deviceInfo.publicKey,
+      final canAddDirectly = _canAddPendingAdvertDirectly(advert);
+      if (canAddDirectly) {
+        final added = await _addPendingAdvertToRadio(
+          advert,
+          connectionProvider: connectionProvider,
+          contactsProvider: contactsProvider,
         );
+        if (!added) {
+          return;
+        }
+      } else {
+        await connectionProvider.getContact(advert.publicKey);
+        if (connectionProvider.error == 'Not found') {
+          connectionProvider.clearError();
+          final added = await _addPendingAdvertToRadio(
+            advert,
+            connectionProvider: connectionProvider,
+            contactsProvider: contactsProvider,
+          );
+          if (!added) {
+            return;
+          }
+        }
       }
       if ((advert.typeValue ?? 0) == _sensorAdvertType) {
         await connectionProvider.requestTelemetry(advert.publicKey);
@@ -198,6 +212,37 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
       advLon: advert.advLon ?? 0,
       lastMod: lastAdvert,
     );
+  }
+
+  bool _canAddPendingAdvertDirectly(PendingAdvert advert) {
+    return advert.publicKey.length == 32 &&
+        advert.typeValue != null &&
+        advert.typeValue != 0;
+  }
+
+  Future<bool> _addPendingAdvertToRadio(
+    PendingAdvert advert, {
+    required ConnectionProvider connectionProvider,
+    required ContactsProvider contactsProvider,
+  }) async {
+    final contact = _contactFromPendingAdvert(advert);
+    await connectionProvider.addOrUpdateContact(contact);
+
+    final addError = connectionProvider.error;
+    if (addError != null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to add contact: $addError')),
+        );
+      }
+      return false;
+    }
+
+    contactsProvider.addOrUpdateContact(
+      contact,
+      devicePublicKey: connectionProvider.deviceInfo.publicKey,
+    );
+    return true;
   }
 
   String _displayNameForAdvert(
@@ -375,207 +420,203 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
       ),
       body: FutureBuilder<List<MeshMapNode>>(
         future: _cachedNodesFuture,
-        builder: (context, nodesSnapshot) =>
-            Consumer2<ContactsProvider, ConnectionProvider>(
-              builder: (context, contactsProvider, connectionProvider, child) {
-                final pendingAdverts = contactsProvider.pendingAdverts;
-                final isConnected = connectionProvider.deviceInfo.isConnected;
-                final cachedNodes = nodesSnapshot.data ?? const <MeshMapNode>[];
+        builder: (context, nodesSnapshot) => Consumer2<ContactsProvider, ConnectionProvider>(
+          builder: (context, contactsProvider, connectionProvider, child) {
+            final pendingAdverts = contactsProvider.pendingAdverts;
+            final isConnected = connectionProvider.deviceInfo.isConnected;
+            final cachedNodes = nodesSnapshot.data ?? const <MeshMapNode>[];
 
-                return ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+            return ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.person_search),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    'Pending discoveries (${pendingAdverts.length})',
-                                    style: Theme.of(context).textTheme.titleMedium,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              'Resolve entries manually so they do not auto-populate contacts.',
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                            const SizedBox(height: 14),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: OutlinedButton.icon(
-                                    onPressed: isConnected &&
-                                            pendingAdverts.isNotEmpty &&
-                                            !_isResolvingAll
-                                        ? () => _resolveAll(pendingAdverts)
-                                        : null,
-                                    icon: _isResolvingAll
-                                        ? const SizedBox(
-                                            width: 16,
-                                            height: 16,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                            ),
-                                          )
-                                        : const Icon(
-                                            Icons.download_for_offline_outlined,
-                                          ),
-                                    label: const Text('Resolve all'),
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: OutlinedButton.icon(
-                                    onPressed: pendingAdverts.isNotEmpty
-                                        ? _clearAllDiscoveries
-                                        : null,
-                                    icon: const Icon(Icons.clear_all_rounded),
-                                    label: const Text('Clear all'),
-                                  ),
-                                ),
-                              ],
+                            const Icon(Icons.person_search),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Pending discoveries (${pendingAdverts.length})',
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
                             ),
                           ],
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    if (pendingAdverts.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 48),
-                        child: Column(
-                          children: [
-                            Icon(
-                              Icons.person_search_outlined,
-                              size: 64,
-                              color: Theme.of(context).disabledColor,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No pending discoveries',
-                              style: Theme.of(context).textTheme.titleLarge,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Unknown adverts will appear here until you choose to resolve them.',
-                              textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                          ],
+                        const SizedBox(height: 12),
+                        Text(
+                          'Resolve entries manually so they do not auto-populate contacts.',
+                          style: Theme.of(context).textTheme.bodyMedium,
                         ),
-                      ),
-                    ...pendingAdverts.map((advert) {
-                      final isResolving = _resolvingAdvertKeys.contains(
-                        advert.publicKeyHex,
-                      );
-                      final displayName = _displayNameForAdvert(
-                        advert,
-                        contactsProvider,
-                        cachedNodes,
-                      );
-                      final typeLabel = _resolvedTypeLabelForAdvert(
-                        advert,
-                        cachedNodes,
-                      );
-                      final downMetric = SignalMetric.fromValues(
-                        rssiDbm: advert.rxRssiDbm,
-                        snrDb: advert.rxSnr,
-                      );
-                      final upMetric = SignalMetric.fromValues(
-                        rssiDbm: advert.repeaterLastRssi,
-                        snrDb: advert.repeaterLastSnr,
-                      );
-                      final detailLines = <String>[
-                        '${l10n.publicKey}: ${advert.shortDisplayKey}',
-                      ];
-                      final summaryParts = <String>[];
-                      final battery = advert.repeaterBatteryPercent;
-                      if (battery != null) {
-                        summaryParts.add('Battery ${battery.round()}%');
-                      }
-                      if (advert.repeaterQueueLen != null) {
-                        summaryParts.add('Queue ${advert.repeaterQueueLen}');
-                      }
-                      if (summaryParts.isNotEmpty) {
-                        detailLines.add(summaryParts.join(' • '));
-                      }
-                      detailLines.add(
-                        '${l10n.lastSeen}: ${_formatRelativeTime(context, advert.receivedAt)}',
-                      );
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        child: Padding(
-                          padding: const EdgeInsets.all(14),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  CircleAvatar(
-                                    child: Icon(_iconForAdvert(advert)),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: _buildAdvertTitle(
-                                      context,
-                                      displayName: displayName,
-                                      subtitle: typeLabel,
-                                    ),
-                                  ),
-                                  if (downMetric != null || upMetric != null) ...[
-                                    const SizedBox(width: 12),
-                                    _buildSignalSummary(
-                                      context,
-                                      downMetric: downMetric,
-                                      upMetric: upMetric,
-                                    ),
-                                  ],
-                                  const SizedBox(width: 8),
-                                  isResolving
-                                      ? const SizedBox(
-                                          width: 18,
-                                          height: 18,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                          ),
-                                        )
-                                      : IconButton(
-                                          visualDensity: VisualDensity.compact,
-                                          icon: const Icon(
-                                            Icons.person_add_alt_1,
-                                          ),
-                                          tooltip: 'Resolve contact',
-                                          onPressed: isConnected
-                                              ? () => _resolveAdvert(advert)
-                                              : null,
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed:
+                                    isConnected &&
+                                        pendingAdverts.isNotEmpty &&
+                                        !_isResolvingAll
+                                    ? () => _resolveAll(pendingAdverts)
+                                    : null,
+                                icon: _isResolvingAll
+                                    ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
                                         ),
-                                ],
+                                      )
+                                    : const Icon(
+                                        Icons.download_for_offline_outlined,
+                                      ),
+                                label: const Text('Resolve all'),
                               ),
-                              const SizedBox(height: 10),
-                              Text(
-                                detailLines.join('\n'),
-                                style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: pendingAdverts.isNotEmpty
+                                    ? _clearAllDiscoveries
+                                    : null,
+                                icon: const Icon(Icons.clear_all_rounded),
+                                label: const Text('Clear all'),
                               ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                if (pendingAdverts.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 48),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.person_search_outlined,
+                          size: 64,
+                          color: Theme.of(context).disabledColor,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No pending discoveries',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Unknown adverts will appear here until you choose to resolve them.',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ],
+                    ),
+                  ),
+                ...pendingAdverts.map((advert) {
+                  final isResolving = _resolvingAdvertKeys.contains(
+                    advert.publicKeyHex,
+                  );
+                  final displayName = _displayNameForAdvert(
+                    advert,
+                    contactsProvider,
+                    cachedNodes,
+                  );
+                  final typeLabel = _resolvedTypeLabelForAdvert(
+                    advert,
+                    cachedNodes,
+                  );
+                  final downMetric = SignalMetric.fromValues(
+                    rssiDbm: advert.rxRssiDbm,
+                    snrDb: advert.rxSnr,
+                  );
+                  final upMetric = SignalMetric.fromValues(
+                    rssiDbm: advert.repeaterLastRssi,
+                    snrDb: advert.repeaterLastSnr,
+                  );
+                  final detailLines = <String>[
+                    '${l10n.publicKey}: ${advert.shortDisplayKey}',
+                  ];
+                  final summaryParts = <String>[];
+                  final battery = advert.repeaterBatteryPercent;
+                  if (battery != null) {
+                    summaryParts.add('Battery ${battery.round()}%');
+                  }
+                  if (advert.repeaterQueueLen != null) {
+                    summaryParts.add('Queue ${advert.repeaterQueueLen}');
+                  }
+                  if (summaryParts.isNotEmpty) {
+                    detailLines.add(summaryParts.join(' • '));
+                  }
+                  detailLines.add(
+                    '${l10n.lastSeen}: ${_formatRelativeTime(context, advert.receivedAt)}',
+                  );
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              CircleAvatar(child: Icon(_iconForAdvert(advert))),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildAdvertTitle(
+                                  context,
+                                  displayName: displayName,
+                                  subtitle: typeLabel,
+                                ),
+                              ),
+                              if (downMetric != null || upMetric != null) ...[
+                                const SizedBox(width: 12),
+                                _buildSignalSummary(
+                                  context,
+                                  downMetric: downMetric,
+                                  upMetric: upMetric,
+                                ),
+                              ],
+                              const SizedBox(width: 8),
+                              isResolving
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : IconButton(
+                                      visualDensity: VisualDensity.compact,
+                                      icon: const Icon(Icons.person_add_alt_1),
+                                      tooltip: 'Resolve contact',
+                                      onPressed: isConnected
+                                          ? () => _resolveAdvert(advert)
+                                          : null,
+                                    ),
                             ],
                           ),
-                        ),
-                      );
-                    }),
-                  ],
-                );
-              },
-            ),
+                          const SizedBox(height: 10),
+                          Text(
+                            detailLines.join('\n'),
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -629,9 +670,9 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
         const SizedBox(width: 4),
         Text(
           metric.valueLabel,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700),
         ),
       ],
     );

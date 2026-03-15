@@ -142,6 +142,7 @@ void main() {
         final contactTypes = <ContactType>[
           ContactType.chat,
           ContactType.repeater,
+          ContactType.sensor,
           ContactType.room,
           ContactType.channel,
         ];

@@ -1,19 +1,18 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart' as flutter_map;
-import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
-import '../l10n/app_localizations.dart';
 import '../models/contact.dart';
 import '../providers/connection_provider.dart';
 import '../providers/contacts_provider.dart';
 import '../providers/sensors_provider.dart';
-import '../utils/location_formats.dart';
+import '../widgets/sensors/sensor_telemetry_card.dart';
 
 class SensorsTab extends StatefulWidget {
-  const SensorsTab({super.key});
+  final bool isActive;
+
+  const SensorsTab({super.key, this.isActive = true});
 
   @override
   State<SensorsTab> createState() => _SensorsTabState();
@@ -25,7 +24,10 @@ class _SensorsTabState extends State<SensorsTab> {
   @override
   void initState() {
     super.initState();
-    _scheduleMinuteTicker();
+    if (widget.isActive) {
+      unawaited(_handleMinuteTick());
+      _scheduleMinuteTicker();
+    }
   }
 
   @override
@@ -34,8 +36,28 @@ class _SensorsTabState extends State<SensorsTab> {
     super.dispose();
   }
 
+  @override
+  void didUpdateWidget(covariant SensorsTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isActive == widget.isActive) {
+      return;
+    }
+
+    if (widget.isActive) {
+      unawaited(_handleMinuteTick());
+      _scheduleMinuteTicker();
+      return;
+    }
+
+    _minuteTicker?.cancel();
+    _minuteTicker = null;
+  }
+
   void _scheduleMinuteTicker() {
     _minuteTicker?.cancel();
+    if (!widget.isActive) {
+      return;
+    }
 
     final now = DateTime.now();
     final nextMinute = DateTime(
@@ -49,14 +71,29 @@ class _SensorsTabState extends State<SensorsTab> {
 
     _minuteTicker = Timer(delay, () {
       if (!mounted) return;
-      context.read<SensorsProvider>().clearExpiredRefreshStates();
-      setState(() {});
+      unawaited(_handleMinuteTick());
       _minuteTicker = Timer.periodic(const Duration(minutes: 1), (_) {
-        if (!mounted) return;
-        context.read<SensorsProvider>().clearExpiredRefreshStates();
-        setState(() {});
+        unawaited(_handleMinuteTick());
       });
     });
+  }
+
+  Future<void> _handleMinuteTick() async {
+    if (!mounted || !widget.isActive) {
+      return;
+    }
+
+    final sensorsProvider = context.read<SensorsProvider>();
+    sensorsProvider.clearExpiredRefreshStates();
+    await sensorsProvider.refreshDueSensors(
+      contactsProvider: context.read<ContactsProvider>(),
+      connectionProvider: context.read<ConnectionProvider>(),
+      now: DateTime.now(),
+    );
+    if (!mounted) {
+      return;
+    }
+    setState(() {});
   }
 
   Future<void> _showAddSensorSheet(BuildContext context) async {
@@ -140,62 +177,123 @@ class _SensorsTabState extends State<SensorsTab> {
       builder: (sheetContext) => Consumer<SensorsProvider>(
         builder: (context, sensorsProvider, child) {
           final visibleFields = sensorsProvider.visibleFieldsFor(publicKeyHex);
-          final options = _fieldOptionsFor(contact);
+          final autoRefreshMinutes = sensorsProvider.autoRefreshMinutesFor(
+            publicKeyHex,
+          );
+          final options = sensorMetricOptionsFor(
+            contact,
+            labelOverrides: sensorsProvider.labelOverridesFor(publicKeyHex),
+          );
+          final orderedFieldKeys = sensorsProvider.metricOrderFor(
+            publicKeyHex,
+            options.map((option) => option.key),
+          );
+          final optionByKey = <String, SensorMetricOption>{
+            for (final option in options) option.key: option,
+          };
+          final orderedOptions = orderedFieldKeys
+              .map((fieldKey) => optionByKey[fieldKey])
+              .whereType<SensorMetricOption>()
+              .toList(growable: false);
           return SafeArea(
             child: ListView(
               shrinkWrap: true,
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
               children: [
                 Text(
+                  'Auto refresh telemetry',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Refresh this contact automatically while the device is connected.',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: SensorsProvider.supportedAutoRefreshIntervals
+                      .map(
+                        (minutes) => ChoiceChip(
+                          label: Text(minutes == 0 ? 'Off' : '${minutes}m'),
+                          selected: autoRefreshMinutes == minutes,
+                          onSelected: (_) {
+                            sensorsProvider.setAutoRefreshMinutes(
+                              publicKeyHex,
+                              minutes,
+                            );
+                          },
+                        ),
+                      )
+                      .toList(growable: false),
+                ),
+                const SizedBox(height: 20),
+                Text(
                   'Visible fields',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Choose which values appear on sensor cards.',
+                  'Choose which values appear on sensor cards and rename them.',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
+                const SizedBox(height: 8),
+                Text(
+                  'Use the arrows to change card order.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
                 const SizedBox(height: 20),
-                ...options.map((option) {
+                ...orderedOptions.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final option = entry.value;
                   final visible = visibleFields.contains(option.key);
                   final span = sensorsProvider.fieldSpanFor(
                     publicKeyHex,
                     option.key,
                   );
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: FilterChip(
-                            selected: visible,
-                            label: Text(option.label),
-                            onSelected: (value) {
-                              sensorsProvider.toggleMetric(
-                                publicKeyHex,
-                                option.key,
-                                value,
-                              );
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        SegmentedButton<int>(
-                          segments: const [
-                            ButtonSegment<int>(value: 1, label: Text('1x')),
-                            ButtonSegment<int>(value: 2, label: Text('2x')),
-                          ],
-                          selected: <int>{span},
-                          onSelectionChanged: (selection) {
-                            sensorsProvider.setFieldSpan(
-                              publicKeyHex,
-                              option.key,
-                              selection.first,
-                            );
-                          },
-                        ),
-                      ],
+                  return SensorMetricSelectorItem(
+                    option: option,
+                    visible: visible,
+                    span: span,
+                    canMoveUp: index > 0,
+                    canMoveDown: index < orderedOptions.length - 1,
+                    onToggle: (value) {
+                      sensorsProvider.toggleMetric(
+                        publicKeyHex,
+                        option.key,
+                        value,
+                      );
+                    },
+                    onRename: () => _showMetricRenameDialog(
+                      context,
+                      publicKeyHex: publicKeyHex,
+                      option: option,
+                      sensorsProvider: sensorsProvider,
                     ),
+                    onMoveUp: index > 0
+                        ? () => sensorsProvider.moveMetric(
+                            publicKeyHex,
+                            availableFieldKeys: orderedFieldKeys,
+                            oldIndex: index,
+                            newIndex: index - 1,
+                          )
+                        : null,
+                    onMoveDown: index < orderedOptions.length - 1
+                        ? () => sensorsProvider.moveMetric(
+                            publicKeyHex,
+                            availableFieldKeys: orderedFieldKeys,
+                            oldIndex: index,
+                            newIndex: index + 1,
+                          )
+                        : null,
+                    onSpanChanged: (selection) {
+                      sensorsProvider.setFieldSpan(
+                        publicKeyHex,
+                        option.key,
+                        selection,
+                      );
+                    },
                   );
                 }),
               ],
@@ -204,6 +302,71 @@ class _SensorsTabState extends State<SensorsTab> {
         },
       ),
     );
+  }
+
+  Future<void> _showMetricRenameDialog(
+    BuildContext context, {
+    required String publicKeyHex,
+    required SensorMetricOption option,
+    required SensorsProvider sensorsProvider,
+  }) async {
+    final controller = TextEditingController(
+      text:
+          sensorsProvider.labelOverrideFor(publicKeyHex, option.key) ??
+          option.defaultLabel,
+    );
+    final didSave = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Rename value'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Set a custom label for ${option.label}.',
+              style: Theme.of(dialogContext).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: 'Label',
+                hintText: option.defaultLabel,
+              ),
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => Navigator.of(dialogContext).pop(true),
+            ),
+          ],
+        ),
+        actions: [
+          if (sensorsProvider.labelOverrideFor(publicKeyHex, option.key) !=
+              null)
+            TextButton(onPressed: controller.clear, child: const Text('Reset')),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (didSave != true) {
+      controller.dispose();
+      return;
+    }
+
+    final nextLabel = controller.text.trim();
+    await sensorsProvider.setMetricLabel(
+      publicKeyHex,
+      option.key,
+      nextLabel == option.defaultLabel ? null : nextLabel,
+    );
+    controller.dispose();
   }
 
   Future<void> _refreshAll(BuildContext context) async {
@@ -240,10 +403,15 @@ class _SensorsTabState extends State<SensorsTab> {
                         break;
                       }
                     }
-                    return _SensorCard(
+                    return SensorTelemetryCard(
                       contact: contact,
                       state: sensorsProvider.stateFor(key),
                       visibleFields: sensorsProvider.visibleFieldsFor(key),
+                      fieldOrder: sensorsProvider.metricOrderFor(
+                        key,
+                        sensorsProvider.visibleFieldsFor(key),
+                      ),
+                      labelOverrides: sensorsProvider.labelOverridesFor(key),
                       fieldSpans: {
                         for (final field in sensorsProvider.visibleFieldsFor(
                           key,
@@ -266,6 +434,132 @@ class _SensorsTabState extends State<SensorsTab> {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class SensorMetricSelectorItem extends StatelessWidget {
+  final SensorMetricOption option;
+  final bool visible;
+  final int span;
+  final bool canMoveUp;
+  final bool canMoveDown;
+  final ValueChanged<bool> onToggle;
+  final VoidCallback onRename;
+  final VoidCallback? onMoveUp;
+  final VoidCallback? onMoveDown;
+  final ValueChanged<int> onSpanChanged;
+
+  const SensorMetricSelectorItem({
+    super.key,
+    required this.option,
+    required this.visible,
+    required this.span,
+    required this.canMoveUp,
+    required this.canMoveDown,
+    required this.onToggle,
+    required this.onRename,
+    this.onMoveUp,
+    this.onMoveDown,
+    required this.onSpanChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: FilterChip(
+                  selected: visible,
+                  label: Text(option.label),
+                  onSelected: onToggle,
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                tooltip: 'Rename',
+                onPressed: onRename,
+                icon: const Icon(Icons.edit_outlined),
+              ),
+            ],
+          ),
+          if (option.valuePreview != null || option.channel != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  if (option.valuePreview != null)
+                    Text(
+                      option.valuePreview!,
+                      key: ValueKey('sensor_selector_value_${option.key}'),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  if (option.channel != null)
+                    Container(
+                      key: ValueKey('sensor_selector_channel_${option.key}'),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        'ch${option.channel}',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              children: [
+                IconButton(
+                  tooltip: 'Move up',
+                  onPressed: canMoveUp ? onMoveUp : null,
+                  icon: const Icon(Icons.arrow_upward),
+                ),
+                IconButton(
+                  tooltip: 'Move down',
+                  onPressed: canMoveDown ? onMoveDown : null,
+                  icon: const Icon(Icons.arrow_downward),
+                ),
+                SegmentedButton<int>(
+                  segments: const [
+                    ButtonSegment<int>(value: 1, label: Text('1x')),
+                    ButtonSegment<int>(value: 2, label: Text('2x')),
+                  ],
+                  selected: <int>{span},
+                  onSelectionChanged: (selection) {
+                    onSpanChanged(selection.first);
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -347,769 +641,15 @@ class _EmptySensorsState extends StatelessWidget {
   }
 }
 
-class _SensorCard extends StatelessWidget {
-  final Contact? contact;
-  final SensorRefreshState state;
-  final Set<String> visibleFields;
-  final Map<String, int> fieldSpans;
-  final Future<void> Function() onRemove;
-  final Future<void> Function() onRefresh;
-  final VoidCallback onCustomize;
-
-  const _SensorCard({
-    required this.contact,
-    required this.state,
-    required this.visibleFields,
-    required this.fieldSpans,
-    required this.onRemove,
-    required this.onRefresh,
-    required this.onCustomize,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final telemetry = contact?.telemetry;
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final metrics = contact == null || telemetry == null
-        ? const <_MetricCardData>[]
-        : _buildMetricCards(l10n, telemetry, contact!);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            colorScheme.surfaceContainerLow,
-            colorScheme.surfaceContainerHighest.withValues(alpha: 0.9),
-          ],
-        ),
-        border: Border.all(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.35),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.045),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 6,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          Text(
-                            contact?.displayName ?? 'Unavailable node',
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          if (state == SensorRefreshState.timeout)
-                            const _InlineAlertBadge(label: 'No response'),
-                        ],
-                      ),
-                      if (telemetry != null) ...[
-                        const SizedBox(height: 2),
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 4,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          children: [
-                            Text(
-                              '${_formatTelemetryDateTime(telemetry.timestamp)} • ${_formatTelemetryTime(telemetry.timestamp)}',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                            if (state == SensorRefreshState.refreshing)
-                              const _InlineStateMeta(
-                                label: 'Refreshing',
-                                color: Color(0xFF266AC2),
-                                spinning: true,
-                              ),
-                            if (state == SensorRefreshState.success)
-                              const _InlineStateMeta(
-                                label: 'Updated',
-                                color: Color(0xFF218B63),
-                                icon: Icons.check_circle,
-                              ),
-                            if (state == SensorRefreshState.unavailable)
-                              const _InlineStateMeta(
-                                label: 'Unavailable',
-                                color: Color(0xFFB13B55),
-                                icon: Icons.error_outline,
-                              ),
-                          ],
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                PopupMenuButton<String>(
-                  onSelected: (value) async {
-                    if (value == 'refresh') {
-                      await onRefresh();
-                    } else if (value == 'remove') {
-                      await onRemove();
-                    } else if (value == 'customize') {
-                      onCustomize();
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    PopupMenuItem<String>(
-                      value: 'refresh',
-                      child: Text(l10n.refresh),
-                    ),
-                    const PopupMenuItem<String>(
-                      value: 'customize',
-                      child: Text('Customize fields'),
-                    ),
-                    const PopupMenuItem<String>(
-                      value: 'remove',
-                      child: Text('Remove'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            if (contact == null)
-              const Text(
-                'This node is no longer available in the contact list.',
-              )
-            else if (telemetry == null)
-              const Text(
-                'No telemetry received yet. Use Refresh from the menu or pull down to fetch it.',
-              )
-            else if (metrics.isEmpty)
-              const Text(
-                'All fields are hidden. Use Visible fields to choose what to show.',
-              )
-            else
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  const spacing = 8.0;
-                  final compactWidth = (constraints.maxWidth - spacing) / 2;
-
-                  return Wrap(
-                    spacing: spacing,
-                    runSpacing: spacing,
-                    children: metrics
-                        .map(
-                          (metric) => _MetricTile(
-                            data: metric,
-                            width:
-                                (fieldSpans[metric.fieldKey] == 2 ||
-                                    metric.wide)
-                                ? constraints.maxWidth
-                                : compactWidth,
-                          ),
-                        )
-                        .toList(),
-                  );
-                },
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  List<_MetricCardData> _buildMetricCards(
-    AppLocalizations l10n,
-    dynamic telemetry,
-    Contact contact,
-  ) {
-    final items = <_MetricCardData>[];
-
-    if (visibleFields.contains('voltage') &&
-        telemetry.batteryMilliVolts != null) {
-      items.add(
-        _MetricCardData(
-          fieldKey: 'voltage',
-          icon: Icons.bolt,
-          label: l10n.voltage,
-          value: '${(telemetry.batteryMilliVolts! / 1000).toStringAsFixed(3)}V',
-          accent: const Color(0xFF0A7D61),
-        ),
-      );
-    }
-    if (visibleFields.contains('battery') &&
-        telemetry.batteryPercentage != null) {
-      items.add(
-        _MetricCardData(
-          fieldKey: 'battery',
-          icon: Icons.battery_5_bar,
-          label: l10n.battery,
-          value: '${telemetry.batteryPercentage!.toStringAsFixed(0)}%',
-          accent: const Color(0xFF4B8E2F),
-        ),
-      );
-    }
-    if (visibleFields.contains('temperature') &&
-        telemetry.temperature != null) {
-      items.add(
-        _MetricCardData(
-          fieldKey: 'temperature',
-          icon: Icons.thermostat,
-          label: l10n.temperature,
-          value: '${telemetry.temperature!.toStringAsFixed(1)}°C',
-          accent: const Color(0xFFC76821),
-        ),
-      );
-    }
-    if (visibleFields.contains('humidity') && telemetry.humidity != null) {
-      items.add(
-        _MetricCardData(
-          fieldKey: 'humidity',
-          icon: Icons.water_drop,
-          label: l10n.humidity,
-          value: '${telemetry.humidity!.toStringAsFixed(1)}%',
-          accent: const Color(0xFF246BB2),
-        ),
-      );
-    }
-    if (visibleFields.contains('pressure') && telemetry.pressure != null) {
-      items.add(
-        _MetricCardData(
-          fieldKey: 'pressure',
-          icon: Icons.compress,
-          label: l10n.pressure,
-          value: '${telemetry.pressure!.toStringAsFixed(1)} hPa',
-          accent: const Color(0xFF6B4BAE),
-        ),
-      );
-    }
-    if (visibleFields.contains('gps') && telemetry.gpsLocation != null) {
-      items.add(
-        _MetricCardData(
-          fieldKey: 'gps',
-          icon: Icons.place,
-          label: l10n.gpsTelemetry,
-          value:
-              '${telemetry.gpsLocation!.latitude.toStringAsFixed(5)}, ${telemetry.gpsLocation!.longitude.toStringAsFixed(5)}',
-          accent: const Color(0xFFAA3F57),
-          wide: true,
-          mapLocation: LatLng(
-            telemetry.gpsLocation!.latitude,
-            telemetry.gpsLocation!.longitude,
-          ),
-          secondaryValue: formatPlusCode(
-            telemetry.gpsLocation!.latitude,
-            telemetry.gpsLocation!.longitude,
-          ),
-        ),
-      );
-    }
-    if (telemetry.extraSensorData != null) {
-      for (final entry in telemetry.extraSensorData!.entries) {
-        final fieldKey = _extraFieldKey(entry.key);
-        if (!visibleFields.contains(fieldKey)) {
-          continue;
-        }
-        items.add(
-          _MetricCardData(
-            fieldKey: fieldKey,
-            icon: Icons.sensors,
-            label: _formatExtraFieldLabel(entry.key),
-            value: '${entry.value}',
-            accent: const Color(0xFF3E657C),
-          ),
-        );
-      }
-    }
-
-    return items;
-  }
-
-  String _formatTelemetryTime(DateTime timestamp) {
-    final diff = DateTime.now().difference(timestamp);
-    if (diff.inMinutes < 1) return 'now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    return '${diff.inDays}d ago';
-  }
-
-  String _formatTelemetryDateTime(DateTime timestamp) {
-    final local = timestamp.toLocal();
-    final year = local.year.toString().padLeft(4, '0');
-    final month = local.month.toString().padLeft(2, '0');
-    final day = local.day.toString().padLeft(2, '0');
-    final hour = local.hour.toString().padLeft(2, '0');
-    final minute = local.minute.toString().padLeft(2, '0');
-    return '$year-$month-$day $hour:$minute';
-  }
-}
-
-class _InlineStateMeta extends StatelessWidget {
-  final String label;
-  final Color color;
-  final IconData? icon;
-  final bool spinning;
-
-  const _InlineStateMeta({
-    required this.label,
-    required this.color,
-    this.icon,
-    this.spinning = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (spinning)
-            SizedBox(
-              width: 11,
-              height: 11,
-              child: CircularProgressIndicator(
-                strokeWidth: 1.7,
-                valueColor: AlwaysStoppedAnimation<Color>(color),
-              ),
-            )
-          else if (icon != null)
-            Icon(icon, size: 11, color: color),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _InlineAlertBadge extends StatelessWidget {
-  final String label;
-
-  const _InlineAlertBadge({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: const Color(0xFFC17B1D).withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: const Color(0xFFC17B1D),
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
-}
-
-class _MetricTile extends StatelessWidget {
-  final _MetricCardData data;
-  final double width;
-
-  const _MetricTile({required this.data, required this.width});
-
-  Future<void> _showExpandedMap(BuildContext context) async {
-    final location = data.mapLocation;
-    if (location == null) return;
-
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (pageContext) {
-          return Scaffold(
-            appBar: AppBar(
-              title: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(data.label),
-                  Text(
-                    data.value,
-                    style: Theme.of(pageContext).textTheme.bodySmall,
-                  ),
-                ],
-              ),
-            ),
-            body: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (data.secondaryValue != null)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                    child: Text(
-                      data.secondaryValue!,
-                      style: Theme.of(pageContext).textTheme.bodyMedium,
-                    ),
-                  ),
-                Expanded(
-                  child: flutter_map.FlutterMap(
-                    options: flutter_map.MapOptions(
-                      initialCenter: location,
-                      initialZoom: 15,
-                    ),
-                    children: [
-                      flutter_map.TileLayer(
-                        urlTemplate:
-                            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                        userAgentPackageName:
-                            'com.meshcore.sar.meshcore_sar_app',
-                      ),
-                      flutter_map.MarkerLayer(
-                        markers: [
-                          flutter_map.Marker(
-                            point: location,
-                            width: 40,
-                            height: 40,
-                            child: Icon(
-                              Icons.location_on,
-                              color: data.accent,
-                              size: 34,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-        fullscreenDialog: true,
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: width,
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: data.accent.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: data.accent.withValues(alpha: 0.14)),
-      ),
-      child: data.mapLocation == null
-          ? Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _MetricIcon(accent: data.accent, icon: data.icon),
-                const SizedBox(width: 10),
-                Expanded(child: _MetricText(data: data)),
-              ],
-            )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _MetricIcon(accent: data.accent, icon: data.icon),
-                    const SizedBox(width: 10),
-                    Expanded(child: _MetricText(data: data)),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(14),
-                    onTap: () => _showExpandedMap(context),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: SizedBox(
-                        height: 104,
-                        width: double.infinity,
-                        child: Stack(
-                          children: [
-                            flutter_map.FlutterMap(
-                              options: flutter_map.MapOptions(
-                                initialCenter: data.mapLocation!,
-                                initialZoom: 14,
-                                interactionOptions:
-                                    const flutter_map.InteractionOptions(
-                                      flags: flutter_map.InteractiveFlag.none,
-                                    ),
-                              ),
-                              children: [
-                                flutter_map.TileLayer(
-                                  urlTemplate:
-                                      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                  userAgentPackageName:
-                                      'com.meshcore.sar.meshcore_sar_app',
-                                ),
-                                flutter_map.MarkerLayer(
-                                  markers: [
-                                    flutter_map.Marker(
-                                      point: data.mapLocation!,
-                                      width: 32,
-                                      height: 32,
-                                      child: Icon(
-                                        Icons.location_on,
-                                        color: data.accent,
-                                        size: 28,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            Positioned(
-                              right: 8,
-                              bottom: 8,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.55),
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.open_in_full,
-                                      size: 12,
-                                      color: Colors.white,
-                                    ),
-                                    SizedBox(width: 4),
-                                    Text(
-                                      'Open map',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-    );
-  }
-}
-
-class _MetricIcon extends StatelessWidget {
-  final Color accent;
-  final IconData icon;
-
-  const _MetricIcon({required this.accent, required this.icon});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 32,
-      height: 32,
-      decoration: BoxDecoration(
-        color: accent.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Icon(icon, color: accent, size: 18),
-    );
-  }
-}
-
-class _MetricText extends StatelessWidget {
-  final _MetricCardData data;
-
-  const _MetricText({required this.data});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          data.label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-            color: data.accent,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          data.value,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w700,
-            height: 1.1,
-          ),
-        ),
-        if (data.secondaryValue != null) ...[
-          const SizedBox(height: 4),
-          Text(
-            data.secondaryValue!,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-class _MetricCardData {
-  final String fieldKey;
-  final IconData icon;
-  final String label;
-  final String value;
-  final String? secondaryValue;
-  final Color accent;
-  final bool wide;
-  final LatLng? mapLocation;
-
-  const _MetricCardData({
-    required this.fieldKey,
-    required this.icon,
-    required this.label,
-    required this.value,
-    this.secondaryValue,
-    required this.accent,
-    this.wide = false,
-    this.mapLocation,
-  });
-}
-
-class _FieldOption {
-  final String key;
-  final String label;
-
-  const _FieldOption({required this.key, required this.label});
-}
-
-List<_FieldOption> _fieldOptionsFor(Contact? contact) {
-  final telemetry = contact?.telemetry;
-  final options = <_FieldOption>[
-    if (telemetry?.batteryMilliVolts != null)
-      const _FieldOption(key: 'voltage', label: 'Voltage'),
-    if (telemetry?.batteryPercentage != null)
-      const _FieldOption(key: 'battery', label: 'Battery'),
-    if (telemetry?.temperature != null)
-      const _FieldOption(key: 'temperature', label: 'Temperature'),
-    if (telemetry?.humidity != null)
-      const _FieldOption(key: 'humidity', label: 'Humidity'),
-    if (telemetry?.pressure != null)
-      const _FieldOption(key: 'pressure', label: 'Pressure'),
-    if (telemetry?.gpsLocation != null)
-      const _FieldOption(key: 'gps', label: 'GPS'),
-  ];
-
-  final extraSensorData = telemetry?.extraSensorData;
-  if (extraSensorData != null) {
-    for (final key in extraSensorData.keys) {
-      options.add(
-        _FieldOption(
-          key: _extraFieldKey(key),
-          label: _formatExtraFieldLabel(key),
-        ),
-      );
-    }
-  }
-
-  return options;
-}
-
-String _extraFieldKey(String label) {
-  return 'extra:$label';
-}
-
-String _formatExtraFieldLabel(String rawKey) {
-  final knownPrefixes = <String, String>{
-    'altitude': 'Altitude',
-    'illuminance': 'Illuminance',
-    'presence': 'Presence',
-    'digital_input': 'Digital input',
-    'digital_output': 'Digital output',
-    'analog_input': 'Analog input',
-    'analog_output': 'Analog output',
-    'accelerometer': 'Accelerometer',
-    'gyrometer': 'Gyrometer',
-  };
-
-  for (final entry in knownPrefixes.entries) {
-    final prefix = '${entry.key}_';
-    if (rawKey == entry.key) {
-      return entry.value;
-    }
-    if (rawKey.startsWith(prefix)) {
-      final suffix = rawKey.substring(prefix.length);
-      final channel = int.tryParse(suffix);
-      if (channel != null) {
-        return '${entry.value} (ch $channel)';
-      }
-      return entry.value;
-    }
-  }
-
-  final parts = rawKey.split('_');
-  if (parts.isEmpty) return rawKey;
-  final channel = parts.length > 1 ? parts.last : null;
-  final base = parts.length > 1
-      ? parts.sublist(0, parts.length - 1).join(' ')
-      : rawKey;
-  final title = base
-      .split(' ')
-      .where((part) => part.isNotEmpty)
-      .map((part) => '${part[0].toUpperCase()}${part.substring(1)}')
-      .join(' ');
-  if (channel != null && int.tryParse(channel) != null) {
-    return '$title (ch $channel)';
-  }
-  return title;
-}
-
 IconData _typeIcon(Contact contact) {
+  if (contact.isSensor) {
+    return Icons.sensors;
+  }
   if (contact.isRepeater) {
     return Icons.router;
   }
   if (contact.isChat) {
-    return Icons.sensors;
+    return Icons.person;
   }
   return Icons.device_hub;
 }
