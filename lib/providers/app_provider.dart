@@ -1613,14 +1613,9 @@ class AppProvider with ChangeNotifier {
       debugPrint(
         '🔄 [AppProvider] Path updated for contact: ${publicKey.sublist(0, 6).map((b) => b.toRadixString(16).padLeft(2, '0')).join(':')}...',
       );
-      // Trigger a single contact fetch to get the updated path information
-      // This is much more efficient than fetching all contacts
-      // This happens asynchronously to avoid blocking the event handler
-      Future.delayed(const Duration(milliseconds: 100), () {
-        if (connectionProvider.deviceInfo.isConnected) {
-          connectionProvider.getContact(publicKey);
-        }
-      });
+      if (connectionProvider.deviceInfo.isConnected) {
+        unawaited(connectionProvider.getContact(publicKey));
+      }
     };
 
     // When an advertisement is received (PUSH_CODE_ADVERT 0x80)
@@ -1996,11 +1991,9 @@ class AppProvider with ChangeNotifier {
       contactsProvider.resetContactRouteLocal(latestContact.publicKey);
       if (connectionProvider.deviceInfo.isConnected) {
         await connectionProvider.resetPath(latestContact.publicKey);
-        Future.delayed(const Duration(milliseconds: 150), () {
-          if (connectionProvider.deviceInfo.isConnected) {
-            connectionProvider.getContact(latestContact.publicKey);
-          }
-        });
+        if (connectionProvider.deviceInfo.isConnected) {
+          await connectionProvider.getContact(latestContact.publicKey);
+        }
       }
     }
   }

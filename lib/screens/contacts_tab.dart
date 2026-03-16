@@ -740,15 +740,22 @@ class _ContactsTabState extends State<ContactsTab> {
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        if (context.watch<ConnectionProvider>().deviceInfo.isConnected)
+                        if (context
+                            .watch<ConnectionProvider>()
+                            .deviceInfo
+                            .isConnected)
                           IconButton(
                             icon: const Icon(Icons.radar, size: 20),
                             tooltip: 'Discover repeaters',
                             visualDensity: VisualDensity.compact,
                             onPressed: () {
-                              context.read<ConnectionProvider>().discoverNodeType(advertType: 2);
+                              context
+                                  .read<ConnectionProvider>()
+                                  .discoverNodeType(advertType: 2);
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Repeater discovery sent')),
+                                const SnackBar(
+                                  content: Text('Repeater discovery sent'),
+                                ),
                               );
                             },
                           ),
@@ -784,7 +791,6 @@ class _ContactsTabState extends State<ContactsTab> {
                     _InferredContactGroupCard(
                       label: 'Others',
                       contacts: ungroupedRepeaters,
-                      kindLabel: 'Auto group',
                       compactContacts: true,
                       currentPosition: _currentPosition,
                       calculateDistance: _calculateDistanceInMeters,
@@ -809,15 +815,22 @@ class _ContactsTabState extends State<ContactsTab> {
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        if (context.watch<ConnectionProvider>().deviceInfo.isConnected)
+                        if (context
+                            .watch<ConnectionProvider>()
+                            .deviceInfo
+                            .isConnected)
                           IconButton(
                             icon: const Icon(Icons.radar, size: 20),
                             tooltip: 'Discover sensors',
                             visualDensity: VisualDensity.compact,
                             onPressed: () {
-                              context.read<ConnectionProvider>().discoverNodeType(advertType: 4);
+                              context
+                                  .read<ConnectionProvider>()
+                                  .discoverNodeType(advertType: 4);
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Sensor discovery sent')),
+                                const SnackBar(
+                                  content: Text('Sensor discovery sent'),
+                                ),
                               );
                             },
                           ),
@@ -1018,7 +1031,6 @@ class _ContactsTabState extends State<ContactsTab> {
             onDelete: () => context
                 .read<ContactsProvider>()
                 .removeSavedGroupById(group.group.id),
-            kindLabel: group.group.isAutoGroup ? 'Auto group' : 'Saved filter',
           ),
         )
         .toList();
@@ -1354,7 +1366,6 @@ class _SectionHeader extends StatelessWidget {
 class _InferredContactGroupCard extends StatelessWidget {
   final String label;
   final List<Contact> contacts;
-  final String? kindLabel;
   final bool compactContacts;
   final Position? currentPosition;
   final double Function(double, double, double, double) calculateDistance;
@@ -1366,7 +1377,6 @@ class _InferredContactGroupCard extends StatelessWidget {
   const _InferredContactGroupCard({
     required this.label,
     required this.contacts,
-    this.kindLabel,
     this.compactContacts = false,
     required this.currentPosition,
     required this.calculateDistance,
@@ -1381,10 +1391,10 @@ class _InferredContactGroupCard extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: colorScheme.outlineVariant.withValues(alpha: 0.35),
         ),
@@ -1392,40 +1402,29 @@ class _InferredContactGroupCard extends StatelessWidget {
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
-          tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-          childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+          tilePadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+          childrenPadding: const EdgeInsets.fromLTRB(10, 0, 10, 6),
+          minTileHeight: 44,
           initiallyExpanded: false,
           leading: Icon(
             Icons.folder_copy_outlined,
-            size: 18,
+            size: 16,
             color: colorScheme.primary,
           ),
           title: Row(
             children: [
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    if (kindLabel case final value?)
-                      Text(
-                        value,
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                  ],
+                child: Text(
+                  label,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                  ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
                 decoration: BoxDecoration(
                   color: colorScheme.primaryContainer,
                   borderRadius: BorderRadius.circular(999),
@@ -1436,13 +1435,19 @@ class _InferredContactGroupCard extends StatelessWidget {
                 ),
               ),
               if (onDelete != null) ...[
-                const SizedBox(width: 4),
+                const SizedBox(width: 2),
                 IconButton(
                   tooltip: 'Delete group',
                   onPressed: onDelete,
+                  visualDensity: VisualDensity.compact,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 32,
+                    height: 32,
+                  ),
+                  padding: EdgeInsets.zero,
                   icon: Icon(
                     Icons.delete_outline_rounded,
-                    size: 18,
+                    size: 16,
                     color: colorScheme.error,
                   ),
                 ),
@@ -1453,7 +1458,6 @@ class _InferredContactGroupCard extends StatelessWidget {
             ...contacts.map(
               (contact) => ContactTile(
                 contact: contact,
-                groupLabel: label,
                 compact: compactContacts,
                 currentPosition: currentPosition,
                 calculateDistance: calculateDistance,
