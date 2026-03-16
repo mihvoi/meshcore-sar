@@ -100,9 +100,6 @@ class _ContactTraceSheetState extends State<ContactTraceSheet> {
               .map((node) => LatLng(node.latitude, node.longitude))
               .toList();
           final hasMapPath = mapPoints.length >= 2;
-          final relayNodes = trace.matchedRelayNodes
-              .map((entry) => entry.node)
-              .whereType<MeshMapNode>();
 
           return SizedBox(
             height: MediaQuery.of(context).size.height * 0.75,
@@ -275,34 +272,7 @@ class _ContactTraceSheetState extends State<ContactTraceSheet> {
                               : null,
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'Relays (${relayNodes.length})',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                      ),
-                      if (relayNodes.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          child: Text(
-                            'No relay nodes could be matched for this contact.',
-                          ),
-                        ),
-                      ...relayNodes.map(
-                        (node) => ListTile(
-                          leading: const Icon(Icons.router),
-                          title: Text(node.name),
-                          subtitle: Text(
-                            '${node.publicKey.substring(0, math.min(12, node.publicKey.length))} • '
-                            '${node.latitude.toStringAsFixed(5)}, ${node.longitude.toStringAsFixed(5)}',
-                          ),
-                        ),
-                      ),
+                      const SizedBox(height: 16),
                     ],
                   ),
                 ),
