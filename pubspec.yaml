@@ -98,6 +98,7 @@ dependencies:
 
   # Package info
   package_info_plus: ^9.0.0
+  wakelock_plus: ^1.4.0
 
   # Background services
   flutter_background_service: ^5.0.13

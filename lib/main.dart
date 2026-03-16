@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import 'providers/connection_provider.dart';
 import 'providers/contacts_provider.dart';
 import 'providers/messages_provider.dart';
@@ -34,7 +35,9 @@ import 'screens/welcome_wizard_screen.dart';
 import 'theme/app_theme.dart';
 import 'l10n/app_localizations.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await WakelockPlus.enable();
   runApp(const MeshCoreSarApp());
 }
 
