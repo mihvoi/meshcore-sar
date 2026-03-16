@@ -92,14 +92,6 @@ class ProfilesScreen extends StatelessWidget {
                                   },
                                   child: const Text('Open'),
                                 ),
-                                FilledButton(
-                                  onPressed: () async {
-                                    await context
-                                        .read<ProfileWorkspaceCoordinator>()
-                                        .applyProfile(profile.id);
-                                  },
-                                  child: const Text('Apply'),
-                                ),
                                 OutlinedButton(
                                   onPressed: () async {
                                     final resolved =

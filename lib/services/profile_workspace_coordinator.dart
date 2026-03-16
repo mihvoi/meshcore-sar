@@ -134,8 +134,7 @@ class ProfileWorkspaceCoordinator {
       name: name,
       notes: notes,
     );
-    await messagesProvider.cloneCurrentStorageTo(profileId);
-    await contactsProvider.cloneCurrentStorageTo(profileId);
+    await _initializeEmptyStorageNamespace(profileId);
     await profileManager.upsertProfile(profile);
     return profile;
   }
@@ -180,6 +179,7 @@ class ProfileWorkspaceCoordinator {
 
   Future<void> openProfile(String profileId) async {
     await _saveActiveCustomProfileSnapshot();
+    await connectionProvider.disconnect();
     await profileManager.setActiveProfileId(profileId);
     await _switchRuntimeScope(profileId);
 
@@ -359,5 +359,12 @@ class ProfileWorkspaceCoordinator {
       pending,
       namespace: targetNamespace,
     );
+  }
+
+  Future<void> _initializeEmptyStorageNamespace(String namespace) async {
+    await _messageStorageService.clearMessages(namespace: namespace);
+    await _contactStorageService.clearContacts(namespace: namespace);
+    await _contactStorageService.clearContactGroups(namespace: namespace);
+    await _contactStorageService.clearPendingAdverts(namespace: namespace);
   }
 }
