@@ -1,6 +1,5 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
@@ -368,6 +367,35 @@ class ContactTile extends StatelessWidget {
                     if (context.mounted) {
                       // Refresh contact from device so the local cache is updated
                       await connectionProvider.getContact(contact.publicKey);
+                    }
+                  },
+                ),
+              if (!contact.isChannel)
+                ListTile(
+                  leading: const Icon(Icons.share_outlined),
+                  title: const Text('Share Contact'),
+                  onTap: () async {
+                    Navigator.pop(sheetContext);
+                    final connectionProvider =
+                        context.read<ConnectionProvider>();
+                    final url = await connectionProvider.exportContactUrl(
+                      contact.publicKey,
+                    );
+                    if (url != null && context.mounted) {
+                      await Clipboard.setData(ClipboardData(text: url));
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Contact link copied to clipboard'),
+                          ),
+                        );
+                      }
+                    } else if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Failed to export contact'),
+                        ),
+                      );
                     }
                   },
                 ),

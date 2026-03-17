@@ -2201,7 +2201,24 @@ class ConnectionProvider with ChangeNotifier {
     }
   }
 
-  /// Request fresh device info (triggers SelfInfo response)
+  /// Export a contact as a meshcore:// share URL.
+  /// Pass null to export self.
+  Future<String?> exportContactUrl(Uint8List? publicKey) async {
+    if (!_activeService.isConnected) return null;
+    try {
+      final frame = await _activeService.exportContact(publicKey);
+      final hex = frame
+          .map((b) => b.toRadixString(16).padLeft(2, '0'))
+          .join();
+      return 'meshcore://$hex';
+    } catch (e) {
+      debugPrint('⚠️ [Provider] exportContact failed: $e');
+      _error = 'Failed to export contact: $e';
+      notifyListeners();
+      return null;
+    }
+  }
+
   /// Read custom variables from device (GPS mode, sensor settings, etc.)
   Future<Map<String, String>> getCustomVars() async {
     if (!_activeService.isConnected) {
