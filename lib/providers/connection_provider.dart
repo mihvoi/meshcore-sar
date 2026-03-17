@@ -2202,6 +2202,30 @@ class ConnectionProvider with ChangeNotifier {
   }
 
   /// Request fresh device info (triggers SelfInfo response)
+  /// Read custom variables from device (GPS mode, sensor settings, etc.)
+  Future<Map<String, String>> getCustomVars() async {
+    if (!_activeService.isConnected) {
+      return {};
+    }
+    try {
+      return await _activeService.getCustomVars();
+    } catch (e) {
+      debugPrint('⚠️ [Provider] getCustomVars failed: $e');
+      return {};
+    }
+  }
+
+  /// Set a custom variable on the device
+  Future<void> setCustomVar(String key, String value) async {
+    if (!_activeService.isConnected) return;
+    try {
+      await _activeService.setCustomVar(key, value);
+    } catch (e) {
+      _error = 'Failed to set $key: $e';
+      notifyListeners();
+    }
+  }
+
   Future<void> refreshDeviceInfo() async {
     if (_isSpectrumScanActive) return;
     if (!_activeService.isConnected) {

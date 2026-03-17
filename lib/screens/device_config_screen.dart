@@ -182,6 +182,8 @@ class _DeviceConfigScreenState extends State<DeviceConfigScreen> {
 
   bool _telemetryEnabled = false;
   bool _repeatEnabled = false;
+  bool? _gpsEnabled; // null = not supported by hardware
+  bool _gpsLoading = false;
   bool _autoAddDiscoveredContactsEnabled = true;
   bool _autoAddUsersEnabled = true;
   bool _autoAddRepeatersEnabled = true;
@@ -294,6 +296,7 @@ class _DeviceConfigScreenState extends State<DeviceConfigScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _connectionProvider.getBatteryAndStorage();
       unawaited(_connectionProvider.getAutoaddConfig());
+      unawaited(_loadGpsMode());
     });
   }
 
@@ -698,6 +701,37 @@ class _DeviceConfigScreenState extends State<DeviceConfigScreen> {
           )!.failedToSave(e.toString());
         });
       }
+    }
+  }
+
+  Future<void> _loadGpsMode() async {
+    try {
+      final vars = await _connectionProvider.getCustomVars();
+      if (!mounted) return;
+      final gpsValue = vars['gps'];
+      setState(() {
+        _gpsEnabled = gpsValue != null ? gpsValue == '1' : null;
+      });
+    } catch (_) {
+      // Device may not support custom vars (old firmware / no GPS hardware)
+    }
+  }
+
+  Future<void> _setGpsMode(bool enabled) async {
+    setState(() => _gpsLoading = true);
+    try {
+      await _connectionProvider.setCustomVar('gps', enabled ? '1' : '0');
+      if (!mounted) return;
+      setState(() {
+        _gpsEnabled = enabled;
+        _gpsLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _gpsLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to set GPS mode: $e')),
+      );
     }
   }
 
@@ -1331,6 +1365,32 @@ class _DeviceConfigScreenState extends State<DeviceConfigScreen> {
                         },
                       ),
                     ),
+                    if (_gpsEnabled != null) ...[
+                      const SizedBox(height: 12),
+                      _SettingHighlightCard(
+                        icon: _gpsEnabled!
+                            ? Icons.gps_fixed
+                            : Icons.gps_off,
+                        title: 'GPS Module',
+                        description:
+                            'Enable or disable the onboard GPS hardware.',
+                        accentColor: _gpsEnabled!
+                            ? colorScheme.primary
+                            : colorScheme.onSurfaceVariant,
+                        trailing: _gpsLoading
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Switch(
+                                value: _gpsEnabled!,
+                                onChanged: _setGpsMode,
+                              ),
+                      ),
+                    ],
                     const SizedBox(height: 18),
                     TextField(
                       controller: _nameController,
