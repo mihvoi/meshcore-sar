@@ -342,6 +342,8 @@ class ContactsProvider with ChangeNotifier {
   }
 
   List<Contact> get contacts => _contacts.values.toList();
+  List<Contact> get favouriteContacts =>
+      _contacts.values.where((c) => c.isFavourite).toList();
   List<SavedContactGroup> get savedContactGroups =>
       List<SavedContactGroup>.from(_savedContactGroups)
         ..sort((a, b) => b.createdAt.compareTo(a.createdAt));

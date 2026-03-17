@@ -688,6 +688,19 @@ class _ContactsTabState extends State<ContactsTab> {
             child: ListView(
               padding: const EdgeInsets.all(8),
               children: [
+                // Favourites (contacts with firmware favourite flag set)
+                if (contactsProvider.favouriteContacts.isNotEmpty) ...[
+                  _SectionHeader(
+                    title: 'Favourites',
+                    count: contactsProvider.favouriteContacts.length,
+                    icon: Icons.star,
+                  ),
+                  ..._buildContactSectionItems(
+                    contactsProvider.favouriteContacts,
+                  ),
+                  const Divider(height: 32),
+                ],
+
                 // Team Members (Chat contacts)
                 if (showTeamMembersSection) ...[
                   _SectionHeader(

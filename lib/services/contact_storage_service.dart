@@ -210,6 +210,38 @@ class ContactStorageService {
     }
   }
 
+  // ── Favorites ───────────────────────────────────────────────────────────────
+
+  static const String _favoritesKey = 'contact_favorites';
+
+  Future<void> saveFavorites(
+    Set<String> publicKeyHexes, {
+    String? namespace,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(
+        _key(_favoritesKey, namespace: namespace),
+        publicKeyHexes.toList(),
+      );
+    } catch (e) {
+      debugPrint('❌ [ContactStorage] Error saving favorites: $e');
+    }
+  }
+
+  Future<Set<String>> loadFavorites({String? namespace}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final list = prefs.getStringList(
+        _key(_favoritesKey, namespace: namespace),
+      );
+      return list?.toSet() ?? {};
+    } catch (e) {
+      debugPrint('❌ [ContactStorage] Error loading favorites: $e');
+      return {};
+    }
+  }
+
   /// Get storage statistics
   Future<Map<String, dynamic>> getStorageStats({String? namespace}) async {
     try {

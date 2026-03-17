@@ -348,6 +348,29 @@ class ContactTile extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (!contact.isChannel)
+                ListTile(
+                  leading: Icon(
+                    contact.isFavourite ? Icons.star : Icons.star_outline,
+                    color: contact.isFavourite ? Colors.amber : null,
+                  ),
+                  title: Text(
+                    contact.isFavourite
+                        ? 'Remove from Favourites'
+                        : 'Add to Favourites',
+                  ),
+                  onTap: () async {
+                    Navigator.pop(sheetContext);
+                    final toggled = contact.toggleFavourite();
+                    final connectionProvider =
+                        context.read<ConnectionProvider>();
+                    await connectionProvider.addOrUpdateContact(toggled);
+                    if (context.mounted) {
+                      // Refresh contact from device so the local cache is updated
+                      await connectionProvider.getContact(contact.publicKey);
+                    }
+                  },
+                ),
               ListTile(
                 leading: const Icon(Icons.message_outlined),
                 title: Text(l10n.messages),

@@ -25,8 +25,7 @@ class RouteHashPreferences {
 
   /// Valid hash sizes per the MeshCore protocol.
   /// The path encoding uses 2 bits: 00=1B, 01=2B, 10=3B, 11=4B.
-  /// The official app offers 1, 2, 4 (skipping 3).
-  static const List<int> supportedSizes = [1, 2, 4];
+  static const List<int> supportedSizes = [1, 2, 3];
 
   static int _normalize(int value) {
     if (supportedSizes.contains(value)) return value;
