@@ -92,10 +92,7 @@ Widget buildChannelEchoStatus(BuildContext context, Message message) {
   );
 }
 
-bool shouldShowSentChannelStats(
-  Message message, {
-  required bool showReceivedStats,
-}) {
+bool shouldShowSentChannelStats(Message message) {
   if (!message.isSentMessage || !message.isChannelMessage) {
     return false;
   }
@@ -105,7 +102,7 @@ bool shouldShowSentChannelStats(
       message.lastEchoRssiDbm != null ||
       message.lastEchoSnrRaw != null ||
       message.expectedAckTag != null;
-  return showReceivedStats && hasSignalData;
+  return hasSignalData;
 }
 
 Widget buildReceivedSignalStatus(
