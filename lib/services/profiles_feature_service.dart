@@ -5,7 +5,7 @@ class ProfilesFeatureService {
 
   static Future<bool> isEnabled() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(enabledKey) ?? false;
+    return prefs.getBool(enabledKey) ?? true;
   }
 
   static Future<void> setEnabled(bool enabled) async {
@@ -15,7 +15,7 @@ class ProfilesFeatureService {
 }
 
 class ProfileStorageScope {
-  static bool _profilesEnabled = false;
+  static bool _profilesEnabled = true;
   static String _activeProfileId = 'default';
 
   static Future<void> bootstrap({

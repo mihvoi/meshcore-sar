@@ -6,6 +6,7 @@ import '../../models/message_route_metadata.dart';
 import '../../models/path_selection.dart';
 import '../../models/message_reception_details.dart';
 import '../../providers/messages_provider.dart';
+import '../../utils/link_quality.dart';
 
 IconData getDeliveryStatusIcon(MessageDeliveryStatus status) {
   switch (status) {
@@ -381,31 +382,4 @@ Widget _signalCapsule(
       ],
     ),
   );
-}
-
-int rssiScore(int rssiDbm) => ((rssiDbm + 120) / 10).round().clamp(0, 5);
-
-int snrScore(double snrDb) => ((snrDb + 5.0) / 5.0).round().clamp(0, 5);
-
-String linkQualityLabel(int? rssiDbm, double? snrDb) {
-  var score = 0;
-  if (rssiDbm != null) score += rssiScore(rssiDbm);
-  if (snrDb != null) score += snrScore(snrDb);
-  if (score >= 8) return 'Excellent';
-  if (score >= 6) return 'Good';
-  if (score >= 4) return 'Fair';
-  return 'Weak';
-}
-
-Color linkQualityColor(String quality) {
-  switch (quality) {
-    case 'Excellent':
-      return Colors.green;
-    case 'Good':
-      return Colors.lightGreen;
-    case 'Fair':
-      return Colors.orange;
-    default:
-      return Colors.redAccent;
-  }
 }

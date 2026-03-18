@@ -943,19 +943,35 @@ class _HomeScreenState extends State<HomeScreen>
         final isTcpConnected = provider.connectionMode == ConnectionMode.tcp;
 
         if (!isConnected) {
-          // Disconnected state: show connect button
+          final buttonLabel = provider.isReconnecting
+              ? '${provider.reconnectionAttempt}/${provider.maxReconnectionAttempts}'
+              : AppLocalizations.of(context)!.connect;
           return Row(
             children: [
               Expanded(
-                child: Text(
-                  AppLocalizations.of(context)!.appTitle,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      AppLocalizations.of(context)!.appTitle,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      provider.isReconnecting
+                          ? 'Restoring previous link'
+                          : 'No device connected',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              ElevatedButton.icon(
+              FilledButton.icon(
                 onPressed: provider.isReconnecting
                     ? null
                     : () => _showConnectionDialog(context),
@@ -966,22 +982,19 @@ class _HomeScreenState extends State<HomeScreen>
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
                           valueColor: AlwaysStoppedAnimation<Color>(
-                            Colors.black54,
+                            Colors.white70,
                           ),
                         ),
                       )
-                    : Icon(Icons.bluetooth, size: 18),
-                label: Text(
-                  provider.isReconnecting
-                      ? '${provider.reconnectionAttempt}/${provider.maxReconnectionAttempts}'
-                      : AppLocalizations.of(context)!.connect,
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black87,
-                  elevation: 0,
+                    : const Icon(Icons.add_link_rounded, size: 18),
+                label: Text(buttonLabel),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                 ),
               ),

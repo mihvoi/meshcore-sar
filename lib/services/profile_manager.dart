@@ -116,6 +116,13 @@ class ProfileManager with ChangeNotifier {
     return _deviceProfileDefaults[deviceKey] ?? ConfigProfile.defaultProfileId;
   }
 
+  bool hasProfileForDevice(String? deviceKey) {
+    if (deviceKey == null || deviceKey.isEmpty) {
+      return false;
+    }
+    return _deviceProfileDefaults.containsKey(deviceKey);
+  }
+
   Future<void> setActiveProfileIdForDevice(
     String id, {
     String? deviceKey,

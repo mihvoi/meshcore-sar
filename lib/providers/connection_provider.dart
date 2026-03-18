@@ -224,6 +224,77 @@ class ConnectionProvider with ChangeNotifier {
     _wireServiceCallbacks(_bleService);
   }
 
+  Future<void> _prepareForConnectionSwitch(ConnectionMode nextMode) async {
+    if (_isScanning) {
+      debugPrint('🔵 [Provider] Stopping active scan before connect()');
+      await stopScan();
+    }
+
+    await _disconnectInactiveTransports(nextMode);
+    _error = null;
+    _supportsAutoaddConfig = null;
+    _resetSyncState();
+  }
+
+  Future<void> _disconnectInactiveTransports(ConnectionMode activeMode) async {
+    if (activeMode != ConnectionMode.ble && _bleService.isConnected) {
+      await _bleService.disconnect();
+    }
+
+    if (activeMode != ConnectionMode.tcp && _tcpService != null) {
+      await _disposeTcpService();
+    }
+
+    if (activeMode != ConnectionMode.usb && _serialService != null) {
+      _disposeSerialService();
+    }
+  }
+
+  Future<void> _disposeTcpService() async {
+    final service = _tcpService;
+    if (service == null) {
+      return;
+    }
+    _tcpService = null;
+    await service.disconnect();
+    service.dispose();
+  }
+
+  void _disposeSerialService() {
+    _serialService?.markDisconnected();
+    _serialService?.dispose();
+    _serialService = null;
+  }
+
+  void _beginConnectionAttempt({
+    required ConnectionMode mode,
+    required String deviceId,
+    required String deviceName,
+    String? tcpHost,
+  }) {
+    _connectionMode = mode;
+    _tcpHost = mode == ConnectionMode.tcp ? tcpHost : null;
+    _deviceInfo = _deviceInfo.copyWith(
+      deviceId: deviceId,
+      deviceName: deviceName,
+      connectionState: ConnectionState.connecting,
+    );
+    notifyListeners();
+  }
+
+  void _resetConnectionSession({ConnectionMode nextMode = ConnectionMode.ble}) {
+    _tcpHost = nextMode == ConnectionMode.tcp ? _tcpHost : null;
+    _connectionMode = nextMode;
+    _supportsAutoaddConfig = null;
+    _resetSyncState();
+    _deviceInfo = DeviceInfo(connectionState: ConnectionState.disconnected);
+    _roomLoginManager.clearRoomLoginStates();
+    _pingTracker.clearAll();
+    _pendingSendOperations.clear();
+    _messageDeliveryTracker.clearTracking();
+    notifyListeners();
+  }
+
   /// Wire all shared event callbacks onto [service].
   /// Called for both BLE and TCP services so the provider handles events
   /// identically regardless of transport.
@@ -629,27 +700,15 @@ class ConnectionProvider with ChangeNotifier {
     debugPrint(
       '🔵 [Provider] connect() called for device: ${device.platformName}',
     );
-
-    if (_isScanning) {
-      debugPrint('🔵 [Provider] Stopping active scan before connect()');
-      await stopScan();
-    }
-
-    // Ensure we route commands to BLE, not a stale TCP service.
-    _connectionMode = ConnectionMode.ble;
-
-    _deviceInfo = _deviceInfo.copyWith(
+    await _prepareForConnectionSwitch(ConnectionMode.ble);
+    _beginConnectionAttempt(
+      mode: ConnectionMode.ble,
       deviceId: device.remoteId.toString(),
       deviceName: device.platformName.isNotEmpty
           ? device.platformName
           : 'Unknown',
-      connectionState: ConnectionState.connecting,
     );
-    _error = null;
-    _supportsAutoaddConfig = null;
-    _resetSyncState();
     debugPrint('✅ [Provider] Device info updated to connecting state');
-    notifyListeners();
 
     debugPrint('🔵 [Provider] Calling BLE service connect()...');
     final success = await _bleService.connect(device);
@@ -669,23 +728,18 @@ class ConnectionProvider with ChangeNotifier {
   /// Connect to a MeshCore device over TCP/WiFi (port 5000)
   Future<bool> connectTcp(String host, int port) async {
     debugPrint('🌐 [Provider] connectTcp() $host:$port');
-
-    _tcpHost = host;
-    _deviceInfo = _deviceInfo.copyWith(
-      deviceId: '$host:$port',
-      deviceName: host,
-      connectionState: ConnectionState.connecting,
-    );
-    _error = null;
-    _supportsAutoaddConfig = null;
-    notifyListeners();
+    await _prepareForConnectionSwitch(ConnectionMode.tcp);
 
     // Create fresh TCP service and wire its callbacks
-    _tcpService?.dispose();
+    await _disposeTcpService();
     _tcpService = MeshCoreTcpService();
     _wireServiceCallbacks(_tcpService!);
-
-    _connectionMode = ConnectionMode.tcp;
+    _beginConnectionAttempt(
+      mode: ConnectionMode.tcp,
+      deviceId: '$host:$port',
+      deviceName: host,
+      tcpHost: host,
+    );
 
     final success = await _tcpService!.connect(host, port);
     if (!success) {
@@ -699,21 +753,8 @@ class ConnectionProvider with ChangeNotifier {
 
   /// Disconnect from TCP/WiFi device
   Future<void> disconnectTcp() async {
-    if (_tcpService != null) {
-      await _tcpService!.disconnect();
-      _tcpService!.dispose();
-      _tcpService = null;
-    }
-    _tcpHost = null;
-    _connectionMode = ConnectionMode.ble;
-    _supportsAutoaddConfig = null;
-    _resetSyncState();
-    _deviceInfo = DeviceInfo(connectionState: ConnectionState.disconnected);
-    _roomLoginManager.clearRoomLoginStates();
-    _pingTracker.clearAll();
-    _pendingSendOperations.clear();
-    _messageDeliveryTracker.clearTracking();
-    notifyListeners();
+    await _disposeTcpService();
+    _resetConnectionSession();
   }
 
   /// Connect via USB serial using a pre-configured [MeshCoreSerialService].
@@ -723,20 +764,15 @@ class ConnectionProvider with ChangeNotifier {
   /// After this call succeeds, [service.markConnected()] has already run.
   Future<bool> connectSerial(MeshCoreSerialService service) async {
     debugPrint('🔌 [Provider] connectSerial()');
-
-    _deviceInfo = _deviceInfo.copyWith(
-      deviceId: 'usb',
-      deviceName: 'USB Companion',
-      connectionState: ConnectionState.connecting,
-    );
-    _error = null;
-    _supportsAutoaddConfig = null;
-    notifyListeners();
-
-    _serialService?.dispose();
+    await _prepareForConnectionSwitch(ConnectionMode.usb);
+    _disposeSerialService();
     _serialService = service;
     _wireServiceCallbacks(_serialService!);
-    _connectionMode = ConnectionMode.usb;
+    _beginConnectionAttempt(
+      mode: ConnectionMode.usb,
+      deviceId: 'usb',
+      deviceName: 'USB Companion',
+    );
 
     // markConnected() should already have been called by the transport.
     // If it hasn't, the service won't be connected yet.
@@ -752,18 +788,8 @@ class ConnectionProvider with ChangeNotifier {
 
   /// Disconnect from USB serial device.
   Future<void> disconnectSerial() async {
-    _serialService?.markDisconnected();
-    _serialService?.dispose();
-    _serialService = null;
-    _connectionMode = ConnectionMode.ble;
-    _supportsAutoaddConfig = null;
-    _resetSyncState();
-    _deviceInfo = DeviceInfo(connectionState: ConnectionState.disconnected);
-    _roomLoginManager.clearRoomLoginStates();
-    _pingTracker.clearAll();
-    _pendingSendOperations.clear();
-    _messageDeliveryTracker.clearTracking();
-    notifyListeners();
+    _disposeSerialService();
+    _resetConnectionSession();
   }
 
   /// Disconnect from device
@@ -783,15 +809,7 @@ class ConnectionProvider with ChangeNotifier {
     }
 
     await _bleService.disconnect();
-
-    _supportsAutoaddConfig = null;
-    _resetSyncState();
-    _deviceInfo = DeviceInfo(connectionState: ConnectionState.disconnected);
-    _roomLoginManager.clearRoomLoginStates();
-    _pingTracker.clearAll();
-    _pendingSendOperations.clear();
-    _messageDeliveryTracker.clearTracking();
-    notifyListeners();
+    _resetConnectionSession();
   }
 
   /// Reset message sync state so the next connect/reconnect can sync cleanly.
@@ -2267,9 +2285,7 @@ class ConnectionProvider with ChangeNotifier {
     if (!_activeService.isConnected) return null;
     try {
       final frame = await _activeService.exportContact(publicKey);
-      final hex = frame
-          .map((b) => b.toRadixString(16).padLeft(2, '0'))
-          .join();
+      final hex = frame.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
       return 'meshcore://$hex';
     } catch (e) {
       debugPrint('⚠️ [Provider] exportContact failed: $e');

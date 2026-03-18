@@ -217,6 +217,40 @@ void main() {
       expect(manager.activeProfileId, alpha.id);
       expect(connectionProvider.disconnectCallCount, 0);
     });
+
+    test(
+      'syncActiveProfileForCurrentDevice creates a profile for a new device',
+      () async {
+        final manager = ProfileManager();
+        await manager.initialize();
+        await manager.setProfilesEnabled(true);
+
+        final connectionProvider = _FakeConnectionProvider(
+          deviceInfo: DeviceInfo(
+            deviceId: 'ble-77',
+            deviceName: 'MeshCore-Field Unit',
+            selfName: 'Field Unit',
+            publicKey: Uint8List.fromList([7, 7, 7, 7]),
+          ),
+        );
+        final coordinator = _buildCoordinator(
+          profileManager: manager,
+          connectionProvider: connectionProvider,
+        );
+
+        await coordinator.syncActiveProfileForCurrentDevice();
+
+        expect(manager.activeProfileId, isNot(ConfigProfile.defaultProfileId));
+        final profile = manager.getProfile(manager.activeProfileId);
+        expect(profile, isNotNull);
+        expect(profile!.name, 'Device Field Unit');
+        expect(manager.hasProfileForDevice('pk:07070707'), isTrue);
+        expect(
+          manager.profileIdForDevice('pk:07070707'),
+          manager.activeProfileId,
+        );
+      },
+    );
   });
 }
 
@@ -300,7 +334,6 @@ class _FakeDeviceConfigApplicator extends DeviceConfigApplicator {
 class _FakeConnectionProvider implements ConnectionProvider {
   _FakeConnectionProvider({
     DeviceInfo? deviceInfo,
-    this.connectionMode = ConnectionMode.ble,
   }) : deviceInfo = deviceInfo ?? DeviceInfo();
 
   int disconnectCallCount = 0;
@@ -309,7 +342,7 @@ class _FakeConnectionProvider implements ConnectionProvider {
   final DeviceInfo deviceInfo;
 
   @override
-  final ConnectionMode connectionMode;
+  ConnectionMode get connectionMode => ConnectionMode.ble;
 
   @override
   Future<void> disconnect() async {

@@ -1,12 +1,13 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter/material.dart';
 import 'package:meshcore_client/meshcore_client.dart' hide Contact;
+import 'package:provider/provider.dart';
 import 'package:usb_serial/usb_serial.dart';
-import '../providers/connection_provider.dart';
-import '../providers/app_provider.dart';
-import '../services/network_scanner_service.dart';
+
 import '../l10n/app_localizations.dart';
+import '../providers/app_provider.dart';
+import '../providers/connection_provider.dart';
+import '../services/network_scanner_service.dart';
 
 /// Connection Dialog with tabs for BLE devices and Network servers
 class ConnectionDialog extends StatefulWidget {
@@ -25,10 +26,9 @@ class _ConnectionDialogState extends State<ConnectionDialog>
   int _scannedCount = 0;
   int _totalToScan = 0;
   int _lastTabIndex = 0;
-  String?
-  _connectingToServerKey; // Track which server is being connected to (ip:port)
+  String? _connectingToServerKey;
+  String? _connectingBleDeviceId;
 
-  // Named listener method for proper cleanup
   void _onTabChanged() {
     if (_tabController.index == _lastTabIndex) return;
     _lastTabIndex = _tabController.index;
@@ -38,18 +38,12 @@ class _ConnectionDialogState extends State<ConnectionDialog>
     }
 
     if (_tabController.index == 1) {
-      // Switched to network tab
       if (_networkScanner.hasCachedResults && _discoveredServers.isEmpty) {
-        // Load cached results
         setState(() {
           _discoveredServers.addAll(_networkScanner.cachedServers);
         });
-        debugPrint(
-          '📦 [NetworkScanner] Loaded ${_discoveredServers.length} servers from cache',
-        );
       } else if (!_networkScanner.isScanning &&
           !_networkScanner.hasCachedResults) {
-        // No cache, start initial scan
         _startNetworkScan();
       }
     }
@@ -64,35 +58,28 @@ class _ConnectionDialogState extends State<ConnectionDialog>
       listen: false,
     );
 
-    // Defer scan startup until after the first frame so Provider listeners
-    // are not notified while this dialog is still being built.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _refreshBleDevices();
     });
 
-    // Set up network scanner callbacks
     _networkScanner.onServerDiscovered = (server) {
-      if (mounted) {
-        setState(() {
-          // Only add if not already in the list (deduplicate)
-          if (!_discoveredServers.contains(server)) {
-            _discoveredServers.add(server);
-          }
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        if (!_discoveredServers.contains(server)) {
+          _discoveredServers.add(server);
+        }
+      });
     };
 
     _networkScanner.onProgressUpdate = (scanned, total) {
-      if (mounted) {
-        setState(() {
-          _scannedCount = scanned;
-          _totalToScan = total;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _scannedCount = scanned;
+        _totalToScan = total;
+      });
     };
 
-    // Listen to tab changes using named method for proper cleanup
     _tabController.addListener(_onTabChanged);
   }
 
@@ -100,7 +87,6 @@ class _ConnectionDialogState extends State<ConnectionDialog>
   void dispose() {
     _connectionProvider.stopScan();
     _networkScanner.stopScan();
-    // Remove listener before disposing to prevent memory leaks
     _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     super.dispose();
@@ -112,7 +98,7 @@ class _ConnectionDialogState extends State<ConnectionDialog>
       _scannedCount = 0;
       _totalToScan = 0;
     });
-    _networkScanner.clearCache(); // Clear cache before starting new scan
+    _networkScanner.clearCache();
     _networkScanner.scan();
   }
 
@@ -131,78 +117,94 @@ class _ConnectionDialogState extends State<ConnectionDialog>
   @override
   Widget build(BuildContext context) {
     final connectionProvider = context.watch<ConnectionProvider>();
+    final theme = Theme.of(context);
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.9,
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        color: theme.colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
         children: [
-          // Header
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              color: theme.colorScheme.surfaceContainerHighest,
               borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(20),
+                top: Radius.circular(24),
               ),
             ),
             child: Column(
               children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.onSurfaceVariant.withValues(
+                      alpha: 0.35,
+                    ),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     IconButton(
-                      icon: Icon(
-                        Icons.arrow_back,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.pop(context),
                     ),
                     Expanded(
-                      child: Text(
-                        AppLocalizations.of(context)!.appTitle,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      child: Column(
+                        children: [
+                          Text(
+                            'Connect Device',
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Choose Bluetooth, WiFi, or USB transport',
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 48), // Balance the back button
+                    const SizedBox(width: 48),
                   ],
                 ),
-                const SizedBox(height: 8),
-                // Tab Bar
+                const SizedBox(height: 12),
                 TabBar(
                   controller: _tabController,
+                  dividerColor: Colors.transparent,
+                  indicator: BoxDecoration(
+                    color: theme.colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  labelColor: theme.colorScheme.onPrimaryContainer,
+                  unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
                   tabs: const [
-                    Tab(text: 'BLE', icon: Icon(Icons.bluetooth)),
-                    Tab(text: 'Network', icon: Icon(Icons.wifi)),
-                    Tab(text: 'USB', icon: Icon(Icons.usb)),
+                    Tab(text: 'BLE', icon: Icon(Icons.bluetooth_rounded)),
+                    Tab(text: 'Network', icon: Icon(Icons.wifi_rounded)),
+                    Tab(text: 'USB', icon: Icon(Icons.usb_rounded)),
                   ],
                 ),
               ],
             ),
           ),
-
-          // Tab Content
           Expanded(
             child: TabBarView(
               controller: _tabController,
               children: [
-                // BLE Devices Tab
                 _buildBleDevicesTab(connectionProvider),
-
-                // Network Servers Tab
                 _buildNetworkServersTab(),
-
-                // USB Serial Tab
-                _buildUsbTab(connectionProvider),
+                _buildUsbTab(),
               ],
             ),
           ),
@@ -211,78 +213,175 @@ class _ConnectionDialogState extends State<ConnectionDialog>
     );
   }
 
-  Widget _buildBleDevicesTab(ConnectionProvider connectionProvider) {
-    return Column(
-      children: [
-        // Info banner
-        Container(
-          margin: const EdgeInsets.all(16),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primaryContainer,
-            borderRadius: BorderRadius.circular(8),
+  Widget _buildSectionBanner({
+    required IconData icon,
+    required String message,
+    required VoidCallback onRefresh,
+  }) {
+    final theme = Theme.of(context);
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: theme.colorScheme.onPrimaryContainer),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onPrimaryContainer,
+              ),
+            ),
           ),
+          IconButton(
+            icon: Icon(
+              Icons.refresh_rounded,
+              color: theme.colorScheme.onPrimaryContainer,
+            ),
+            onPressed: onRefresh,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState({
+    required IconData icon,
+    required String title,
+    required String actionLabel,
+    required VoidCallback onAction,
+  }) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                size: 36,
+                color: theme.colorScheme.onSurfaceVariant.withValues(
+                  alpha: 0.8,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 12),
+            FilledButton.tonalIcon(
+              onPressed: onAction,
+              icon: const Icon(Icons.refresh_rounded),
+              label: Text(actionLabel),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTransportCard({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required Widget trailing,
+    VoidCallback? onTap,
+    bool enabled = true,
+  }) {
+    final theme = Theme.of(context);
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.7),
+        ),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: enabled ? onTap : null,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              Icon(
-                Icons.info_outline,
-                color: Theme.of(context).colorScheme.onPrimaryContainer,
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(icon, color: iconColor),
               ),
-              SizedBox(width: 12),
+              const SizedBox(width: 14),
               Expanded(
-                child: Text(
-                  AppLocalizations.of(context)!.defaultPinInfo,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onPrimaryContainer,
-                    fontSize: 13,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              IconButton(
-                icon: Icon(
-                  Icons.refresh,
-                  color: Theme.of(context).colorScheme.onPrimaryContainer,
-                ),
-                onPressed: _refreshBleDevices,
-              ),
+              const SizedBox(width: 12),
+              trailing,
             ],
           ),
         ),
+      ),
+    );
+  }
 
-        // Device list
+  Widget _buildBleDevicesTab(ConnectionProvider connectionProvider) {
+    return Column(
+      children: [
+        _buildSectionBanner(
+          icon: Icons.bluetooth_searching_rounded,
+          message: AppLocalizations.of(context)!.defaultPinInfo,
+          onRefresh: _refreshBleDevices,
+        ),
         Expanded(
           child:
               connectionProvider.isScanning &&
                   connectionProvider.scannedDevices.isEmpty
               ? const Center(child: CircularProgressIndicator())
               : connectionProvider.scannedDevices.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.bluetooth_searching,
-                        size: 64,
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-                      ),
-                      SizedBox(height: 16),
-                      Text(
-                        AppLocalizations.of(context)!.noDevicesFound,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextButton.icon(
-                        onPressed: _refreshBleDevices,
-                        icon: Icon(Icons.refresh),
-                        label: Text(AppLocalizations.of(context)!.scanAgain),
-                      ),
-                    ],
-                  ),
+              ? _buildEmptyState(
+                  icon: Icons.bluetooth_searching_rounded,
+                  title: AppLocalizations.of(context)!.noDevicesFound,
+                  actionLabel: AppLocalizations.of(context)!.scanAgain,
+                  onAction: _refreshBleDevices,
                 )
               : ListView.builder(
                   itemCount: connectionProvider.scannedDevices.length,
@@ -292,83 +391,53 @@ class _ConnectionDialogState extends State<ConnectionDialog>
                     final device = scannedDevice.device;
                     final rssi = scannedDevice.rssi;
                     final signalColor = _getSignalColor(rssi);
+                    final deviceId = device.remoteId.toString();
+                    final isConnecting = _connectingBleDeviceId == deviceId;
 
-                    return Container(
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.outline.withValues(alpha: 0.2),
-                          width: 1,
-                        ),
-                      ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        leading: Icon(
-                          Icons.bluetooth,
-                          color: signalColor,
-                          size: 32,
-                        ),
-                        title: Text(
-                          device.platformName.isNotEmpty
-                              ? device.platformName
-                              : 'Unknown Device',
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurface,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        subtitle: Row(
-                          children: [
-                            Text(
-                              AppLocalizations.of(context)!.tapToConnect,
-                              style: TextStyle(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                                fontSize: 14,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              '$rssi dBm',
-                              style: TextStyle(
-                                color: signalColor,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                        trailing: Icon(
-                          Icons.chevron_right,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                        onTap: () async {
-                          final appProvider = context.read<AppProvider>();
-                          Navigator.pop(context);
+                    Future<void> connectBle() async {
+                      final appProvider = context.read<AppProvider>();
+                      setState(() {
+                        _connectingBleDeviceId = deviceId;
+                      });
+                      try {
+                        Navigator.pop(context);
+                        final success = await connectionProvider.connect(
+                          device,
+                        );
+                        if (success &&
+                            connectionProvider.deviceInfo.isConnected) {
+                          await appProvider.initialize();
+                        }
+                      } finally {
+                        if (mounted) {
+                          setState(() {
+                            _connectingBleDeviceId = null;
+                          });
+                        }
+                      }
+                    }
 
-                          final success = await connectionProvider.connect(
-                            device,
-                          );
-                          if (success &&
-                              connectionProvider.deviceInfo.isConnected) {
-                            await appProvider.initialize();
-                          }
-                        },
-                      ),
+                    return _buildTransportCard(
+                      icon: Icons.bluetooth_rounded,
+                      iconColor: signalColor,
+                      title: device.platformName.isNotEmpty
+                          ? device.platformName
+                          : 'Unknown Device',
+                      subtitle: 'Signal $rssi dBm',
+                      trailing: isConnecting
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                              ),
+                            )
+                          : FilledButton.tonal(
+                              onPressed: connectBle,
+                              child: const Text('Connect'),
+                            ),
+                      onTap: isConnecting ? null : connectBle,
+                      enabled: !isConnecting,
                     );
                   },
                 ),
@@ -385,44 +454,15 @@ class _ConnectionDialogState extends State<ConnectionDialog>
 
     return Column(
       children: [
-        // Info banner
-        Container(
-          margin: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primaryContainer,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                showingCachedResults ? Icons.cached : Icons.info_outline,
-                color: Theme.of(context).colorScheme.onPrimaryContainer,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  showingCachedResults
-                      ? 'Showing cached results. Tap refresh to rescan.'
-                      : 'Scanning local network for MeshCore WiFi devices on port 5000',
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onPrimaryContainer,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-              IconButton(
-                icon: Icon(
-                  Icons.refresh,
-                  color: Theme.of(context).colorScheme.onPrimaryContainer,
-                ),
-                onPressed: _startNetworkScan,
-              ),
-            ],
-          ),
+        _buildSectionBanner(
+          icon: showingCachedResults
+              ? Icons.cached_rounded
+              : Icons.wifi_find_rounded,
+          message: showingCachedResults
+              ? 'Showing cached results. Tap refresh to rescan.'
+              : 'Scanning local network for MeshCore WiFi devices on port 5000',
+          onRefresh: _startNetworkScan,
         ),
-
-        // Scan progress
         if (_networkScanner.isScanning)
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -439,39 +479,15 @@ class _ConnectionDialogState extends State<ConnectionDialog>
               ],
             ),
           ),
-
-        // Server list
         Expanded(
           child: _networkScanner.isScanning && _discoveredServers.isEmpty
               ? const Center(child: CircularProgressIndicator())
               : _discoveredServers.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.wifi_off,
-                        size: 64,
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No servers found',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextButton.icon(
-                        onPressed: _startNetworkScan,
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('Scan Again'),
-                      ),
-                    ],
-                  ),
+              ? _buildEmptyState(
+                  icon: Icons.wifi_off_rounded,
+                  title: 'No servers found',
+                  actionLabel: 'Scan Again',
+                  onAction: _startNetworkScan,
                 )
               : ListView.builder(
                   itemCount: _discoveredServers.length,
@@ -483,153 +499,95 @@ class _ConnectionDialogState extends State<ConnectionDialog>
                     final isAnyConnectionInProgress =
                         _connectingToServerKey != null;
 
-                    return Container(
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isConnectingToThisServer
-                              ? Theme.of(context).colorScheme.primary
-                              : Theme.of(
-                                  context,
-                                ).colorScheme.outline.withValues(alpha: 0.2),
-                          width: isConnectingToThisServer ? 2 : 1,
-                        ),
-                      ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        leading: isConnectingToThisServer
-                            ? SizedBox(
-                                width: 32,
-                                height: 32,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 3,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                              )
-                            : const Icon(
-                                Icons.wifi,
-                                color: Colors.green,
-                                size: 32,
-                              ),
-                        title: Text(
+                    Future<void> connectServer() async {
+                      final connectionProvider = context
+                          .read<ConnectionProvider>();
+                      final appProvider = context.read<AppProvider>();
+                      final navigator = Navigator.of(context);
+                      final messenger = ScaffoldMessenger.of(context);
+
+                      setState(() {
+                        _connectingToServerKey = serverKey;
+                      });
+
+                      try {
+                        final isAvailable = await _networkScanner.verifyServer(
+                          server,
+                        );
+                        if (!isAvailable) {
+                          throw Exception(
+                            'Server at ${server.ipAddress}:${server.port} is no longer available. Please scan again to find active servers.',
+                          );
+                        }
+
+                        await connectionProvider.connectTcp(
                           server.ipAddress,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurface,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
+                          server.port,
+                        );
+                        await appProvider.initialize();
+
+                        if (mounted) {
+                          navigator.pop();
+                        }
+                      } catch (e) {
+                        if (!mounted) return;
+                        setState(() {
+                          _connectingToServerKey = null;
+                        });
+
+                        var errorMessage = e.toString();
+                        if (errorMessage.startsWith('Exception: ')) {
+                          errorMessage = errorMessage.substring(
+                            'Exception: '.length,
+                          );
+                        }
+                        if (errorMessage.startsWith(
+                          'Connection failed: Exception: ',
+                        )) {
+                          errorMessage = errorMessage.substring(
+                            'Connection failed: Exception: '.length,
+                          );
+                        } else if (errorMessage.startsWith(
+                          'Connection failed: ',
+                        )) {
+                          errorMessage = errorMessage.substring(
+                            'Connection failed: '.length,
+                          );
+                        }
+
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content: Text(errorMessage),
+                            backgroundColor: Colors.red,
+                            duration: const Duration(seconds: 5),
                           ),
-                        ),
-                        subtitle: Text(
-                          isConnectingToThisServer
-                              ? 'Connecting...'
-                              : 'Port ${server.port} • ${server.responseTime}ms',
-                          style: TextStyle(
-                            color: isConnectingToThisServer
-                                ? Theme.of(context).colorScheme.primary
-                                : Theme.of(
-                                    context,
-                                  ).colorScheme.onSurfaceVariant,
-                            fontSize: 14,
-                            fontWeight: isConnectingToThisServer
-                                ? FontWeight.w500
-                                : FontWeight.normal,
-                          ),
-                        ),
-                        trailing: isConnectingToThisServer
-                            ? null
-                            : Icon(
-                                Icons.chevron_right,
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
+                        );
+                      }
+                    }
+
+                    return _buildTransportCard(
+                      icon: Icons.wifi_rounded,
+                      iconColor: Colors.green,
+                      title: server.ipAddress,
+                      subtitle: isConnectingToThisServer
+                          ? 'Connecting...'
+                          : 'Port ${server.port} • ${server.responseTime}ms',
+                      trailing: isConnectingToThisServer
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
                               ),
-                        enabled: !isAnyConnectionInProgress,
-                        onTap: isAnyConnectionInProgress
-                            ? null
-                            : () async {
-                                // Capture context-dependent objects before async operations
-                                final connectionProvider = context
-                                    .read<ConnectionProvider>();
-                                final appProvider = context.read<AppProvider>();
-                                final navigator = Navigator.of(context);
-                                final messenger = ScaffoldMessenger.of(context);
-
-                                // Mark this server as connecting
-                                setState(() {
-                                  _connectingToServerKey = serverKey;
-                                });
-
-                                try {
-                                  // Pre-verify server is still available
-                                  final isAvailable = await _networkScanner
-                                      .verifyServer(server);
-                                  if (!isAvailable) {
-                                    throw Exception(
-                                      'Server at ${server.ipAddress}:${server.port} is no longer available. '
-                                      'Please scan again to find active servers.',
-                                    );
-                                  }
-
-                                  await connectionProvider.connectTcp(
-                                    server.ipAddress,
-                                    server.port,
-                                  );
-                                  await appProvider.initialize();
-
-                                  if (mounted) {
-                                    navigator.pop();
-                                  }
-                                } catch (e) {
-                                  // Clear connecting state on error
-                                  if (mounted) {
-                                    setState(() {
-                                      _connectingToServerKey = null;
-                                    });
-
-                                    // Clean up error message (remove "Exception: " prefix)
-                                    String errorMessage = e.toString();
-                                    if (errorMessage.startsWith(
-                                      'Exception: ',
-                                    )) {
-                                      errorMessage = errorMessage.substring(
-                                        'Exception: '.length,
-                                      );
-                                    }
-                                    if (errorMessage.startsWith(
-                                      'Connection failed: Exception: ',
-                                    )) {
-                                      errorMessage = errorMessage.substring(
-                                        'Connection failed: Exception: '.length,
-                                      );
-                                    } else if (errorMessage.startsWith(
-                                      'Connection failed: ',
-                                    )) {
-                                      errorMessage = errorMessage.substring(
-                                        'Connection failed: '.length,
-                                      );
-                                    }
-
-                                    messenger.showSnackBar(
-                                      SnackBar(
-                                        content: Text(errorMessage),
-                                        backgroundColor: Colors.red,
-                                        duration: const Duration(seconds: 5),
-                                      ),
-                                    );
-                                  }
-                                }
-                              },
-                      ),
+                            )
+                          : FilledButton.tonal(
+                              onPressed: isAnyConnectionInProgress
+                                  ? null
+                                  : connectServer,
+                              child: const Text('Connect'),
+                            ),
+                      enabled: !isAnyConnectionInProgress,
+                      onTap: isAnyConnectionInProgress ? null : connectServer,
                     );
                   },
                 ),
@@ -638,8 +596,38 @@ class _ConnectionDialogState extends State<ConnectionDialog>
     );
   }
 
-  Widget _buildUsbTab(ConnectionProvider connectionProvider) {
+  Widget _buildUsbTab() {
     return _UsbDeviceList(
+      buildTransportCard:
+          ({
+            required icon,
+            required iconColor,
+            required title,
+            required subtitle,
+            required trailing,
+            onTap,
+            enabled = true,
+          }) => _buildTransportCard(
+            icon: icon,
+            iconColor: iconColor,
+            title: title,
+            subtitle: subtitle,
+            trailing: trailing,
+            onTap: onTap,
+            enabled: enabled,
+          ),
+      buildEmptyState:
+          ({
+            required icon,
+            required title,
+            required actionLabel,
+            required onAction,
+          }) => _buildEmptyState(
+            icon: icon,
+            title: title,
+            actionLabel: actionLabel,
+            onAction: onAction,
+          ),
       onConnected: () {
         if (mounted) Navigator.of(context).pop();
       },
@@ -647,10 +635,35 @@ class _ConnectionDialogState extends State<ConnectionDialog>
   }
 }
 
+typedef _TransportCardBuilder =
+    Widget Function({
+      required IconData icon,
+      required Color iconColor,
+      required String title,
+      required String subtitle,
+      required Widget trailing,
+      VoidCallback? onTap,
+      bool enabled,
+    });
+
+typedef _EmptyStateBuilder =
+    Widget Function({
+      required IconData icon,
+      required String title,
+      required String actionLabel,
+      required VoidCallback onAction,
+    });
+
 class _UsbDeviceList extends StatefulWidget {
   final VoidCallback onConnected;
+  final _TransportCardBuilder buildTransportCard;
+  final _EmptyStateBuilder buildEmptyState;
 
-  const _UsbDeviceList({required this.onConnected});
+  const _UsbDeviceList({
+    required this.onConnected,
+    required this.buildTransportCard,
+    required this.buildEmptyState,
+  });
 
   @override
   State<_UsbDeviceList> createState() => _UsbDeviceListState();
@@ -678,7 +691,7 @@ class _UsbDeviceListState extends State<_UsbDeviceList> {
         _devices = devices;
         _isScanning = false;
       });
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
       setState(() {
         _devices = [];
@@ -767,9 +780,9 @@ class _UsbDeviceListState extends State<_UsbDeviceList> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isConnecting = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('USB error: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('USB error: $e')));
     }
   }
 
@@ -796,20 +809,21 @@ class _UsbDeviceListState extends State<_UsbDeviceList> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.all(12),
-          child: OutlinedButton.icon(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: FilledButton.tonalIcon(
             onPressed: _isConnecting ? null : _scanDevices,
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.usb_rounded),
             label: const Text('Scan USB devices'),
           ),
         ),
         if (_devices.isEmpty)
-          const Expanded(
-            child: Center(
-              child: Text(
-                'No USB serial devices found.\nConnect a MeshCore device via OTG cable.',
-                textAlign: TextAlign.center,
-              ),
+          Expanded(
+            child: widget.buildEmptyState(
+              icon: Icons.usb_off_rounded,
+              title:
+                  'No USB serial devices found.\nConnect a MeshCore device via OTG cable.',
+              actionLabel: 'Scan USB devices',
+              onAction: _scanDevices,
             ),
           )
         else
@@ -818,17 +832,26 @@ class _UsbDeviceListState extends State<_UsbDeviceList> {
               itemCount: _devices.length,
               itemBuilder: (context, index) {
                 final device = _devices[index];
-                return ListTile(
-                  leading: const Icon(Icons.usb),
-                  title: Text(device.productName ?? 'USB Device'),
-                  subtitle: Text(device.manufacturerName ?? ''),
+                return widget.buildTransportCard(
+                  icon: Icons.usb_rounded,
+                  iconColor: Theme.of(context).colorScheme.primary,
+                  title: device.productName ?? 'USB Device',
+                  subtitle: (device.manufacturerName?.isNotEmpty ?? false)
+                      ? device.manufacturerName!
+                      : 'Ready over OTG serial',
                   trailing: _isConnecting
                       ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2.5),
                         )
-                      : const Icon(Icons.chevron_right),
+                      : FilledButton.tonal(
+                          onPressed: _isConnecting
+                              ? null
+                              : () => _connectToDevice(device),
+                          child: const Text('Connect'),
+                        ),
+                  enabled: !_isConnecting,
                   onTap: _isConnecting ? null : () => _connectToDevice(device),
                 );
               },

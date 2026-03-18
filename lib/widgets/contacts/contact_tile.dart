@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart' as flutter_map;
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
@@ -16,6 +17,8 @@ import 'contact_trace_sheet.dart';
 import 'room_login_sheet.dart';
 import '../common/contact_avatar.dart';
 import '../sensors/sensor_telemetry_card.dart';
+import '../../utils/link_quality.dart';
+import '../../utils/time_ago_extensions.dart';
 import '../../utils/toast_logger.dart';
 import '../../l10n/app_localizations.dart';
 
@@ -1259,6 +1262,7 @@ class _NeighboursSheetState extends State<_NeighboursSheet> {
 
   Future<void> _fetchNeighbours() async {
     final connectionProvider = context.read<ConnectionProvider>();
+    final previousOnMessageReceived = connectionProvider.onMessageReceived;
 
     String? responseText;
     void onMessage(message) {
@@ -1270,9 +1274,12 @@ class _NeighboursSheetState extends State<_NeighboursSheet> {
       }
     }
 
-    connectionProvider.onMessageReceived = (message) {
+    void sheetListener(message) {
+      previousOnMessageReceived?.call(message);
       onMessage(message);
-    };
+    }
+
+    connectionProvider.onMessageReceived = sheetListener;
 
     try {
       await connectionProvider.sendTextMessage(
@@ -1343,32 +1350,321 @@ class _NeighboursSheetState extends State<_NeighboursSheet> {
         _loading = false;
         _error = 'Failed: $e';
       });
+    } finally {
+      if (identical(connectionProvider.onMessageReceived, sheetListener)) {
+        connectionProvider.onMessageReceived = previousOnMessageReceived;
+      }
     }
   }
 
-  String _resolveNeighbourName(String keyHex) {
+  Contact? _resolveNeighbourContact(String keyHex) {
     final contactsProvider = context.read<ContactsProvider>();
     for (final contact in contactsProvider.contacts) {
       if (contact.publicKeyHex.toLowerCase().startsWith(keyHex.toLowerCase())) {
-        return contact.displayName;
+        return contact;
       }
+    }
+    return null;
+  }
+
+  String _resolveNeighbourName(String keyHex) {
+    final contact = _resolveNeighbourContact(keyHex);
+    if (contact != null) {
+      return contact.displayName;
     }
     return keyHex.length > 12 ? '${keyHex.substring(0, 12)}...' : keyHex;
   }
 
-  String _formatAge(DateTime when) {
-    final diff = DateTime.now().difference(when);
-    if (diff.inMinutes < 1) return 'just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    return '${diff.inDays}d ago';
+  String _formatAge(BuildContext context, _Neighbour neighbour) {
+    if (neighbour.lastSeenAt != null) {
+      return DateTime.now()
+          .difference(neighbour.lastSeenAt!)
+          .toLocalizedTimeAgoWithSeconds(context);
+    }
+    if (neighbour.lastSeenMs != null) {
+      if (neighbour.lastSeenMs! < 1000) {
+        return AppLocalizations.of(context)!.justNow;
+      }
+      return Duration(
+        milliseconds: neighbour.lastSeenMs!,
+      ).toLocalizedTimeAgoWithSeconds(context);
+    }
+    return AppLocalizations.of(context)!.justNow;
+  }
+
+  List<_MappedNeighbour> _mappedNeighbours() {
+    return _neighbours
+        .map((neighbour) {
+          final contact = _resolveNeighbourContact(neighbour.publicKeyHex);
+          final location = contact?.displayLocation;
+          if (contact == null || location == null) {
+            return null;
+          }
+          return _MappedNeighbour(
+            neighbour: neighbour,
+            contact: contact,
+            location: LatLng(location.latitude, location.longitude),
+          );
+        })
+        .whereType<_MappedNeighbour>()
+        .toList();
+  }
+
+  Widget _buildSummaryChip(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: colorScheme.onSurfaceVariant),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRepeaterMarker(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          constraints: const BoxConstraints(maxWidth: 132),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.78),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            widget.contact.displayName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: 11,
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: colorScheme.primary,
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 2),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.2),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: const Icon(Icons.hub_outlined, color: Colors.white, size: 18),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNeighbourMarker(BuildContext context, _MappedNeighbour mapped) {
+    final quality = linkQualityLabel(null, mapped.neighbour.snrDb);
+    final qualityColor = linkQualityColor(quality);
+    final ageLabel = _formatAge(context, mapped.neighbour);
+    final signalLabel = mapped.neighbour.snrDb == null
+        ? quality
+        : '$quality • ${mapped.neighbour.snrDb!.toStringAsFixed(1)} dB';
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          constraints: const BoxConstraints(maxWidth: 146),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: qualityColor.withValues(alpha: 0.92),
+            borderRadius: BorderRadius.circular(999),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Text(
+            signalLabel,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: 10,
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Container(
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+            border: Border.all(color: qualityColor, width: 2),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.18),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Icon(
+            mapped.contact.isRepeater
+                ? Icons.router_outlined
+                : Icons.location_on_outlined,
+            color: qualityColor,
+            size: 16,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Container(
+          constraints: const BoxConstraints(maxWidth: 148),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.78),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                mapped.contact.displayName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 11,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                ageLabel,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 10,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRouteMap(
+    BuildContext context, {
+    required LatLng repeaterLocation,
+    required List<_MappedNeighbour> mappedNeighbours,
+  }) {
+    final points = <LatLng>[
+      repeaterLocation,
+      ...mappedNeighbours.map((mapped) => mapped.location),
+    ];
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border.all(color: colorScheme.outlineVariant),
+        ),
+        child: flutter_map.FlutterMap(
+          options: flutter_map.MapOptions(
+            initialCameraFit: flutter_map.CameraFit.bounds(
+              bounds: flutter_map.LatLngBounds.fromPoints(points),
+              padding: const EdgeInsets.all(42),
+            ),
+          ),
+          children: [
+            flutter_map.TileLayer(
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.meshcore.sar',
+            ),
+            flutter_map.PolylineLayer(
+              polylines: mappedNeighbours.map((mapped) {
+                final quality = linkQualityLabel(null, mapped.neighbour.snrDb);
+                final qualityColor = linkQualityColor(quality);
+                return flutter_map.Polyline(
+                  points: [repeaterLocation, mapped.location],
+                  color: qualityColor.withValues(alpha: 0.9),
+                  strokeWidth: 4,
+                  borderColor: Colors.white.withValues(alpha: 0.7),
+                  borderStrokeWidth: 1.5,
+                );
+              }).toList(),
+            ),
+            flutter_map.MarkerLayer(
+              markers: [
+                flutter_map.Marker(
+                  point: repeaterLocation,
+                  width: 150,
+                  height: 74,
+                  child: _buildRepeaterMarker(context),
+                ),
+                ...mappedNeighbours.map(
+                  (mapped) => flutter_map.Marker(
+                    point: mapped.location,
+                    width: 164,
+                    height: 112,
+                    child: _buildNeighbourMarker(context, mapped),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final repeaterDisplayLocation = widget.contact.displayLocation;
+    final repeaterLocation = repeaterDisplayLocation == null
+        ? null
+        : LatLng(
+            repeaterDisplayLocation.latitude,
+            repeaterDisplayLocation.longitude,
+          );
+    final mappedNeighbours = _mappedNeighbours();
+    final missingLocations = _neighbours.length - mappedNeighbours.length;
+
     return SafeArea(
       child: SizedBox(
-        height: MediaQuery.of(context).size.height * 0.55,
+        height: MediaQuery.of(context).size.height * 0.72,
         child: Column(
           children: [
             const SizedBox(height: 12),
@@ -1410,26 +1706,68 @@ class _NeighboursSheetState extends State<_NeighboursSheet> {
                     )
                   : _neighbours.isEmpty
                   ? const Center(child: Text('No neighbours found'))
-                  : ListView.builder(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      itemCount: _neighbours.length,
-                      itemBuilder: (context, index) {
-                        final n = _neighbours[index];
-                        final name = _resolveNeighbourName(n.publicKeyHex);
-                        final parts = <String>[
-                          if (n.snrDb != null)
-                            'SNR ${n.snrDb!.toStringAsFixed(1)} dB',
-                          if (n.lastSeenAt != null) _formatAge(n.lastSeenAt!),
-                          if (n.lastSeenMs != null) '${n.lastSeenMs}ms ago',
-                        ];
-                        return ListTile(
-                          leading: const Icon(Icons.router_outlined),
-                          title: Text(name),
-                          subtitle: parts.isNotEmpty
-                              ? Text(parts.join(' • '))
-                              : null,
-                        );
-                      },
+                  : Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              _buildSummaryChip(
+                                context,
+                                icon: Icons.route_outlined,
+                                label:
+                                    '${_neighbours.length} neighbour${_neighbours.length == 1 ? '' : 's'}',
+                              ),
+                              _buildSummaryChip(
+                                context,
+                                icon: Icons.map_outlined,
+                                label: '${mappedNeighbours.length} on map',
+                              ),
+                              if (missingLocations > 0)
+                                _buildSummaryChip(
+                                  context,
+                                  icon: Icons.location_off_outlined,
+                                  label: '$missingLocations without GPS',
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Expanded(
+                            child: repeaterLocation == null
+                                ? Center(
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 24,
+                                      ),
+                                      child: Text(
+                                        '${widget.contact.displayName} has no saved location, so neighbour routes cannot be drawn on the map yet.',
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  )
+                                : mappedNeighbours.isEmpty
+                                ? Center(
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 24,
+                                      ),
+                                      child: Text(
+                                        'Neighbours responded, but no geolocated contacts matched saved nodes to plot. Recent neighbour: ${_resolveNeighbourName(_neighbours.first.publicKeyHex)} • ${_formatAge(context, _neighbours.first)}',
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  )
+                                : _buildRouteMap(
+                                    context,
+                                    repeaterLocation: repeaterLocation,
+                                    mappedNeighbours: mappedNeighbours,
+                                  ),
+                          ),
+                        ],
+                      ),
                     ),
             ),
           ],
@@ -1450,5 +1788,17 @@ class _Neighbour {
     this.lastSeenAt,
     this.lastSeenMs,
     this.snrDb,
+  });
+}
+
+class _MappedNeighbour {
+  final _Neighbour neighbour;
+  final Contact contact;
+  final LatLng location;
+
+  const _MappedNeighbour({
+    required this.neighbour,
+    required this.contact,
+    required this.location,
   });
 }

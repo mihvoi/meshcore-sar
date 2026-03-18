@@ -79,14 +79,7 @@ class ProfileWorkspaceCoordinator {
       activeProfileId: enabled ? profileManager.activeProfileId : 'default',
     );
     if (enabled) {
-      final deviceKey = _currentDeviceProfileKey;
-      final targetProfileId = profileManager.profileIdForDevice(deviceKey);
-      if (targetProfileId != profileManager.activeProfileId) {
-        await profileManager.setActiveProfileIdForDevice(
-          targetProfileId,
-          deviceKey: deviceKey,
-        );
-      }
+      await _ensureProfileForCurrentDevice();
       if (wasEnabled) {
         await openProfile(profileManager.activeProfileId);
       } else {
@@ -294,13 +287,14 @@ class ProfileWorkspaceCoordinator {
       return;
     }
 
-    final targetProfileId = profileManager.profileIdForDevice(deviceKey);
-    if (targetProfileId == profileManager.activeProfileId) {
-      return;
-    }
-
     _isSyncingDeviceProfile = true;
     try {
+      final profile = await _ensureProfileForCurrentDevice();
+      final targetProfileId = profile.id;
+      if (targetProfileId == profileManager.activeProfileId) {
+        return;
+      }
+
       await _persistCurrentState();
       await profileManager.setActiveProfileIdForDevice(
         targetProfileId,
@@ -308,7 +302,6 @@ class ProfileWorkspaceCoordinator {
       );
       await _switchRuntimeScope(targetProfileId);
 
-      final profile = await resolveProfile(targetProfileId);
       await _appConfigSnapshotService.apply(
         profile.sections.appSettings,
         appProvider,
@@ -321,6 +314,56 @@ class ProfileWorkspaceCoordinator {
     } finally {
       _isSyncingDeviceProfile = false;
     }
+  }
+
+  Future<ConfigProfile> _ensureProfileForCurrentDevice() async {
+    final deviceKey = _currentDeviceProfileKey;
+    final targetProfileId = profileManager.profileIdForDevice(deviceKey);
+    final existingProfile = profileManager.getProfile(targetProfileId);
+    if (profileManager.hasProfileForDevice(deviceKey) &&
+        existingProfile != null) {
+      return existingProfile;
+    }
+    if (profileManager.hasProfileForDevice(deviceKey) &&
+        targetProfileId == ConfigProfile.defaultProfileId) {
+      return ConfigProfile.defaultProfile();
+    }
+    if (deviceKey == null) {
+      return await resolveProfile(profileManager.activeProfileId);
+    }
+
+    final profile = await createProfileFromCurrent(
+      name: _buildDeviceProfileName(),
+    );
+    await profileManager.setActiveProfileIdForDevice(
+      profile.id,
+      deviceKey: deviceKey,
+    );
+    return profile;
+  }
+
+  String _buildDeviceProfileName() {
+    final deviceInfo = connectionProvider.deviceInfo;
+    final name = deviceInfo.selfName?.trim();
+    if (name != null && name.isNotEmpty) {
+      return 'Device ${_sanitizeProfileLabel(name)}';
+    }
+
+    final displayName = deviceInfo.displayName?.trim();
+    if (displayName != null && displayName.isNotEmpty) {
+      return 'Device ${_sanitizeProfileLabel(displayName)}';
+    }
+
+    final deviceId = deviceInfo.deviceId?.trim();
+    if (deviceId != null && deviceId.isNotEmpty) {
+      return 'Device ${_sanitizeProfileLabel(deviceId)}';
+    }
+
+    return 'Device Profile';
+  }
+
+  String _sanitizeProfileLabel(String value) {
+    return value.replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 
   String? get _currentDeviceProfileKey => ProfileDeviceKeyResolver.resolve(

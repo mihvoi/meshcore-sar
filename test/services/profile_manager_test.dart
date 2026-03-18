@@ -10,40 +10,28 @@ void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     ProfileStorageScope.setScope(
-      profilesEnabled: false,
+      profilesEnabled: true,
       activeProfileId: ConfigProfile.defaultProfileId,
     );
   });
 
   group('ProfileManager', () {
-    test(
-      'hides the built-in default profile until profiles are enabled',
-      () async {
-        final manager = ProfileManager();
+    test('shows the built-in default profile on a fresh install', () async {
+      final manager = ProfileManager();
 
-        await manager.initialize();
+      await manager.initialize();
 
-        expect(manager.activeProfileId, ConfigProfile.defaultProfileId);
-        expect(manager.visibleProfiles, isEmpty);
-        expect(
-          manager.getProfile(ConfigProfile.defaultProfileId)?.isDefault,
-          isTrue,
-        );
-        expect(ProfileStorageScope.profilesEnabled, isFalse);
-        expect(ProfileStorageScope.effectiveNamespace, isNull);
-
-        await manager.setProfilesEnabled(true);
-
-        expect(manager.visibleProfiles, hasLength(1));
-        expect(
-          manager.visibleProfiles.single.id,
-          ConfigProfile.defaultProfileId,
-        );
-        expect(manager.visibleProfiles.single.name, 'Default');
-        expect(ProfileStorageScope.profilesEnabled, isTrue);
-        expect(ProfileStorageScope.effectiveNamespace, isNull);
-      },
-    );
+      expect(manager.activeProfileId, ConfigProfile.defaultProfileId);
+      expect(manager.visibleProfiles, hasLength(1));
+      expect(
+        manager.getProfile(ConfigProfile.defaultProfileId)?.isDefault,
+        isTrue,
+      );
+      expect(ProfileStorageScope.profilesEnabled, isTrue);
+      expect(ProfileStorageScope.effectiveNamespace, isNull);
+      expect(manager.visibleProfiles.single.name, 'Default');
+      expect(ProfileStorageScope.effectiveNamespace, isNull);
+    });
 
     test(
       'persists custom profiles and restores scoped active profile state',
@@ -118,6 +106,8 @@ void main() {
         reloaded.profileIdForDevice('pk:device-c'),
         ConfigProfile.defaultProfileId,
       );
+      expect(reloaded.hasProfileForDevice('pk:device-a'), isTrue);
+      expect(reloaded.hasProfileForDevice('pk:device-c'), isFalse);
     });
   });
 }
