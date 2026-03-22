@@ -174,6 +174,8 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
     return '${l10n.channel} $channelIdx • $shortKey';
   }
 
+  bool _isDenseSection(String type) => type == 'channel' || type == 'contact';
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -332,6 +334,7 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
                           subtitle: _channelSubtitle(context, channel),
                           unreadCount: _unreadFor(channel),
                           isSelected: _isSelected('channel', channel),
+                          compact: true,
                           onTap: () {
                             widget.onSelect('channel', channel);
                             Navigator.pop(context);
@@ -357,6 +360,7 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
                           subtitle: contact.publicKeyShort,
                           unreadCount: _unreadFor(contact),
                           isSelected: _isSelected('contact', contact),
+                          compact: true,
                           onTap: () {
                             widget.onSelect('contact', contact);
                             Navigator.pop(context);
@@ -504,10 +508,11 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
   }) {
     final colorScheme = Theme.of(context).colorScheme;
     final accentColor = _sectionColor(context, type);
+    final compact = _isDenseSection(type);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(compact ? 12 : 14),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(24),
@@ -519,16 +524,16 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
           Row(
             children: [
               Container(
-                width: 38,
-                height: 38,
+                width: compact ? 34 : 38,
+                height: compact ? 34 : 38,
                 decoration: BoxDecoration(
                   color: accentColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 alignment: Alignment.center,
-                child: Icon(icon, size: 18, color: accentColor),
+                child: Icon(icon, size: compact ? 16 : 18, color: accentColor),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: compact ? 8 : 10),
               Expanded(
                 child: Text(
                   title,
@@ -539,9 +544,9 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
+                padding: EdgeInsets.symmetric(
+                  horizontal: compact ? 9 : 10,
+                  vertical: compact ? 4 : 5,
                 ),
                 decoration: BoxDecoration(
                   color: colorScheme.surface,
@@ -567,7 +572,7 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
               color: colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: compact ? 10 : 12),
           if (children.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
@@ -582,7 +587,7 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
           else ...[
             for (var i = 0; i < children.length; i++) ...[
               children[i],
-              if (i != children.length - 1) const SizedBox(height: 8),
+              if (i != children.length - 1) SizedBox(height: compact ? 6 : 8),
             ],
           ],
         ],
@@ -679,6 +684,7 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
     required String subtitle,
     required int unreadCount,
     required bool isSelected,
+    bool compact = false,
     required VoidCallback onTap,
   }) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -687,14 +693,14 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(compact ? 18 : 20),
         onTap: onTap,
         child: Ink(
           decoration: BoxDecoration(
             color: isSelected
                 ? accentColor.withValues(alpha: 0.12)
                 : colorScheme.surface.withValues(alpha: 0.82),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(compact ? 18 : 20),
             border: Border.all(
               color: isSelected
                   ? accentColor.withValues(alpha: 0.24)
@@ -702,7 +708,7 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
             ),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.all(compact ? 10 : 12),
             child: Row(
               children: [
                 Stack(
@@ -710,15 +716,15 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
                   children: [
                     ContactAvatar(
                       contact: contact,
-                      radius: 22,
+                      radius: compact ? 20 : 22,
                       displayName: title,
                     ),
                     Positioned(
                       right: -3,
                       bottom: -3,
                       child: Container(
-                        width: 18,
-                        height: 18,
+                        width: compact ? 16 : 18,
+                        height: compact ? 16 : 18,
                         decoration: BoxDecoration(
                           color: colorScheme.surface,
                           shape: BoxShape.circle,
@@ -729,14 +735,14 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
                         alignment: Alignment.center,
                         child: Icon(
                           _typeIcon(contact),
-                          size: 10,
+                          size: compact ? 9 : 10,
                           color: accentColor,
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: compact ? 10 : 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -756,11 +762,11 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
                             ),
                           ),
                           if (contact.isPublicChannel) ...[
-                            const SizedBox(width: 8),
+                            SizedBox(width: compact ? 6 : 8),
                             Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 3,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: compact ? 7 : 8,
+                                vertical: compact ? 2 : 3,
                               ),
                               decoration: BoxDecoration(
                                 color: accentColor.withValues(alpha: 0.10),
@@ -778,7 +784,7 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
                           ],
                         ],
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: compact ? 2 : 4),
                       Text(
                         subtitle,
                         maxLines: 1,
@@ -791,7 +797,7 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
                     ],
                   ),
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: compact ? 8 : 10),
                 _buildTrailing(
                   context,
                   unreadCount: unreadCount,
