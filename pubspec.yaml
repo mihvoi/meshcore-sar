@@ -147,10 +147,6 @@ dependency_overrides:
   # asset. That framework has been ending up archived with a macOS platform
   # slice and fails App Store validation for iOS uploads.
   path_provider_foundation: 2.5.1
-  # flutter_blue_plus_darwin 8.2.1 can double-complete method calls for
-  # isSupported/getAdapterName on Darwin, which crashes BLE startup on macOS.
-  flutter_blue_plus_darwin:
-    path: third_party/flutter_blue_plus_darwin
 
 flutter_launcher_icons:
   android: "launcher_icon"

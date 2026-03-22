@@ -82,7 +82,6 @@ create_feature_graphic.py
 .cachebro/
 .osgrep/
 third_party/lpcnet_flutter/
-third_party/flutter_blue_plus_darwin/
 
 # Claude Code local settings (permissions, personal config)
 .claude/settings.local.json
