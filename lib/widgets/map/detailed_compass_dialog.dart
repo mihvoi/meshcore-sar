@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show MissingPluginException;
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:latlong2/latlong.dart';
+import '../../services/compass_support.dart';
 import '../../models/contact.dart';
 import '../../models/sar_marker.dart';
 import '../common/location_display.dart';
@@ -90,17 +92,33 @@ class _DetailedCompassDialogState extends State<DetailedCompassDialog> {
       });
     }
 
-    // Subscribe to compass updates
-    final compassStream = FlutterCompass.events;
+    // Subscribe to compass updates on supported targets only.
+    final compassStream = CompassSupport.isAvailable
+        ? FlutterCompass.events
+        : null;
     if (compassStream != null) {
-      _compassSubscription = compassStream.listen((event) {
-        if (mounted && event.heading != null) {
-          setState(() {
-            _currentHeading = event.heading;
-            _compassAccuracy = event.accuracy;
-          });
-        }
-      });
+      _compassSubscription = compassStream.listen(
+        (event) {
+          if (mounted && event.heading != null) {
+            setState(() {
+              _currentHeading = event.heading;
+              _compassAccuracy = event.accuracy;
+            });
+          }
+        },
+        onError: (Object error, StackTrace stackTrace) {
+          if (!mounted) {
+            return;
+          }
+
+          if (error is MissingPluginException) {
+            debugPrint('Compass plugin is unavailable on this platform');
+            return;
+          }
+
+          debugPrint('Compass dialog stream error: $error');
+        },
+      );
     }
 
     // Subscribe to position updates

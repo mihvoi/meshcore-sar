@@ -523,6 +523,7 @@ class _AddSensorSheetState extends State<AddSensorSheet> {
 class SensorCustomizeView extends StatelessWidget {
   final String publicKeyHex;
   final Contact? initialContact;
+  final bool showLivePreview;
   final Future<void> Function({
     required BuildContext context,
     required String publicKeyHex,
@@ -532,9 +533,11 @@ class SensorCustomizeView extends StatelessWidget {
   onRenameMetric;
 
   const SensorCustomizeView({
+    super.key,
     required this.publicKeyHex,
     required this.initialContact,
     required this.onRenameMetric,
+    this.showLivePreview = true,
   });
 
   @override
@@ -579,35 +582,39 @@ class SensorCustomizeView extends StatelessWidget {
           body: ListView(
             padding: EdgeInsets.fromLTRB(16, 16, 16, 24),
             children: [
-              _SensorCustomizeSectionCard(
-                title: AppLocalizations.of(context)!.livePreview,
-                subtitle:
-                    'Changes apply immediately. This card matches the current dashboard layout for this sensor.',
-                child: SensorTelemetryCard(
-                  contact: contact,
-                  state: sensorsProvider.stateFor(publicKeyHex),
-                  visibleFields: visibleFields,
-                  fieldOrder: sensorsProvider.metricOrderFor(
-                    publicKeyHex,
-                    visibleFields,
-                  ),
-                  labelOverrides: sensorsProvider.labelOverridesFor(
-                    publicKeyHex,
-                  ),
-                  onShowMetHistory: contact == null
-                      ? null
-                      : (contact) => showBTHomeMetHistorySheet(
-                          context,
-                          contact: contact,
+              if (showLivePreview)
+                _SensorCustomizeSectionCard(
+                  title: AppLocalizations.of(context)!.livePreview,
+                  subtitle:
+                      'Changes apply immediately. This card matches the current dashboard layout for this sensor.',
+                  child: SensorTelemetryCard(
+                    contact: contact,
+                    state: sensorsProvider.stateFor(publicKeyHex),
+                    visibleFields: visibleFields,
+                    fieldOrder: sensorsProvider.metricOrderFor(
+                      publicKeyHex,
+                      visibleFields,
+                    ),
+                    labelOverrides: sensorsProvider.labelOverridesFor(
+                      publicKeyHex,
+                    ),
+                    onShowMetHistory: contact == null
+                        ? null
+                        : (contact) => showBTHomeMetHistorySheet(
+                            context,
+                            contact: contact,
+                          ),
+                    fieldSpans: {
+                      for (final field in visibleFields)
+                        field: sensorsProvider.fieldSpanFor(
+                          publicKeyHex,
+                          field,
                         ),
-                  fieldSpans: {
-                    for (final field in visibleFields)
-                      field: sensorsProvider.fieldSpanFor(publicKeyHex, field),
-                  },
-                  margin: EdgeInsets.zero,
-                  emptyMetricsMessage: 'No telemetry fields available yet.',
+                    },
+                    margin: EdgeInsets.zero,
+                    emptyMetricsMessage: 'No telemetry fields available yet.',
+                  ),
                 ),
-              ),
               _SensorCustomizeSectionCard(
                 title: AppLocalizations.of(context)!.refreshSchedule,
                 subtitle:

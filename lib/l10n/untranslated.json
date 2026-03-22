@@ -1,66 +1,209 @@
 {
   "de": [
     "postConnectDiscoveryTitle",
-    "postConnectDiscoveryDescription"
+    "postConnectDiscoveryDescription",
+    "setRegionScope",
+    "regionScope",
+    "regionScopeNone",
+    "clearRegionScope",
+    "regionScopeWarning",
+    "discoverRegions",
+    "discoveringRegions",
+    "enterRegionName",
+    "noRegionsFound",
+    "regionScopeSet",
+    "regionScopeCleared"
   ],
 
   "el": [
     "postConnectDiscoveryTitle",
-    "postConnectDiscoveryDescription"
+    "postConnectDiscoveryDescription",
+    "setRegionScope",
+    "regionScope",
+    "regionScopeNone",
+    "clearRegionScope",
+    "regionScopeWarning",
+    "discoverRegions",
+    "discoveringRegions",
+    "enterRegionName",
+    "noRegionsFound",
+    "regionScopeSet",
+    "regionScopeCleared"
   ],
 
   "es": [
     "postConnectDiscoveryTitle",
-    "postConnectDiscoveryDescription"
+    "postConnectDiscoveryDescription",
+    "setRegionScope",
+    "regionScope",
+    "regionScopeNone",
+    "clearRegionScope",
+    "regionScopeWarning",
+    "discoverRegions",
+    "discoveringRegions",
+    "enterRegionName",
+    "noRegionsFound",
+    "regionScopeSet",
+    "regionScopeCleared"
   ],
 
   "fr": [
     "postConnectDiscoveryTitle",
-    "postConnectDiscoveryDescription"
+    "postConnectDiscoveryDescription",
+    "setRegionScope",
+    "regionScope",
+    "regionScopeNone",
+    "clearRegionScope",
+    "regionScopeWarning",
+    "discoverRegions",
+    "discoveringRegions",
+    "enterRegionName",
+    "noRegionsFound",
+    "regionScopeSet",
+    "regionScopeCleared"
   ],
 
   "hr": [
     "postConnectDiscoveryTitle",
-    "postConnectDiscoveryDescription"
+    "postConnectDiscoveryDescription",
+    "setRegionScope",
+    "regionScope",
+    "regionScopeNone",
+    "clearRegionScope",
+    "regionScopeWarning",
+    "discoverRegions",
+    "discoveringRegions",
+    "enterRegionName",
+    "noRegionsFound",
+    "regionScopeSet",
+    "regionScopeCleared"
   ],
 
   "it": [
     "postConnectDiscoveryTitle",
-    "postConnectDiscoveryDescription"
+    "postConnectDiscoveryDescription",
+    "setRegionScope",
+    "regionScope",
+    "regionScopeNone",
+    "clearRegionScope",
+    "regionScopeWarning",
+    "discoverRegions",
+    "discoveringRegions",
+    "enterRegionName",
+    "noRegionsFound",
+    "regionScopeSet",
+    "regionScopeCleared"
   ],
 
   "pl": [
     "postConnectDiscoveryTitle",
-    "postConnectDiscoveryDescription"
+    "postConnectDiscoveryDescription",
+    "setRegionScope",
+    "regionScope",
+    "regionScopeNone",
+    "clearRegionScope",
+    "regionScopeWarning",
+    "discoverRegions",
+    "discoveringRegions",
+    "enterRegionName",
+    "noRegionsFound",
+    "regionScopeSet",
+    "regionScopeCleared"
   ],
 
   "pt": [
     "postConnectDiscoveryTitle",
-    "postConnectDiscoveryDescription"
+    "postConnectDiscoveryDescription",
+    "setRegionScope",
+    "regionScope",
+    "regionScopeNone",
+    "clearRegionScope",
+    "regionScopeWarning",
+    "discoverRegions",
+    "discoveringRegions",
+    "enterRegionName",
+    "noRegionsFound",
+    "regionScopeSet",
+    "regionScopeCleared"
   ],
 
   "ru": [
     "postConnectDiscoveryTitle",
-    "postConnectDiscoveryDescription"
+    "postConnectDiscoveryDescription",
+    "setRegionScope",
+    "regionScope",
+    "regionScopeNone",
+    "clearRegionScope",
+    "regionScopeWarning",
+    "discoverRegions",
+    "discoveringRegions",
+    "enterRegionName",
+    "noRegionsFound",
+    "regionScopeSet",
+    "regionScopeCleared"
   ],
 
   "sl": [
     "postConnectDiscoveryTitle",
-    "postConnectDiscoveryDescription"
+    "postConnectDiscoveryDescription",
+    "setRegionScope",
+    "regionScope",
+    "regionScopeNone",
+    "clearRegionScope",
+    "regionScopeWarning",
+    "discoverRegions",
+    "discoveringRegions",
+    "enterRegionName",
+    "noRegionsFound",
+    "regionScopeSet",
+    "regionScopeCleared"
   ],
 
   "tr": [
     "postConnectDiscoveryTitle",
-    "postConnectDiscoveryDescription"
+    "postConnectDiscoveryDescription",
+    "setRegionScope",
+    "regionScope",
+    "regionScopeNone",
+    "clearRegionScope",
+    "regionScopeWarning",
+    "discoverRegions",
+    "discoveringRegions",
+    "enterRegionName",
+    "noRegionsFound",
+    "regionScopeSet",
+    "regionScopeCleared"
   ],
 
   "uk": [
     "postConnectDiscoveryTitle",
-    "postConnectDiscoveryDescription"
+    "postConnectDiscoveryDescription",
+    "setRegionScope",
+    "regionScope",
+    "regionScopeNone",
+    "clearRegionScope",
+    "regionScopeWarning",
+    "discoverRegions",
+    "discoveringRegions",
+    "enterRegionName",
+    "noRegionsFound",
+    "regionScopeSet",
+    "regionScopeCleared"
   ],
 
   "zh": [
     "postConnectDiscoveryTitle",
-    "postConnectDiscoveryDescription"
+    "postConnectDiscoveryDescription",
+    "setRegionScope",
+    "regionScope",
+    "regionScopeNone",
+    "clearRegionScope",
+    "regionScopeWarning",
+    "discoverRegions",
+    "discoveringRegions",
+    "enterRegionName",
+    "noRegionsFound",
+    "regionScopeSet",
+    "regionScopeCleared"
   ]
 }

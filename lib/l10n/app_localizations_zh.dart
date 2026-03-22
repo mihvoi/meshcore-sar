@@ -2575,4 +2575,40 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get noDeviceContactsToClear => '没有设备联系人可清除。';
+
+  @override
+  String get setRegionScope => 'Set region scope';
+
+  @override
+  String get regionScope => 'Region scope';
+
+  @override
+  String get regionScopeNone => 'None (global)';
+
+  @override
+  String get clearRegionScope => 'Clear scope';
+
+  @override
+  String get regionScopeWarning =>
+      'Only repeaters allowing this region will forward.';
+
+  @override
+  String get discoverRegions => 'Discover from repeaters';
+
+  @override
+  String get discoveringRegions => 'Discovering regions...';
+
+  @override
+  String get enterRegionName => 'Region name (e.g. auckland)';
+
+  @override
+  String get noRegionsFound => 'No regions found on this repeater.';
+
+  @override
+  String regionScopeSet(String name) {
+    return 'Region scope set to $name';
+  }
+
+  @override
+  String get regionScopeCleared => 'Region scope cleared';
 }

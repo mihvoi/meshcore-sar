@@ -27,6 +27,8 @@ class MessagesComposer extends StatelessWidget {
   final Future<void> Function() onStartVoiceRecording;
   final Future<void> Function() onStopAndSendVoice;
   final Future<void> Function() onSendMessage;
+  final String? regionScopeName;
+  final VoidCallback? onRegionScopeTap;
 
   const MessagesComposer({
     super.key,
@@ -49,6 +51,8 @@ class MessagesComposer extends StatelessWidget {
     required this.onStartVoiceRecording,
     required this.onStopAndSendVoice,
     required this.onSendMessage,
+    this.regionScopeName,
+    this.onRegionScopeTap,
   });
 
   @override
@@ -102,6 +106,14 @@ class MessagesComposer extends StatelessWidget {
                                 ? onStopAndSendVoice
                                 : onShowComposerActions,
                           ),
+                          if (regionScopeName != null &&
+                              onRegionScopeTap != null) ...[
+                            const SizedBox(width: 6),
+                            _RegionScopeChip(
+                              name: regionScopeName!,
+                              onTap: onRegionScopeTap!,
+                            ),
+                          ],
                           const SizedBox(width: 8),
                           Expanded(
                             child: _DestinationSelector(
@@ -529,6 +541,55 @@ class _SendButton extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RegionScopeChip extends StatelessWidget {
+  final String name;
+  final VoidCallback onTap;
+
+  const _RegionScopeChip({required this.name, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 40,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: colorScheme.tertiaryContainer,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: colorScheme.tertiary.withValues(alpha: 0.3),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.language_rounded,
+              size: 16,
+              color: colorScheme.onTertiaryContainer,
+            ),
+            const SizedBox(width: 4),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 80),
+              child: Text(
+                name,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: colorScheme.onTertiaryContainer,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
         ),
       ),
     );

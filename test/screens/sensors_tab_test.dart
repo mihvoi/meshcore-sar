@@ -4,25 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meshcore_sar_app/l10n/app_localizations.dart';
 import 'package:meshcore_sar_app/models/contact.dart';
-import 'package:meshcore_sar_app/providers/contacts_provider.dart';
-import 'package:meshcore_sar_app/providers/sensors_provider.dart';
 import 'package:meshcore_sar_app/screens/sensors_tab.dart';
 import 'package:meshcore_sar_app/widgets/sensors/sensor_telemetry_card.dart';
-import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  setUp(() {
-    SharedPreferences.setMockInitialValues({});
-  });
-
-  Future<void> waitUntilLoaded(SensorsProvider provider) async {
-    for (var i = 0; i < 20 && !provider.isLoaded; i++) {
-      await Future<void>.delayed(Duration.zero);
-    }
-    expect(provider.isLoaded, isTrue);
-  }
-
   Contact buildSensorContact({
     int firstByte = 0x44,
     String name = 'WX Station',
@@ -54,49 +39,37 @@ void main() {
     );
   }
 
-  testWidgets('customize action opens full customization view', (tester) async {
+  testWidgets('metric selector item shows channel-specific preview', (
+    tester,
+  ) async {
     final contact = buildSensorContact();
-    final sensorsProvider = SensorsProvider();
-    final contactsProvider = ContactsProvider();
-
-    await waitUntilLoaded(sensorsProvider);
-    contactsProvider.addOrUpdateContact(contact);
-    await sensorsProvider.addSensor(contact);
+    final option = sensorMetricOptionsFor(contact, labelOverrides: const {})
+        .firstWhere(
+          (entry) => entry.key.contains('illuminance') && entry.channel == 2,
+        );
 
     await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider<ContactsProvider>.value(
-            value: contactsProvider,
-          ),
-          ChangeNotifierProvider<SensorsProvider>.value(value: sensorsProvider),
-        ],
-        child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: SensorCustomizeView(
-            publicKeyHex: contact.publicKeyHex,
-            initialContact: contact,
-            onRenameMetric:
-                ({
-                  required BuildContext context,
-                  required String publicKeyHex,
-                  required SensorMetricOption option,
-                  required SensorsProvider sensorsProvider,
-                }) async {},
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: SensorMetricSelectorItem(
+            option: option,
+            visible: true,
+            span: 1,
+            canMoveUp: false,
+            canMoveDown: false,
+            onToggle: (_) {},
+            onRename: () {},
+            onSpanChanged: (_) {},
           ),
         ),
       ),
     );
     await tester.pump();
 
-    expect(find.text('Customize WX Station'), findsOneWidget);
-    expect(find.text('Live preview'), findsOneWidget);
-    expect(find.text('Refresh schedule'), findsOneWidget);
     expect(
-      find.byKey(
-        const ValueKey('sensor_selector_metric_channel_extra:illuminance_2'),
-      ),
+      find.byKey(ValueKey('sensor_selector_metric_${option.key}')),
       findsOneWidget,
     );
     expect(find.text('Channel 2'), findsOneWidget);

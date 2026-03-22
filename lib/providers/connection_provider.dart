@@ -562,6 +562,13 @@ class ConnectionProvider with ChangeNotifier {
         clientRepeat: deviceInfo['clientRepeat'] as bool?,
         pathHashMode: deviceInfo['pathHashMode'] as int?,
       );
+
+      // Clear any stale flood scope on connect (firmware v8+)
+      final fwVer = deviceInfo['firmwareVersion'] as int?;
+      if (fwVer != null && fwVer >= 8) {
+        clearFloodScope();
+      }
+
       notifyListeners();
     };
 
@@ -1734,6 +1741,7 @@ class ConnectionProvider with ChangeNotifier {
     required int channelIdx,
     required String text,
     String? messageId,
+    Uint8List? floodScopeKey,
   }) async {
     if (!_activeService.isConnected) {
       _error = 'Not connected to device';
@@ -1746,10 +1754,12 @@ class ConnectionProvider with ChangeNotifier {
       debugPrint('  Channel: $channelIdx');
       debugPrint('  Text: $text');
       debugPrint('  MessageID: $messageId');
+      debugPrint('  FloodScope: ${floodScopeKey != null ? "set (${floodScopeKey.length}B)" : "none"}');
 
       await _activeService.sendChannelMessage(
         channelIdx: channelIdx,
         text: text,
+        floodScopeKey: floodScopeKey,
       );
 
       debugPrint('✅ [ConnectionProvider] BLE send completed');
@@ -1814,10 +1824,21 @@ class ConnectionProvider with ChangeNotifier {
     );
   }
 
+  /// Clear the flood scope on the device (firmware v8+).
+  Future<void> clearFloodScope() async {
+    if (!_activeService.isConnected) return;
+    try {
+      await _activeService.clearFloodScope();
+    } catch (e) {
+      debugPrint('⚠️ [ConnectionProvider] Failed to clear flood scope: $e');
+    }
+  }
+
   Future<void> sendChannelData({
     required int channelIdx,
     required int dataType,
     required Uint8List payload,
+    Uint8List? floodScopeKey,
   }) async {
     if (!_activeService.isConnected) {
       _error = 'Not connected to device';
@@ -1830,6 +1851,7 @@ class ConnectionProvider with ChangeNotifier {
         channelIdx: channelIdx,
         dataType: dataType,
         payload: payload,
+        floodScopeKey: floodScopeKey,
       );
     } catch (e) {
       _error = 'Failed to send channel data: $e';

@@ -2778,5 +2778,24 @@
   "captured": "Captured",
   "size": "Size",
   "noCustomChannelsToClear": "No custom channels to clear.",
-  "noDeviceContactsToClear": "No device contacts to clear."
+  "noDeviceContactsToClear": "No device contacts to clear.",
+
+  "setRegionScope": "Set region scope",
+  "regionScope": "Region scope",
+  "regionScopeNone": "None (global)",
+  "clearRegionScope": "Clear scope",
+  "regionScopeWarning": "Only repeaters allowing this region will forward.",
+  "discoverRegions": "Discover from repeaters",
+  "discoveringRegions": "Discovering regions...",
+  "enterRegionName": "Region name (e.g. auckland)",
+  "noRegionsFound": "No regions found on this repeater.",
+  "regionScopeSet": "Region scope set to {name}",
+  "@regionScopeSet": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "regionScopeCleared": "Region scope cleared"
 }

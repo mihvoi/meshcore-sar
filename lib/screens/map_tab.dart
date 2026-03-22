@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show MissingPluginException;
 import 'package:flutter_map/flutter_map.dart' as flutter_map;
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -10,6 +11,7 @@ import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/compass_support.dart';
 import '../utils/slovenian_crs.dart';
 import '../providers/contacts_provider.dart';
 import '../providers/messages_provider.dart';
@@ -200,46 +202,64 @@ class _MapTabState extends State<MapTab> with AutomaticKeepAliveClientMixin {
   }
 
   void _startCompassTracking() {
+    if (!CompassSupport.isAvailable) {
+      return;
+    }
+
     final compassStream = FlutterCompass.events;
     if (compassStream == null) {
       return;
     }
 
     // Start listening to compass events
-    _compassStreamSubscription = compassStream.listen((CompassEvent event) {
-      // Check if widget is disposing, mounted, and event has valid heading
-      if (_isDisposing || !mounted || event.heading == null) return;
+    _compassStreamSubscription = compassStream.listen(
+      (CompassEvent event) {
+        // Check if widget is disposing, mounted, and event has valid heading
+        if (_isDisposing || !mounted || event.heading == null) return;
 
-      try {
-        setState(() {
-          _compassHeading = event.heading;
-        });
+        try {
+          setState(() {
+            _compassHeading = event.heading;
+          });
 
-        // Rotate map if rotation mode is enabled and we have compass heading
-        // Only rotate if map is ready
-        if (_rotateMarkerWithHeading &&
-            event.heading != null &&
-            _isMapReady &&
-            !_isDisposing) {
-          try {
-            // Use moveAndRotate to set absolute rotation
-            final camera = _mapController.camera;
-            _mapController.moveAndRotate(
-              camera.center,
-              camera.zoom,
-              -event.heading!,
-            );
-          } catch (e) {
-            // Map not ready yet, ignore
+          // Rotate map if rotation mode is enabled and we have compass heading
+          // Only rotate if map is ready
+          if (_rotateMarkerWithHeading &&
+              event.heading != null &&
+              _isMapReady &&
+              !_isDisposing) {
+            try {
+              // Use moveAndRotate to set absolute rotation
+              final camera = _mapController.camera;
+              _mapController.moveAndRotate(
+                camera.center,
+                camera.zoom,
+                -event.heading!,
+              );
+            } catch (e) {
+              // Map not ready yet, ignore
+            }
+          }
+        } catch (e) {
+          // Widget disposed during setState, ignore
+          if (!_isDisposing) {
+            debugPrint('Compass tracking error: $e');
           }
         }
-      } catch (e) {
-        // Widget disposed during setState, ignore
-        if (!_isDisposing) {
-          debugPrint('Compass tracking error: $e');
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        if (_isDisposing) {
+          return;
         }
-      }
-    });
+
+        if (error is MissingPluginException) {
+          debugPrint('Compass plugin is unavailable on this platform');
+          return;
+        }
+
+        debugPrint('Compass tracking stream error: $error');
+      },
+    );
   }
 
   Future<void> _loadSettings() async {
@@ -1004,7 +1024,7 @@ class _MapTabState extends State<MapTab> with AutomaticKeepAliveClientMixin {
         ),
         child: DetailedCompassDialog(
           initialPosition: _locationService.currentPosition,
-          initialHeading: _currentHeading,
+          initialHeading: _compassHeading,
           contacts: contacts,
           sarMarkers: sarMarkers,
         ),
@@ -1030,7 +1050,7 @@ class _MapTabState extends State<MapTab> with AutomaticKeepAliveClientMixin {
         ),
         child: DetailedCompassDialog(
           initialPosition: _locationService.currentPosition,
-          initialHeading: _currentHeading,
+          initialHeading: _compassHeading,
           contacts: contacts,
           sarMarkers: sarMarkers,
           preSelectedContact: selectedContact,

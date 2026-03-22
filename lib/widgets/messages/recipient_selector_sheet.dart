@@ -18,6 +18,9 @@ class RecipientSelectorSheet extends StatefulWidget {
   final bool showAllOption;
   final Function(String type, Contact? recipient) onSelect;
 
+  /// Region scope names per channel index (e.g. {0: "#auckland"}).
+  final Map<int, String> channelRegionScopes;
+
   const RecipientSelectorSheet({
     super.key,
     required this.contacts,
@@ -29,6 +32,7 @@ class RecipientSelectorSheet extends StatefulWidget {
     this.currentRecipientPublicKey,
     this.showAllOption = true,
     required this.onSelect,
+    this.channelRegionScopes = const {},
   });
 
   @override
@@ -165,13 +169,18 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
 
   String _channelSubtitle(BuildContext context, Contact channel) {
     final l10n = AppLocalizations.of(context)!;
+    final channelIdx = channel.publicKey.length > 1 ? channel.publicKey[1] : 0;
+    final scopeName = widget.channelRegionScopes[channelIdx];
+
     if (channel.isPublicChannel) {
-      return l10n.broadcastToAllNearby;
+      return scopeName != null
+          ? '${l10n.broadcastToAllNearby} • $scopeName'
+          : l10n.broadcastToAllNearby;
     }
 
-    final channelIdx = channel.publicKey.length > 1 ? channel.publicKey[1] : 0;
     final shortKey = channel.publicKeyShort.toUpperCase();
-    return '${l10n.channel} $channelIdx • $shortKey';
+    final base = '${l10n.channel} $channelIdx • $shortKey';
+    return scopeName != null ? '$base • $scopeName' : base;
   }
 
   bool _isDenseSection(String type) => type == 'channel' || type == 'contact';

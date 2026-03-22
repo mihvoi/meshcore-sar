@@ -36,6 +36,8 @@ import '../utils/tictactoe_message_parser.dart';
 import '../providers/image_provider.dart' as ip;
 import '../services/image_codec_service.dart';
 import '../services/image_preferences.dart';
+import '../services/region_scope_preferences.dart';
+import '../services/region_discovery_service.dart';
 import 'package:image_picker/image_picker.dart';
 import '../l10n/app_localizations.dart';
 
@@ -153,6 +155,11 @@ class _MessagesTabState extends State<MessagesTab> {
       MessageDestinationPreferences.destinationTypeChannel;
   Contact? _selectedRecipient;
 
+  // Region scope state
+  String? _channelRegionScopeName;
+  Uint8List? _channelRegionScopeKey;
+  Map<int, String> _channelRegionScopes = {};
+
   // Image sending state
   bool _isSendingImage = false;
   final ImagePicker _imagePicker = ImagePicker();
@@ -180,6 +187,7 @@ class _MessagesTabState extends State<MessagesTab> {
     // Load saved message destination
     _loadSavedDestination();
     _loadVoiceSettings();
+    _loadAllChannelRegionScopes();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkForNavigationRequest();
     });
@@ -483,6 +491,9 @@ class _MessagesTabState extends State<MessagesTab> {
     }
 
     _enforceMessageByteLimit();
+
+    // Load region scope for channel destinations
+    await _loadRegionScope();
   }
 
   /// Show recipient selector bottom sheet
@@ -536,6 +547,7 @@ class _MessagesTabState extends State<MessagesTab> {
         currentDestinationType: _destinationType,
         currentRecipientPublicKey: _selectedRecipient?.publicKeyHex,
         onSelect: _onRecipientSelected,
+        channelRegionScopes: _channelRegionScopes,
       ),
     );
   }
@@ -551,6 +563,9 @@ class _MessagesTabState extends State<MessagesTab> {
 
     _enforceMessageByteLimit();
 
+    // Load region scope for channel destinations
+    await _loadRegionScope();
+
     // Save to preferences
     await MessageDestinationPreferences.setDestination(
       type,
@@ -559,6 +574,51 @@ class _MessagesTabState extends State<MessagesTab> {
 
     // Show confirmation toast
     if (!mounted) return;
+  }
+
+  Future<void> _loadRegionScope() async {
+    if (_destinationType !=
+        MessageDestinationPreferences.destinationTypeChannel) {
+      if (_channelRegionScopeName != null) {
+        setState(() {
+          _channelRegionScopeName = null;
+          _channelRegionScopeKey = null;
+        });
+      }
+      return;
+    }
+    final channelIdx = _selectedRecipient?.publicKey[1] ?? 0;
+    final scope = await RegionScopePreferences.getScope(channelIdx);
+    if (!mounted) return;
+    setState(() {
+      _channelRegionScopeName = scope?.name;
+      _channelRegionScopeKey = scope?.key;
+      if (scope != null) {
+        _channelRegionScopes[channelIdx] = scope.name;
+      } else {
+        _channelRegionScopes.remove(channelIdx);
+      }
+    });
+  }
+
+  Future<void> _loadAllChannelRegionScopes() async {
+    final contactsProvider = context.read<ContactsProvider>();
+    final channels = contactsProvider.chatContacts
+        .where((c) => c.publicKey.length > 1 && c.publicKey[0] == 0)
+        .toList();
+    final scopes = <int, String>{};
+    // Always check channel 0 (public)
+    final scope0 = await RegionScopePreferences.getScope(0);
+    if (scope0 != null) scopes[0] = scope0.name;
+    for (final ch in channels) {
+      final idx = ch.publicKey[1];
+      final scope = await RegionScopePreferences.getScope(idx);
+      if (scope != null) scopes[idx] = scope.name;
+    }
+    if (!mounted) return;
+    setState(() {
+      _channelRegionScopes = scopes;
+    });
   }
 
   Future<void> _applyPendingDestination({
@@ -827,11 +887,12 @@ class _MessagesTabState extends State<MessagesTab> {
     // Add to messages list with "sending" status
     messagesProvider.addSentMessage(sentMessage, contact: _selectedRecipient);
 
-    // Send to selected channel
+    // Send to selected channel (with region scope if set)
     await connectionProvider.sendChannelMessage(
       channelIdx: channelIdx,
       text: text,
       messageId: messageId,
+      floodScopeKey: _channelRegionScopeKey,
     );
   }
 
@@ -1063,6 +1124,7 @@ class _MessagesTabState extends State<MessagesTab> {
           channelIdx: channelIdx ?? 0,
           text: envelopeText,
           messageId: msgId,
+          floodScopeKey: _channelRegionScopeKey,
         );
       } else if (recipient != null) {
         final sent = await connectionProvider.sendTextMessage(
@@ -1096,6 +1158,7 @@ class _MessagesTabState extends State<MessagesTab> {
             channelIdx: channelIdx ?? 0,
             dataType: MeshCoreConstants.dataTypeDev,
             payload: fragment.encodeBinary(),
+            floodScopeKey: _channelRegionScopeKey,
           );
         }
       }
@@ -1390,6 +1453,7 @@ class _MessagesTabState extends State<MessagesTab> {
           channelIdx: channelIdx ?? 0,
           text: envelopeText,
           messageId: msgId,
+          floodScopeKey: _channelRegionScopeKey,
         );
       } else if (recipient != null) {
         final sentSuccessfully = await connectionProvider.sendTextMessage(
@@ -1421,6 +1485,7 @@ class _MessagesTabState extends State<MessagesTab> {
           channelIdx: channelIdx ?? 0,
           dataType: MeshCoreConstants.dataTypeDev,
           payload: packet.encodeBinary(),
+          floodScopeKey: _channelRegionScopeKey,
         );
       }
     }
@@ -1649,6 +1714,20 @@ class _MessagesTabState extends State<MessagesTab> {
               await _startTicTacToeGame();
             }),
           ),
+          if (_destinationType ==
+              MessageDestinationPreferences.destinationTypeChannel)
+            _ComposerActionTile(
+              icon: _channelRegionScopeName != null
+                  ? Icons.language_rounded
+                  : Icons.public_rounded,
+              title: _channelRegionScopeName != null
+                  ? '${l10n.regionScope}: $_channelRegionScopeName'
+                  : l10n.setRegionScope,
+              color: const Color(0xFF7C3AED),
+              onTap: () => runAction(() async {
+                _showRegionScopeSheet();
+              }),
+            ),
         ];
 
         return SafeArea(
@@ -1677,6 +1756,55 @@ class _MessagesTabState extends State<MessagesTab> {
               ),
             ),
           ),
+        );
+      },
+    );
+  }
+
+  void _showRegionScopeSheet() {
+    final channelIdx = _selectedRecipient?.publicKey[1] ?? 0;
+    final contactsProvider = context.read<ContactsProvider>();
+    final connectionProvider = context.read<ConnectionProvider>();
+    final l10n = AppLocalizations.of(context)!;
+    final repeaters = contactsProvider.contacts
+        .where((c) => c.isRepeater)
+        .toList();
+
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return _RegionScopeSheet(
+          currentScopeName: _channelRegionScopeName,
+          repeaters: repeaters,
+          connectionProvider: connectionProvider,
+          l10n: l10n,
+          onScopeSelected: (String? name) async {
+            Navigator.of(sheetContext).pop();
+            if (name == null) {
+              // Clear scope
+              await RegionScopePreferences.clearScope(channelIdx);
+              if (!mounted) return;
+              setState(() {
+                _channelRegionScopeName = null;
+                _channelRegionScopeKey = null;
+                _channelRegionScopes.remove(channelIdx);
+              });
+              ToastLogger.success(context, l10n.regionScopeCleared);
+            } else {
+              // Set scope
+              final key = RegionScopePreferences.deriveRegionKey(name);
+              await RegionScopePreferences.setScope(channelIdx, name, key);
+              if (!mounted) return;
+              setState(() {
+                _channelRegionScopeName = name;
+                _channelRegionScopeKey = key;
+                _channelRegionScopes[channelIdx] = name;
+              });
+              ToastLogger.success(context, l10n.regionScopeSet(name));
+            }
+          },
         );
       },
     );
@@ -1968,6 +2096,7 @@ class _MessagesTabState extends State<MessagesTab> {
           channelIdx: 0,
           text: sarMessage,
           messageId: messageId,
+          floodScopeKey: _channelRegionScopeKey,
         );
 
         if (!mounted) return;
@@ -2266,12 +2395,242 @@ class _MessagesTabState extends State<MessagesTab> {
                   onStartVoiceRecording: _startVoiceRecording,
                   onStopAndSendVoice: _stopAndSendVoice,
                   onSendMessage: _sendMessage,
+                  regionScopeName: _channelRegionScopeName,
+                  onRegionScopeTap: _channelRegionScopeName != null
+                      ? _showRegionScopeSheet
+                      : null,
                 ),
               ),
             ],
           ),
         );
       },
+    );
+  }
+}
+
+/// Bottom sheet for selecting a region scope for the current channel.
+class _RegionScopeSheet extends StatefulWidget {
+  final String? currentScopeName;
+  final List<Contact> repeaters;
+  final ConnectionProvider connectionProvider;
+  final AppLocalizations l10n;
+  final ValueChanged<String?> onScopeSelected;
+
+  const _RegionScopeSheet({
+    required this.currentScopeName,
+    required this.repeaters,
+    required this.connectionProvider,
+    required this.l10n,
+    required this.onScopeSelected,
+  });
+
+  @override
+  State<_RegionScopeSheet> createState() => _RegionScopeSheetState();
+}
+
+class _RegionScopeSheetState extends State<_RegionScopeSheet> {
+  final TextEditingController _nameController = TextEditingController();
+  List<String> _discoveredRegions = [];
+  bool _isDiscovering = false;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _discoverRegions() async {
+    if (widget.repeaters.isEmpty) return;
+    setState(() => _isDiscovering = true);
+
+    final allRegions = <String>{};
+    for (final repeater in widget.repeaters) {
+      final regions = await RegionDiscoveryService.discoverFromRepeater(
+        repeaterPublicKey: repeater.publicKey,
+        connectionProvider: widget.connectionProvider,
+      );
+      allRegions.addAll(regions);
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _discoveredRegions = allRegions.toList()..sort();
+      _isDiscovering = false;
+    });
+
+    if (_discoveredRegions.isEmpty && mounted) {
+      ToastLogger.info(context, widget.l10n.noRegionsFound);
+    }
+  }
+
+  void _submitManualName() {
+    var name = _nameController.text.trim();
+    if (name.isEmpty) return;
+    if (!name.startsWith('#')) name = '#$name';
+    if (utf8.encode(name).length > 30) return;
+    widget.onScopeSelected(name);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final l10n = widget.l10n;
+
+    return SafeArea(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.72,
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                l10n.regionScope,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                l10n.regionScopeWarning,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // "None" option
+              _RegionOptionTile(
+                label: l10n.regionScopeNone,
+                isSelected: widget.currentScopeName == null,
+                onTap: () => widget.onScopeSelected(null),
+              ),
+              const SizedBox(height: 8),
+
+              // Manual entry
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _nameController,
+                      decoration: InputDecoration(
+                        hintText: l10n.enterRegionName,
+                        isDense: true,
+                        prefixText: '#',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                      ),
+                      onSubmitted: (_) => _submitManualName(),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton.tonal(
+                    onPressed: _submitManualName,
+                    child: const Icon(Icons.check_rounded, size: 20),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Discover button
+              if (widget.repeaters.isNotEmpty)
+                FilledButton.tonalIcon(
+                  onPressed: _isDiscovering ? null : _discoverRegions,
+                  icon: _isDiscovering
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.search_rounded, size: 18),
+                  label: Text(
+                    _isDiscovering
+                        ? l10n.discoveringRegions
+                        : l10n.discoverRegions,
+                  ),
+                ),
+
+              // Discovered regions
+              if (_discoveredRegions.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                for (final region in _discoveredRegions) ...[
+                  _RegionOptionTile(
+                    label: region,
+                    isSelected: widget.currentScopeName == region,
+                    onTap: () => widget.onScopeSelected(region),
+                  ),
+                  const SizedBox(height: 4),
+                ],
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RegionOptionTile extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _RegionOptionTile({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Material(
+      color: isSelected
+          ? colorScheme.primaryContainer
+          : colorScheme.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              Icon(
+                isSelected
+                    ? Icons.radio_button_checked_rounded
+                    : Icons.radio_button_off_rounded,
+                size: 20,
+                color: isSelected
+                    ? colorScheme.primary
+                    : colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  label,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                    color: isSelected
+                        ? colorScheme.onPrimaryContainer
+                        : colorScheme.onSurface,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

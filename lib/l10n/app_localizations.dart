@@ -5009,6 +5009,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No device contacts to clear.'**
   String get noDeviceContactsToClear;
+
+  /// No description provided for @setRegionScope.
+  ///
+  /// In en, this message translates to:
+  /// **'Set region scope'**
+  String get setRegionScope;
+
+  /// No description provided for @regionScope.
+  ///
+  /// In en, this message translates to:
+  /// **'Region scope'**
+  String get regionScope;
+
+  /// No description provided for @regionScopeNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None (global)'**
+  String get regionScopeNone;
+
+  /// No description provided for @clearRegionScope.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear scope'**
+  String get clearRegionScope;
+
+  /// No description provided for @regionScopeWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Only repeaters allowing this region will forward.'**
+  String get regionScopeWarning;
+
+  /// No description provided for @discoverRegions.
+  ///
+  /// In en, this message translates to:
+  /// **'Discover from repeaters'**
+  String get discoverRegions;
+
+  /// No description provided for @discoveringRegions.
+  ///
+  /// In en, this message translates to:
+  /// **'Discovering regions...'**
+  String get discoveringRegions;
+
+  /// No description provided for @enterRegionName.
+  ///
+  /// In en, this message translates to:
+  /// **'Region name (e.g. auckland)'**
+  String get enterRegionName;
+
+  /// No description provided for @noRegionsFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No regions found on this repeater.'**
+  String get noRegionsFound;
+
+  /// No description provided for @regionScopeSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Region scope set to {name}'**
+  String regionScopeSet(String name);
+
+  /// No description provided for @regionScopeCleared.
+  ///
+  /// In en, this message translates to:
+  /// **'Region scope cleared'**
+  String get regionScopeCleared;
 }
 
 class _AppLocalizationsDelegate
