@@ -79,6 +79,7 @@ play-store/
 create_feature_graphic.py
 
 # Tool caches and local state
+.devenv/
 .cachebro/
 .osgrep/
 third_party/lpcnet_flutter/

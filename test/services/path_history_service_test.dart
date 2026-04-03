@@ -207,6 +207,42 @@ void main() {
     },
   );
 
+  test(
+    'confirmed direct delivery promotes an observed path to learned',
+    () async {
+      final service = PathHistoryService();
+      final contact = _buildContact(
+        seed: 4,
+        pathBytes: [0xAA, 0xBB],
+        hopCount: 2,
+        hashSize: 1,
+      );
+
+      await service.initialize();
+      await service.recordReceivedBytePath(contact.publicKeyHex, [
+        0xBB,
+        0xAA,
+      ], 1);
+      await service.recordPathResult(
+        contact.publicKeyHex,
+        PathSelection(
+          mode: PathSelectionMode.directHistorical,
+          pathBytes: Uint8List.fromList([0xAA, 0xBB]),
+          hopCount: 2,
+          hashSize: 1,
+        ),
+        success: true,
+        roundTripTimeMs: 150,
+      );
+
+      final history = service.historyFor(contact.publicKeyHex);
+      expect(history.directPaths, hasLength(1));
+      expect(history.directPaths.single.source, PathRecordSource.learned);
+      expect(history.directPaths.single.successCount, 1);
+      expect(history.directPaths.single.lastRoundTripTimeMs, 150);
+    },
+  );
+
   test('clear history removes stored direct paths for one contact', () async {
     final service = PathHistoryService();
 
