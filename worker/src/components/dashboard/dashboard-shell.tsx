@@ -254,35 +254,57 @@ export function DashboardShell() {
             />
           </section>
 
-          {/* Map + Traffic trend */}
+          {/* Traffic breakdown */}
           <section className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Reporter Locations</CardTitle>
-                <CardDescription>
-                  Approximate locations from Cloudflare edge nodes, not device GPS.
-                </CardDescription>
+                <CardTitle>Traffic Breakdown</CardTitle>
+                <CardDescription>Observed traffic composition across all reporting nodes</CardDescription>
               </CardHeader>
-              <CardContent>
-                <ReporterMap locations={summary?.locationPoints ?? []} />
+              <CardContent className="space-y-5">
+                {comp && compTotal > 0 ? (
+                  <>
+                    <div className="flex h-6 overflow-hidden rounded-full">
+                      <div className="bg-primary" style={{ width: `${(comp.human / compTotal) * 100}%` }} title={`Messages: ${comp.human}`} />
+                      <div className="bg-amber-400" style={{ width: `${(comp.acks / compTotal) * 100}%` }} title={`Acks: ${comp.acks}`} />
+                      <div className="bg-secondary" style={{ width: `${(comp.overhead / compTotal) * 100}%` }} title={`Overhead: ${comp.overhead}`} />
+                    </div>
+                    <div className="grid grid-cols-3 gap-3 text-center">
+                      <div>
+                        <div className="mx-auto mb-1 h-2.5 w-2.5 rounded-full bg-primary" />
+                        <div className="text-lg font-semibold tabular-nums">{comp.human.toLocaleString()}</div>
+                        <div className="text-xs text-muted-foreground">Messages</div>
+                      </div>
+                      <div>
+                        <div className="mx-auto mb-1 h-2.5 w-2.5 rounded-full bg-amber-400" />
+                        <div className="text-lg font-semibold tabular-nums">{comp.acks.toLocaleString()}</div>
+                        <div className="text-xs text-muted-foreground">Acks</div>
+                      </div>
+                      <div>
+                        <div className="mx-auto mb-1 h-2.5 w-2.5 rounded-full bg-secondary" />
+                        <div className="text-lg font-semibold tabular-nums">{comp.overhead.toLocaleString()}</div>
+                        <div className="text-xs text-muted-foreground">Overhead</div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <EmptyState label="No traffic data yet." />
+                )}
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>Observations Over Time</CardTitle>
+                <CardTitle>Messages vs Protocol Overhead</CardTitle>
                 <CardDescription>
-                  Per-node average observations per {summary?.filter.bucket ?? "time"} bucket.
-                  Normalizing by reporter count removes the bias of more nodes = higher numbers.
+                  Human messages (text + group text) compared to protocol overhead (acks, advertisements, routing, control) over time.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {isLoading && !summary ? (
-                  <EmptyState label="Loading..." />
-                ) : summary?.chartPoints.length ? (
-                  <TrafficChart points={summary.chartPoints} maxValue={maxTrend} />
+                {summary?.compositionOverTime.length ? (
+                  <CompositionChart points={summary.compositionOverTime} />
                 ) : (
-                  <EmptyState label="No data for this window." />
+                  <EmptyState label="No composition data yet." />
                 )}
               </CardContent>
             </Card>
@@ -340,91 +362,67 @@ export function DashboardShell() {
               </CardContent>
             </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Path Routing Modes</CardTitle>
-                  <CardDescription>
-                    Path hash byte length determines routing precision.
-                    Longer hashes allow more specific multi-hop paths.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {activePathModes.length ? (
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                      {activePathModes.map((entry) => {
-                        const pct = totalPackets > 0 ? ((entry.total / totalPackets) * 100).toFixed(1) : "0";
-                        return (
-                          <div key={entry.key} className="rounded-xl border border-border/50 bg-secondary/30 p-4 text-center">
-                            <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
-                              {PATH_MODE_ICONS[entry.key] ?? "?"}
-                            </div>
-                            <div className="text-lg font-semibold tabular-nums">{entry.total.toLocaleString()}</div>
-                            <div className="mt-0.5 text-xs text-muted-foreground">{entry.label}</div>
-                            <div className="mt-1 text-xs text-muted-foreground">{pct}%</div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <EmptyState label="No path mode samples." />
-                  )}
-                </CardContent>
-              </Card>
-
-          </section>
-
-          {/* Messages vs Overhead over time */}
-          <section className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Messages vs Protocol Overhead</CardTitle>
+                <CardTitle>Path Routing Modes</CardTitle>
                 <CardDescription>
-                  Human messages (text + group text) compared to protocol overhead (acks, advertisements, routing, control) over time.
+                  Path hash byte length determines routing precision.
+                  Longer hashes allow more specific multi-hop paths.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {summary?.compositionOverTime.length ? (
-                  <CompositionChart points={summary.compositionOverTime} />
+                {activePathModes.length ? (
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                    {activePathModes.map((entry) => {
+                      const pct = totalPackets > 0 ? ((entry.total / totalPackets) * 100).toFixed(1) : "0";
+                      return (
+                        <div key={entry.key} className="rounded-xl border border-border/50 bg-secondary/30 p-4 text-center">
+                          <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+                            {PATH_MODE_ICONS[entry.key] ?? "?"}
+                          </div>
+                          <div className="text-lg font-semibold tabular-nums">{entry.total.toLocaleString()}</div>
+                          <div className="mt-0.5 text-xs text-muted-foreground">{entry.label}</div>
+                          <div className="mt-1 text-xs text-muted-foreground">{pct}%</div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 ) : (
-                  <EmptyState label="No composition data yet." />
+                  <EmptyState label="No path mode samples." />
                 )}
+              </CardContent>
+            </Card>
+          </section>
+
+          {/* Map + Traffic trend */}
+          <section className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Reporter Locations</CardTitle>
+                <CardDescription>
+                  Approximate locations from Cloudflare edge nodes, not device GPS.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ReporterMap locations={summary?.locationPoints ?? []} />
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>Traffic Breakdown</CardTitle>
-                <CardDescription>Observed traffic composition across all reporting nodes</CardDescription>
+                <CardTitle>Observations Over Time</CardTitle>
+                <CardDescription>
+                  Per-node average observations per {summary?.filter.bucket ?? "time"} bucket.
+                  Normalizing by reporter count removes the bias of more nodes = higher numbers.
+                </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-5">
-                {comp && compTotal > 0 ? (
-                  <>
-                    {/* stacked bar */}
-                    <div className="flex h-6 overflow-hidden rounded-full">
-                      <div className="bg-primary" style={{ width: `${(comp.human / compTotal) * 100}%` }} title={`Messages: ${comp.human}`} />
-                      <div className="bg-amber-400" style={{ width: `${(comp.acks / compTotal) * 100}%` }} title={`Acks: ${comp.acks}`} />
-                      <div className="bg-secondary" style={{ width: `${(comp.overhead / compTotal) * 100}%` }} title={`Overhead: ${comp.overhead}`} />
-                    </div>
-                    <div className="grid grid-cols-3 gap-3 text-center">
-                      <div>
-                        <div className="mx-auto mb-1 h-2.5 w-2.5 rounded-full bg-primary" />
-                        <div className="text-lg font-semibold tabular-nums">{comp.human.toLocaleString()}</div>
-                        <div className="text-xs text-muted-foreground">Messages</div>
-                      </div>
-                      <div>
-                        <div className="mx-auto mb-1 h-2.5 w-2.5 rounded-full bg-amber-400" />
-                        <div className="text-lg font-semibold tabular-nums">{comp.acks.toLocaleString()}</div>
-                        <div className="text-xs text-muted-foreground">Acks</div>
-                      </div>
-                      <div>
-                        <div className="mx-auto mb-1 h-2.5 w-2.5 rounded-full bg-secondary" />
-                        <div className="text-lg font-semibold tabular-nums">{comp.overhead.toLocaleString()}</div>
-                        <div className="text-xs text-muted-foreground">Overhead</div>
-                      </div>
-                    </div>
-                  </>
+              <CardContent>
+                {isLoading && !summary ? (
+                  <EmptyState label="Loading..." />
+                ) : summary?.chartPoints.length ? (
+                  <TrafficChart points={summary.chartPoints} maxValue={maxTrend} />
                 ) : (
-                  <EmptyState label="No traffic data yet." />
+                  <EmptyState label="No data for this window." />
                 )}
               </CardContent>
             </Card>
@@ -500,8 +498,8 @@ function CompositionChart({ points }: { points: CompositionPoint[] }) {
     <div className="relative select-none">
       <svg
         viewBox={`${-pad.left} ${-pad.top} ${innerW + pad.left + pad.right} ${innerH + pad.top + pad.bottom}`}
-        className="h-auto w-full"
-        preserveAspectRatio="none"
+        className="h-auto max-h-[280px] w-full"
+        preserveAspectRatio="xMidYMid meet"
         onMouseLeave={() => setHover(null)}
       >
         <defs>
@@ -626,8 +624,8 @@ function TrafficChart({ points, maxValue: _rawMax }: { points: ChartPoint[]; max
     <div className="relative select-none">
       <svg
         viewBox={`${-CHART_PAD.left} ${-CHART_PAD.top} ${innerW + CHART_PAD.left + CHART_PAD.right} ${CHART_H}`}
-        className="h-auto w-full"
-        preserveAspectRatio="none"
+        className="h-auto max-h-[280px] w-full"
+        preserveAspectRatio="xMidYMid meet"
         onMouseLeave={() => setHover(null)}
       >
         <defs>

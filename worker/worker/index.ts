@@ -105,7 +105,9 @@ async function handleDashboard(request: Request, env: Env): Promise<Response> {
   }
 
   const url = new URL(request.url);
-  const summary = await loadDashboardSummary(env, url.searchParams.get("window"));
+  const windowParam = url.searchParams.get("window");
+  const summary = await loadDashboardSummary(env, windowParam);
+  const cacheTtl = windowParam === "7d" || windowParam === "30d" ? 86400 : 60;
   return Response.json(
     {
       generatedAt: new Date().toISOString(),
@@ -114,8 +116,8 @@ async function handleDashboard(request: Request, env: Env): Promise<Response> {
     {
       headers: {
         ...jsonHeaders,
-        "cache-control": "public, max-age=60, s-maxage=60",
-        "cdn-cache-control": "max-age=60",
+        "cache-control": `public, max-age=${cacheTtl}, s-maxage=${cacheTtl}`,
+        "cdn-cache-control": `max-age=${cacheTtl}`,
       },
     },
   );
