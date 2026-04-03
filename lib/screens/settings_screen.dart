@@ -38,6 +38,7 @@ import '../utils/voice_message_parser.dart';
 import '../theme/app_theme.dart';
 import '../l10n/app_localizations.dart';
 import '../widgets/update_dialog.dart';
+import '../widgets/settings/traffic_stats_reporting_section.dart';
 import 'sar_template_management_screen.dart';
 import 'profiles_screen.dart';
 import 'welcome_wizard_screen.dart';
@@ -2162,6 +2163,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           _buildSectionHeader('Developer & Data'),
           _buildSettingsCard([
+            Consumer<AppProvider>(
+              builder: (context, appProvider, child) => ListenableBuilder(
+                listenable: appProvider.trafficStatsReportingService,
+                builder: (context, child) => TrafficStatsReportingSection(
+                  service: appProvider.trafficStatsReportingService,
+                ),
+              ),
+            ),
             ListTile(
               leading: Icon(Icons.bug_report),
               title: Text(AppLocalizations.of(context)!.packageName),

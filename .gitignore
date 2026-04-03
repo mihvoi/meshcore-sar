@@ -83,6 +83,11 @@ create_feature_graphic.py
 .cachebro/
 .osgrep/
 third_party/lpcnet_flutter/
+worker/node_modules/
+worker/.wrangler/
+worker/.bun/
+worker/.astro/
+worker/dist/
 
 # Claude Code local settings (permissions, personal config)
 .claude/settings.local.json

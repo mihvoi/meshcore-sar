@@ -3,6 +3,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../models/ble_packet_log.dart';
 import '../models/contact.dart';
@@ -12,6 +13,7 @@ import '../providers/connection_provider.dart';
 import '../services/live_traffic_summary.dart';
 import '../services/location_tracking_service.dart';
 import '../services/route_hash_preferences.dart';
+import '../services/traffic_stats_reporting_service.dart';
 import '../utils/log_rx_route_decoder.dart';
 import '../widgets/compact_signal_indicator.dart';
 import '../widgets/messages/message_trace_sheet.dart';
@@ -157,6 +159,11 @@ class _LiveTrafficScreenState extends State<LiveTrafficScreen> {
               icon: const Icon(Icons.list_alt_rounded),
             ),
           IconButton(
+            onPressed: _openStatsDashboard,
+            tooltip: 'View public stats',
+            icon: const Icon(Icons.open_in_new),
+          ),
+          IconButton(
             onPressed: () => _showPacketTypeHelpSheet(context),
             tooltip: 'Packet type help',
             icon: const Icon(Icons.help_outline),
@@ -254,6 +261,13 @@ class _LiveTrafficScreenState extends State<LiveTrafficScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _openStatsDashboard() async {
+    final url = TrafficStatsReportingService.dashboardUri;
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
   }
 
   Future<void> _showWindowPicker(BuildContext context) async {

@@ -1,6 +1,5 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meshcore_sar_app/models/channel.dart';
 import 'package:meshcore_sar_app/models/ble_packet_log.dart';
@@ -67,6 +66,39 @@ Widget _testApp(Widget child, {ChannelsProvider? channelsProvider}) {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  final launchedUrls = <String>[];
+
+  setUp(() {
+    launchedUrls.clear();
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          const MethodChannel('plugins.flutter.io/url_launcher'),
+          (call) async {
+            switch (call.method) {
+              case 'canLaunch':
+                return true;
+              case 'launch':
+                final arguments = Map<dynamic, dynamic>.from(
+                  call.arguments as Map<dynamic, dynamic>,
+                );
+                launchedUrls.add(arguments['url'] as String);
+                return true;
+            }
+            return null;
+          },
+        );
+  });
+
+  tearDown(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          const MethodChannel('plugins.flutter.io/url_launcher'),
+          null,
+        );
+  });
+
   testWidgets('shows empty state before traffic arrives', (tester) async {
     final logs = <BlePacketLog>[];
     final refresh = ValueNotifier<int>(0);
@@ -271,6 +303,27 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('FLOOD CONTROL'), findsOneWidget);
+  });
+
+  testWidgets('opens public stats from the app bar', (tester) async {
+    final logs = <BlePacketLog>[];
+    final refresh = ValueNotifier<int>(0);
+    final now = DateTime(2026, 3, 12, 12, 0, 0);
+
+    await tester.pumpWidget(
+      _testApp(
+        LiveTrafficScreen(
+          logReader: () => logs,
+          refreshListenable: refresh,
+          now: () => now,
+        ),
+      ),
+    );
+
+    await tester.tap(find.byTooltip('View public stats'));
+    await tester.pump();
+
+    expect(launchedUrls, ['https://mcstats.dz0ny.dev']);
   });
 
   testWidgets('summary metrics expand across wide layouts', (tester) async {

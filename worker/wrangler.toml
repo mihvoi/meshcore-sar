@@ -1,0 +1,19 @@
+name = "meshcore-sar-rx-stats"
+main = "worker/index.ts"
+compatibility_date = "2026-04-03"
+compatibility_flags = ["nodejs_compat"]
+
+[observability.logs]
+enabled = false
+
+[placement]
+mode = "smart"
+
+[assets]
+directory = "./dist"
+not_found_handling = "404-page"
+run_worker_first = ["/api/*"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "meshcore_sar_rx_stats"

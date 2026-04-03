@@ -19,6 +19,7 @@ import '../services/messaging_route_preferences.dart';
 import '../services/nearest_router_selector.dart';
 import '../services/packet_capture_storage_service.dart';
 import '../services/path_history_service.dart';
+import '../services/traffic_stats_reporting_service.dart';
 import '../utils/rssi_location_estimator.dart';
 import '../services/profiles_feature_service.dart';
 import '../services/route_hash_preferences.dart';
@@ -159,6 +160,8 @@ class AppProvider with ChangeNotifier {
       LocationTrackingService();
   final PacketCaptureStorageService packetCaptureStorageService =
       PacketCaptureStorageService();
+  final TrafficStatsReportingService trafficStatsReportingService =
+      TrafficStatsReportingService();
   final NotificationService _notificationService = NotificationService();
 
   bool _isInitialized = false;
@@ -264,6 +267,11 @@ class AppProvider with ChangeNotifier {
     _loadVoiceNoiseSuppressionEnabled();
     _loadMessageFontScale();
     _loadMessagingRouteSettings();
+    unawaited(
+      trafficStatsReportingService.initialize(
+        deviceKey6Provider: _deviceKey6Hex,
+      ),
+    );
     unawaited(_pathHistoryService.initialize());
     _startPacketCapturePersistence();
     _startLowBatteryWatcher();
@@ -397,6 +405,7 @@ class AppProvider with ChangeNotifier {
 
       if (toPersist.isNotEmpty) {
         await packetCaptureStorageService.appendLogs(toPersist);
+        await trafficStatsReportingService.processLogs(toPersist);
       }
       _lastPersistedPacketSignature = _packetLogSignature(logs.last);
     } catch (e) {
@@ -4135,6 +4144,7 @@ class AppProvider with ChangeNotifier {
     }
     _pendingChannelVoicePackets.clear();
     _pendingChannelImageFragments.clear();
+    trafficStatsReportingService.dispose();
     super.dispose();
   }
 }
