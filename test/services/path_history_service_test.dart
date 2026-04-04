@@ -1,44 +1,31 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:meshcore_sar_app/models/contact.dart';
-import 'package:meshcore_sar_app/models/path_history.dart';
 import 'package:meshcore_sar_app/models/path_selection.dart';
 import 'package:meshcore_sar_app/services/path_history_service.dart';
 
 Contact _buildContact({
   required int seed,
-  required List<int> pathBytes,
-  required int hopCount,
-  required int hashSize,
+  List<int> pathBytes = const [],
+  int hopCount = 0,
+  int hashSize = 1,
 }) {
-  final encoded = ((hashSize - 1) << 6) | (hopCount & 0x3F);
-  final outPath = Uint8List(ContactRouteCodec.maxPathBytes)
-    ..setRange(0, pathBytes.length, pathBytes);
+  final encoded = pathBytes.isEmpty ? -1 : ((hashSize - 1) << 6) | (hopCount & 0x3F);
+  final outPath = Uint8List(ContactRouteCodec.maxPathBytes);
+  if (pathBytes.isNotEmpty) {
+    outPath.setRange(0, pathBytes.length, pathBytes);
+  }
 
   return Contact(
     publicKey: Uint8List.fromList(List<int>.generate(32, (i) => i + seed)),
     type: ContactType.chat,
     flags: 0,
-    outPathLen: ContactRouteCodec.toSignedDescriptor(encoded),
-    outPath: outPath,
-    advName: 'Contact $seed',
-    lastAdvert: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-    advLat: 0,
-    advLon: 0,
-    lastMod: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-  );
-}
-
-Contact _buildContactWithoutRoute({required int seed}) {
-  return Contact(
-    publicKey: Uint8List.fromList(List<int>.generate(32, (i) => i + seed)),
-    type: ContactType.chat,
-    flags: 0,
-    outPathLen: -1,
-    outPath: Uint8List(0),
+    outPathLen: encoded == -1 ? -1 : ContactRouteCodec.toSignedDescriptor(encoded),
+    outPath: encoded == -1 ? Uint8List(0) : outPath,
     advName: 'Contact $seed',
     lastAdvert: DateTime.now().millisecondsSinceEpoch ~/ 1000,
     advLat: 0,
@@ -54,117 +41,10 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  test('auto rotation ranks best paths before flood', () async {
+  test('manual route override persists across reloads', () async {
+    final contact = _buildContact(seed: 1);
     final service = PathHistoryService();
-    final contact = _buildContactWithoutRoute(seed: 0);
-    final best = PathSelection(
-      mode: PathSelectionMode.directHistorical,
-      pathBytes: Uint8List.fromList([0xAA, 0xBB]),
-      hopCount: 2,
-      hashSize: 1,
-    );
-    final second = PathSelection(
-      mode: PathSelectionMode.directHistorical,
-      pathBytes: Uint8List.fromList([0xCC, 0xDD]),
-      hopCount: 2,
-      hashSize: 1,
-    );
-
     await service.initialize();
-    await service.recordPathResult(
-      contact.publicKeyHex,
-      best,
-      success: true,
-      roundTripTimeMs: 120,
-    );
-    await service.recordPathResult(
-      contact.publicKeyHex,
-      best,
-      success: true,
-      roundTripTimeMs: 110,
-    );
-    await service.recordPathResult(
-      contact.publicKeyHex,
-      second,
-      success: true,
-      roundTripTimeMs: 200,
-    );
-    await service.recordPathResult(
-      contact.publicKeyHex,
-      second,
-      success: false,
-    );
-
-    final first = await service.getSelectionForContact(
-      contact,
-      autoRouteRotationEnabled: true,
-    );
-    final third = await service.getSelectionForContact(
-      contact,
-      autoRouteRotationEnabled: true,
-    );
-    final secondPick = await service.getSelectionForContact(
-      contact,
-      autoRouteRotationEnabled: true,
-    );
-
-    expect(first.mode, PathSelectionMode.directHistorical);
-    expect(first.canonicalPath, 'AA,BB');
-    expect(third.mode, PathSelectionMode.directHistorical);
-    expect(third.canonicalPath, 'CC,DD');
-    expect(secondPick.mode, PathSelectionMode.flood);
-  });
-
-  test(
-    'contact route alone does not override history selection',
-    () async {
-      final service = PathHistoryService();
-      final contact = _buildContact(
-        seed: 9,
-        pathBytes: [0xAA, 0xBB, 0xCC],
-        hopCount: 1,
-        hashSize: 3,
-      );
-
-      await service.initialize();
-      await service.recordPathResult(
-        contact.publicKeyHex,
-        PathSelection(
-          mode: PathSelectionMode.directHistorical,
-          pathBytes: Uint8List.fromList([0x11, 0x22, 0x33]),
-          hopCount: 1,
-          hashSize: 3,
-        ),
-        success: true,
-        roundTripTimeMs: 90,
-      );
-
-      final selection = await service.getSelectionForContact(
-        contact,
-        autoRouteRotationEnabled: true,
-      );
-
-      expect(selection.mode, PathSelectionMode.directHistorical);
-      expect(selection.canonicalPath, '112233');
-    },
-  );
-
-  test('manual route overrides history selection until cleared', () async {
-    final service = PathHistoryService();
-    final contact = _buildContactWithoutRoute(seed: 10);
-
-    await service.initialize();
-    await service.recordPathResult(
-      contact.publicKeyHex,
-      PathSelection(
-        mode: PathSelectionMode.directHistorical,
-        pathBytes: Uint8List.fromList([0x11, 0x22]),
-        hopCount: 2,
-        hashSize: 1,
-      ),
-      success: true,
-      roundTripTimeMs: 100,
-    );
     await service.setManualSelectionFor(
       contact.publicKeyHex,
       PathSelection(
@@ -175,237 +55,129 @@ void main() {
       ),
     );
 
-    final selection = await service.getSelectionForContact(
-      contact,
-      autoRouteRotationEnabled: true,
-    );
+    final reloaded = PathHistoryService();
+    final selection = await reloaded.getManualSelectionForContact(contact);
 
-    expect(selection.mode, PathSelectionMode.directCurrent);
+    expect(selection, isNotNull);
+    expect(selection!.mode, PathSelectionMode.directCurrent);
     expect(selection.canonicalPath, 'AA,BB');
   });
 
-  test('no history falls back to flood', () async {
-    final service = PathHistoryService();
-    final contact = _buildContactWithoutRoute(seed: 0);
-
-    final selection = await service.getSelectionForContact(
-      contact,
-      autoRouteRotationEnabled: true,
+  test('selection uses stored manual route before contact route', () async {
+    final contact = _buildContact(
+      seed: 2,
+      pathBytes: const [0x11, 0x22],
+      hopCount: 2,
+      hashSize: 1,
     );
-
-    expect(selection.mode, PathSelectionMode.flood);
-  });
-
-  test(
-    'received public byte path is reversed before adding to history',
-    () async {
-      final service = PathHistoryService();
-      await service.initialize();
-      await service.recordReceivedBytePath('abc123', [
-        0x01,
-        0x02,
-        0x03,
-        0x04,
-      ], 2);
-
-      final history = service.historyFor('abc123');
-      expect(history.directPaths, hasLength(1));
-      expect(history.directPaths.single.pathBytes, [0x03, 0x04, 0x01, 0x02]);
-      expect(history.directPaths.single.hashSize, 2);
-      expect(history.directPaths.single.hopCount, 2);
-      expect(history.directPaths.single.source, PathRecordSource.observed);
-    },
-  );
-
-  test(
-    'observed paths stay marked as observed until delivery succeeds',
-    () async {
-      final service = PathHistoryService();
-      final contact = _buildContact(
-        seed: 3,
-        pathBytes: [0xAA, 0xBB],
-        hopCount: 2,
-        hashSize: 1,
-      );
-
-      await service.initialize();
-      await service.recordReceivedBytePath(contact.publicKeyHex, [
-        0xBB,
-        0xAA,
-      ], 1);
-
-      final history = service.historyFor(contact.publicKeyHex);
-      expect(history.directPaths, hasLength(1));
-      expect(history.directPaths.single.source, PathRecordSource.observed);
-    },
-  );
-
-  test(
-    'confirmed direct delivery promotes an observed path to learned',
-    () async {
-      final service = PathHistoryService();
-      final contact = _buildContact(
-        seed: 4,
-        pathBytes: [0xAA, 0xBB],
-        hopCount: 2,
-        hashSize: 1,
-      );
-
-      await service.initialize();
-      await service.recordReceivedBytePath(contact.publicKeyHex, [
-        0xBB,
-        0xAA,
-      ], 1);
-      await service.recordPathResult(
-        contact.publicKeyHex,
-        PathSelection(
-          mode: PathSelectionMode.directHistorical,
-          pathBytes: Uint8List.fromList([0xAA, 0xBB]),
-          hopCount: 2,
-          hashSize: 1,
-        ),
-        success: true,
-        roundTripTimeMs: 150,
-      );
-
-      final history = service.historyFor(contact.publicKeyHex);
-      expect(history.directPaths, hasLength(1));
-      expect(history.directPaths.single.source, PathRecordSource.learned);
-      expect(history.directPaths.single.successCount, 1);
-      expect(history.directPaths.single.lastRoundTripTimeMs, 150);
-    },
-  );
-
-  test('clear history removes stored direct paths for one contact', () async {
     final service = PathHistoryService();
-
-    await service.initialize();
-    await service.recordReceivedBytePath('abc123', [0x01, 0x02], 1);
-    await service.recordReceivedBytePath('def456', [0x03, 0x04], 1);
-
-    expect(service.historyFor('abc123').directPaths, hasLength(1));
-    expect(service.historyFor('def456').directPaths, hasLength(1));
-
-    await service.clearHistoryFor('abc123');
-
-    expect(service.historyFor('abc123').directPaths, isEmpty);
-    expect(service.historyFor('def456').directPaths, hasLength(1));
-  });
-
-  test('clearing manual route falls back to flood without history', () async {
-    final service = PathHistoryService();
-    final contact = _buildContactWithoutRoute(seed: 11);
-
     await service.initialize();
     await service.setManualSelectionFor(
       contact.publicKeyHex,
       PathSelection(
         mode: PathSelectionMode.directCurrent,
-        pathBytes: Uint8List.fromList([0xAA]),
-        hopCount: 1,
+        pathBytes: Uint8List.fromList([0xAA, 0xBB]),
+        hopCount: 2,
+        hashSize: 1,
+      ),
+    );
+
+    final selection = await service.getSelectionForContact(contact);
+
+    expect(selection.mode, PathSelectionMode.directCurrent);
+    expect(selection.canonicalPath, 'AA,BB');
+  });
+
+  test('selection falls back to the current contact route', () async {
+    final contact = _buildContact(
+      seed: 3,
+      pathBytes: const [0x10, 0x20, 0x30],
+      hopCount: 1,
+      hashSize: 3,
+    );
+    final service = PathHistoryService();
+
+    final selection = await service.getSelectionForContact(contact);
+
+    expect(selection.mode, PathSelectionMode.directCurrent);
+    expect(selection.canonicalPath, '102030');
+    expect(selection.hashSize, 3);
+    expect(selection.hopCount, 1);
+  });
+
+  test('selection falls back to flood when no route exists', () async {
+    final contact = _buildContact(seed: 4);
+    final service = PathHistoryService();
+
+    final selection = await service.getSelectionForContact(contact);
+
+    expect(selection.mode, PathSelectionMode.flood);
+    expect(selection.pathBytes, isEmpty);
+  });
+
+  test('clearing manual route falls back to the contact route', () async {
+    final contact = _buildContact(
+      seed: 5,
+      pathBytes: const [0x01, 0x02],
+      hopCount: 2,
+      hashSize: 1,
+    );
+    final service = PathHistoryService();
+    await service.initialize();
+    await service.setManualSelectionFor(
+      contact.publicKeyHex,
+      PathSelection(
+        mode: PathSelectionMode.directCurrent,
+        pathBytes: Uint8List.fromList([0xAA, 0xBB]),
+        hopCount: 2,
         hashSize: 1,
       ),
     );
 
     await service.clearManualRouteFor(contact.publicKeyHex);
+    final selection = await service.getSelectionForContact(contact);
 
-    final selection = await service.getSelectionForContact(
-      contact,
-      autoRouteRotationEnabled: true,
-    );
-
-    expect(selection.mode, PathSelectionMode.flood);
+    expect(selection.mode, PathSelectionMode.directCurrent);
+    expect(selection.canonicalPath, '01,02');
   });
 
-  test(
-    'clear history for contact leaves the contact route ignored',
-    () async {
-      final service = PathHistoryService();
-      final contact = _buildContact(
-        seed: 5,
-        pathBytes: [0xAA, 0xBB],
-        hopCount: 2,
-        hashSize: 1,
-      );
-
-      await service.initialize();
-      await service.recordPathResult(
-        contact.publicKeyHex,
-        PathSelection(
-          mode: PathSelectionMode.directHistorical,
-          pathBytes: Uint8List.fromList([0xAA, 0xBB]),
-          hopCount: 2,
-          hashSize: 1,
-        ),
-        success: true,
-        roundTripTimeMs: 120,
-      );
-      expect(service.historyFor(contact.publicKeyHex).directPaths, hasLength(1));
-
-      await service.clearHistoryForContact(contact);
-      expect(service.historyFor(contact.publicKeyHex).directPaths, isEmpty);
-
-      final selection = await service.getSelectionForContact(
-        contact,
-        autoRouteRotationEnabled: true,
-      );
-
-      expect(selection.mode, PathSelectionMode.flood);
-    },
-  );
-
-  test('last successful direct path is chosen by location fit', () async {
-    final service = PathHistoryService();
-    final contact = _buildContact(
-      seed: 7,
-      pathBytes: [0xAA],
-      hopCount: 1,
-      hashSize: 1,
+  test('initialize removes legacy path history storage', () async {
+    final contact = Contact(
+      publicKey: Uint8List.fromList([
+        0xAB,
+        0xC1,
+        0x23,
+        ...List<int>.filled(29, 0),
+      ]),
+      type: ContactType.chat,
+      flags: 0,
+      outPathLen: -1,
+      outPath: Uint8List(0),
+      advName: 'Legacy Contact',
+      lastAdvert: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      advLat: 0,
+      advLon: 0,
+      lastMod: DateTime.now().millisecondsSinceEpoch ~/ 1000,
     );
+
+    SharedPreferences.setMockInitialValues({
+      'contact_path_history_v2': '{"abc123":{"direct_paths":[]}}',
+      'contact_manual_path_overrides_v1': jsonEncode({
+        contact.publicKeyHex: {
+          'pathBytes': [0xAA, 0xBB],
+          'hopCount': 2,
+          'hashSize': 1,
+        },
+      }),
+    });
+    final service = PathHistoryService();
 
     await service.initialize();
-    await service.recordPathResult(
-      contact.publicKeyHex,
-      PathSelection(
-        mode: PathSelectionMode.directHistorical,
-        pathBytes: Uint8List.fromList([0x11]),
-        hopCount: 1,
-        hashSize: 1,
-      ),
-      success: true,
-      roundTripTimeMs: 120,
-      senderLatitude: 46.0,
-      senderLongitude: 14.0,
-      recipientLatitude: 46.1,
-      recipientLongitude: 14.1,
-    );
-    await service.recordPathResult(
-      contact.publicKeyHex,
-      PathSelection(
-        mode: PathSelectionMode.directHistorical,
-        pathBytes: Uint8List.fromList([0x22]),
-        hopCount: 1,
-        hashSize: 1,
-      ),
-      success: true,
-      roundTripTimeMs: 90,
-      senderLatitude: 46.0001,
-      senderLongitude: 14.0001,
-      recipientLatitude: 46.1001,
-      recipientLongitude: 14.1001,
-    );
 
-    final selection = await service.getLastSuccessfulDirectSelection(
-      contact,
-      excludeSignature: 'aa',
-      senderLatitude: 46.0002,
-      senderLongitude: 14.0002,
-      recipientLatitude: 46.1002,
-      recipientLongitude: 14.1002,
-    );
-
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.containsKey('contact_path_history_v2'), isFalse);
+    final selection = await service.getManualSelectionForContact(contact);
     expect(selection, isNotNull);
-    expect(selection!.mode, PathSelectionMode.directHistorical);
-    expect(selection.canonicalPath, '22');
+    expect(selection!.canonicalPath, 'AA,BB');
   });
 }

@@ -1488,19 +1488,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             Consumer<AppProvider>(
               builder: (context, appProvider, child) => SwitchListTile(
-                secondary: Icon(Icons.swap_horiz),
-                title: Text(AppLocalizations.of(context)!.autoRouteRotation),
-                subtitle: const Text(
-                  'Rotate between best known direct paths and flood mode for room/contact sends',
-                ),
-                value: appProvider.autoRouteRotationEnabled,
-                onChanged: (value) async {
-                  await appProvider.toggleAutoRouteRotationEnabled(value);
-                },
-              ),
-            ),
-            Consumer<AppProvider>(
-              builder: (context, appProvider, child) => SwitchListTile(
                 secondary: Icon(Icons.route),
                 title: Text(
                   AppLocalizations.of(context)!.nearestRepeaterFallback,

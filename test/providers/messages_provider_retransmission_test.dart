@@ -10,13 +10,16 @@ import 'package:meshcore_sar_app/providers/helpers/message_retry_manager.dart';
 import 'package:meshcore_sar_app/providers/messages_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-Contact _buildContact() {
+Contact _buildContact({
+  int outPathLen = 1,
+  List<int> outPath = const [1, 2, 3, 4],
+}) {
   return Contact(
     publicKey: Uint8List.fromList(List<int>.generate(32, (i) => i)),
     type: ContactType.chat,
     flags: 0,
-    outPathLen: 1,
-    outPath: Uint8List.fromList([1, 2, 3, 4]),
+    outPathLen: outPathLen,
+    outPath: Uint8List.fromList(outPath),
     advName: 'Teammate',
     lastAdvert: 1700000000,
     advLat: 0,
@@ -160,6 +163,42 @@ void main() {
         MessageDeliveryStatus.delivered,
       );
       expect(provider.messages.single.roundTripTimeMs, 190);
+    });
+
+    test('delivered flood message upgrades to learned direct route from ACK path', () {
+      final provider = MessagesProvider();
+      final contactWithoutRoute = _buildContact(outPathLen: -1, outPath: []);
+      provider.addSentMessage(
+        _buildDirectMessage('m1d'),
+        contact: contactWithoutRoute,
+      );
+      provider.updateMessageRouteSelection(
+        'm1d',
+        PathSelection.flood(),
+        routerFallbackAttempted: false,
+      );
+
+      provider.markMessageSent('m1d', 80, 250);
+      provider.markMessageDelivered(80, 200);
+      provider.queueDeliveredMessageRouteRefresh('m1d', contactWithoutRoute);
+
+      final applied = provider.applyDeliveredMessageRouteFromContact(
+        _buildContact(outPathLen: 2, outPath: const [0xAA, 0xBB]),
+      );
+
+      expect(applied, isTrue);
+      expect(provider.messages.single.deliveryStatus, MessageDeliveryStatus.delivered);
+      expect(provider.messages.single.usedFloodFallback, isFalse);
+      expect(provider.messages.single.pathLen, 2);
+      expect(
+        provider.getMessageRouteMetadata('m1d')?.mode,
+        PathSelectionMode.directCurrent,
+      );
+      expect(
+        provider.getMessageRouteMetadata('m1d')?.canonicalPath,
+        'AA,BB',
+      );
+      expect(provider.getMessageRouteMetadata('m1d')?.hopCount, 2);
     });
 
     test('channel messages are marked sent immediately', () {

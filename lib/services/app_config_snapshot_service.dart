@@ -23,7 +23,6 @@ class AppConfigSnapshotService {
       voiceEchoCancellationEnabled: appProvider.isVoiceEchoCancellationEnabled,
       voiceNoiseSuppressionEnabled: appProvider.isVoiceNoiseSuppressionEnabled,
       messageFontScale: appProvider.messageFontScale,
-      autoRouteRotationEnabled: appProvider.autoRouteRotationEnabled,
       clearPathOnMaxRetry: appProvider.clearPathOnMaxRetry,
       nearestRelayFallbackEnabled: appProvider.nearestRelayFallbackEnabled,
       voiceBitrate: await VoiceBitratePreferences.getBitrate(),
@@ -97,11 +96,6 @@ class AppConfigSnapshotService {
     }
     if (section.messageFontScale != null) {
       await appProvider.setMessageFontScale(section.messageFontScale!);
-    }
-    if (section.autoRouteRotationEnabled != null) {
-      await appProvider.toggleAutoRouteRotationEnabled(
-        section.autoRouteRotationEnabled!,
-      );
     }
     if (section.clearPathOnMaxRetry != null) {
       await appProvider.toggleClearPathOnMaxRetry(section.clearPathOnMaxRetry!);

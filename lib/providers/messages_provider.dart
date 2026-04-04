@@ -24,6 +24,7 @@ typedef DisplayMessageEntry = ({Message message, int occurrenceCount});
 class MessagesProvider with ChangeNotifier {
   static const Duration _channelEchoWarningDelay = Duration(seconds: 12);
   static const Duration _receivedDuplicateWindow = Duration(seconds: 5);
+  static const Duration _deliveredRouteRefreshWindow = Duration(seconds: 30);
 
   final List<Message> _messages = [];
   final Map<String, SarMarker> _sarMarkers = {};
@@ -38,6 +39,9 @@ class MessagesProvider with ChangeNotifier {
   final Map<String, MessageReceptionDetails> _messageReceptionDetails = {};
   final Map<String, MessageTransferDetails> _messageTransferDetails = {};
   final Map<String, MessageRouteMetadata> _messageRouteMetadata = {};
+  final Map<String, List<_PendingDeliveredRouteRefresh>>
+  _pendingDeliveredRouteRefreshByContact =
+      <String, List<_PendingDeliveredRouteRefresh>>{};
   String? _storageNamespace;
 
   // Track pending sent messages by expected ACK/TAG
@@ -197,6 +201,83 @@ class MessagesProvider with ChangeNotifier {
 
     _persistMessages();
     notifyListeners();
+  }
+
+  void queueDeliveredMessageRouteRefresh(String messageId, Contact contact) {
+    if (messageId.isEmpty || contact.publicKeyHex.isEmpty) {
+      return;
+    }
+
+    _prunePendingDeliveredRouteRefresh();
+    final queue = _pendingDeliveredRouteRefreshByContact.putIfAbsent(
+      contact.publicKeyHex,
+      () => <_PendingDeliveredRouteRefresh>[],
+    );
+    queue.removeWhere((entry) => entry.messageId == messageId);
+    queue.add(
+      _PendingDeliveredRouteRefresh(
+        messageId: messageId,
+        queuedAt: DateTime.now(),
+      ),
+    );
+  }
+
+  bool applyDeliveredMessageRouteFromContact(Contact contact) {
+    if (!contact.routeHasPath ||
+        contact.routeHopCount <= 0 ||
+        contact.publicKeyHex.isEmpty) {
+      return false;
+    }
+
+    _prunePendingDeliveredRouteRefresh();
+    final queue = _pendingDeliveredRouteRefreshByContact[contact.publicKeyHex];
+    if (queue == null || queue.isEmpty) {
+      return false;
+    }
+
+    while (queue.isNotEmpty) {
+      final pending = queue.removeAt(0);
+      final index = _messages.indexWhere(
+        (message) => message.id == pending.messageId,
+      );
+      if (index == -1) {
+        continue;
+      }
+
+      final message = _messages[index];
+      if (!message.isContactMessage ||
+          message.deliveryStatus != MessageDeliveryStatus.delivered) {
+        continue;
+      }
+
+      final existingMetadata = _messageRouteMetadata[pending.messageId];
+      _messageRouteMetadata[pending.messageId] = MessageRouteMetadata(
+        mode: PathSelectionMode.directCurrent,
+        routerFallbackAttempted:
+            existingMetadata?.routerFallbackAttempted ?? false,
+        canonicalPath: contact.routeCanonicalText.isEmpty
+            ? null
+            : contact.routeCanonicalText,
+        hopCount: contact.routeHopCount,
+      );
+      _messages[index] = message.copyWith(
+        pathLen: contact.routeHopCount,
+        usedFloodFallback: false,
+      );
+
+      if (queue.isEmpty) {
+        _pendingDeliveredRouteRefreshByContact.remove(contact.publicKeyHex);
+      }
+
+      _persistMessages();
+      notifyListeners();
+      return true;
+    }
+
+    if (queue.isEmpty) {
+      _pendingDeliveredRouteRefreshByContact.remove(contact.publicKeyHex);
+    }
+    return false;
   }
 
   /// Set localizations for notifications
@@ -2555,6 +2636,7 @@ class MessagesProvider with ChangeNotifier {
         _pendingSentMessages.remove(message.expectedAckTag);
       }
       _clearAckHistoryForMessage(messageId);
+      _removePendingDeliveredRouteRefresh(messageId);
 
       // Clear retry tracking
       _retryManager.clearRetry(messageId);
@@ -2595,6 +2677,7 @@ class MessagesProvider with ChangeNotifier {
       _pendingSentMessages.remove(message.expectedAckTag);
     }
     _clearAckHistoryForMessage(messageId);
+    _removePendingDeliveredRouteRefresh(messageId);
     _retryManager.clearRetry(messageId);
     _messageRouteMetadata.remove(messageId);
     onManualRetryPreparedCallback?.call(messageId);
@@ -2767,4 +2850,51 @@ class MessagesProvider with ChangeNotifier {
       }
     }
   }
+
+  void _prunePendingDeliveredRouteRefresh() {
+    if (_pendingDeliveredRouteRefreshByContact.isEmpty) {
+      return;
+    }
+
+    final cutoff = DateTime.now().subtract(_deliveredRouteRefreshWindow);
+    final emptyKeys = <String>[];
+    for (final entry in _pendingDeliveredRouteRefreshByContact.entries) {
+      entry.value.removeWhere(
+        (pending) => pending.queuedAt.isBefore(cutoff),
+      );
+      if (entry.value.isEmpty) {
+        emptyKeys.add(entry.key);
+      }
+    }
+    for (final key in emptyKeys) {
+      _pendingDeliveredRouteRefreshByContact.remove(key);
+    }
+  }
+
+  void _removePendingDeliveredRouteRefresh(String messageId) {
+    if (_pendingDeliveredRouteRefreshByContact.isEmpty) {
+      return;
+    }
+
+    final emptyKeys = <String>[];
+    for (final entry in _pendingDeliveredRouteRefreshByContact.entries) {
+      entry.value.removeWhere((pending) => pending.messageId == messageId);
+      if (entry.value.isEmpty) {
+        emptyKeys.add(entry.key);
+      }
+    }
+    for (final key in emptyKeys) {
+      _pendingDeliveredRouteRefreshByContact.remove(key);
+    }
+  }
+}
+
+class _PendingDeliveredRouteRefresh {
+  final String messageId;
+  final DateTime queuedAt;
+
+  const _PendingDeliveredRouteRefresh({
+    required this.messageId,
+    required this.queuedAt,
+  });
 }

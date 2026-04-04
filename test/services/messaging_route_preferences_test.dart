@@ -10,11 +10,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  test('route preference defaults are disabled', () async {
-    expect(
-      await MessagingRoutePreferences.getAutoRouteRotationEnabled(),
-      isFalse,
-    );
+  test('route preference defaults are clear-path disabled and fallback enabled', () async {
     expect(await MessagingRoutePreferences.getClearPathOnMaxRetry(), isFalse);
     expect(
       await MessagingRoutePreferences.getNearestRelayFallbackEnabled(),
@@ -23,17 +19,28 @@ void main() {
   });
 
   test('route preferences persist changes', () async {
-    await MessagingRoutePreferences.setAutoRouteRotationEnabled(true);
     await MessagingRoutePreferences.setClearPathOnMaxRetry(true);
     await MessagingRoutePreferences.setNearestRelayFallbackEnabled(false);
 
-    expect(
-      await MessagingRoutePreferences.getAutoRouteRotationEnabled(),
-      isTrue,
-    );
     expect(await MessagingRoutePreferences.getClearPathOnMaxRetry(), isTrue);
     expect(
       await MessagingRoutePreferences.getNearestRelayFallbackEnabled(),
+      isFalse,
+    );
+  });
+
+  test('legacy auto route rotation preference is removed during cleanup', () async {
+    SharedPreferences.setMockInitialValues({
+      'messaging_auto_route_rotation_enabled': true,
+    });
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getBool('messaging_auto_route_rotation_enabled'), isTrue);
+
+    await MessagingRoutePreferences.cleanupLegacySettings();
+
+    expect(
+      prefs.containsKey('messaging_auto_route_rotation_enabled'),
       isFalse,
     );
   });

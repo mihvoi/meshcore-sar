@@ -850,12 +850,6 @@ class ContactTile extends StatelessWidget {
         signedEncodedPathLen: parsedRoute.signedEncodedPathLen,
         paddedPathBytes: parsedRoute.paddedPathBytes,
       );
-      await pathHistoryService.clearHistoryForContact(
-        contact.copyWith(
-          outPathLen: parsedRoute.signedEncodedPathLen,
-          outPath: Uint8List.fromList(parsedRoute.paddedPathBytes),
-        ),
-      );
       await pathHistoryService.setManualRouteForContact(contact, parsedRoute);
       if (context.mounted) {
         final routeLabel = parsedRoute.hopCount == 0

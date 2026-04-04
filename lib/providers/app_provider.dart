@@ -41,26 +41,22 @@ import '../utils/log_rx_route_decoder.dart';
 class _DirectMessageRouteSession {
   final PathSelection currentSelection;
   final ParsedContactRoute? originalRoute;
-  final bool usedManualOverride;
   final bool routerFallbackAttempted;
 
   const _DirectMessageRouteSession({
     required this.currentSelection,
     required this.originalRoute,
-    required this.usedManualOverride,
     required this.routerFallbackAttempted,
   });
 
   _DirectMessageRouteSession copyWith({
     PathSelection? currentSelection,
     ParsedContactRoute? originalRoute,
-    bool? usedManualOverride,
     bool? routerFallbackAttempted,
   }) {
     return _DirectMessageRouteSession(
       currentSelection: currentSelection ?? this.currentSelection,
       originalRoute: originalRoute ?? this.originalRoute,
-      usedManualOverride: usedManualOverride ?? this.usedManualOverride,
       routerFallbackAttempted:
           routerFallbackAttempted ?? this.routerFallbackAttempted,
     );
@@ -199,9 +195,6 @@ class AppProvider with ChangeNotifier {
   bool get isVoiceNoiseSuppressionEnabled => _isVoiceNoiseSuppressionEnabled;
   double _messageFontScale = 1.0;
   double get messageFontScale => _messageFontScale;
-  bool _autoRouteRotationEnabled =
-      MessagingRoutePreferences.defaultAutoRouteRotationEnabled;
-  bool get autoRouteRotationEnabled => _autoRouteRotationEnabled;
   bool _clearPathOnMaxRetry =
       MessagingRoutePreferences.defaultClearPathOnMaxRetry;
   bool get clearPathOnMaxRetry => _clearPathOnMaxRetry;
@@ -213,6 +206,7 @@ class AppProvider with ChangeNotifier {
       const NearestRouterSelector();
   final Map<String, _DirectMessageRouteSession> _directMessageRouteSessions =
       {};
+  final Set<String> _pendingDeliveredRouteRefreshContacts = <String>{};
 
   static const Duration _packetRetryDelay = Duration(milliseconds: 1200);
   static const Duration _mediaSwarmResponseWindow = Duration(seconds: 10);
@@ -873,8 +867,7 @@ class AppProvider with ChangeNotifier {
 
   Future<void> _loadMessagingRouteSettings() async {
     try {
-      _autoRouteRotationEnabled =
-          await MessagingRoutePreferences.getAutoRouteRotationEnabled();
+      await MessagingRoutePreferences.cleanupLegacySettings();
       _clearPathOnMaxRetry =
           await MessagingRoutePreferences.getClearPathOnMaxRetry();
       _nearestRelayFallbackEnabled =
@@ -882,16 +875,6 @@ class AppProvider with ChangeNotifier {
       notifyListeners();
     } catch (e) {
       debugPrint('Error loading messaging route settings: $e');
-    }
-  }
-
-  Future<void> toggleAutoRouteRotationEnabled(bool enabled) async {
-    try {
-      _autoRouteRotationEnabled = enabled;
-      await MessagingRoutePreferences.setAutoRouteRotationEnabled(enabled);
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error saving auto route rotation setting: $e');
     }
   }
 
@@ -1048,6 +1031,14 @@ class AppProvider with ChangeNotifier {
         contact,
         devicePublicKey: devicePublicKey,
       );
+
+      final updatedContact =
+          contactsProvider.findContactByKey(contact.publicKey) ?? contact;
+      if (_pendingDeliveredRouteRefreshContacts.remove(
+        updatedContact.publicKeyHex,
+      )) {
+        messagesProvider.applyDeliveredMessageRouteFromContact(updatedContact);
+      }
     };
 
     // When all contacts are received
@@ -1254,18 +1245,6 @@ class AppProvider with ChangeNotifier {
         enrichedMessage,
       );
       final receivedPathBytes = receptionDetailsSnapshot?.pathBytes;
-      if (senderContact != null &&
-          enrichedMessage.isChannelMessage &&
-          receivedPathBytes != null &&
-          receivedPathBytes.isNotEmpty) {
-        unawaited(
-          _learnPathFromPublicMessage(
-            contact: senderContact,
-            pathBytes: receivedPathBytes,
-          ),
-        );
-      }
-
       // Estimate location for contacts without GPS using received path
       if (senderContact != null &&
           senderContact.displayLocation == null &&
@@ -1685,6 +1664,7 @@ class AppProvider with ChangeNotifier {
 
     // When a contact's routing path is updated in the mesh network
     connectionProvider.onPathUpdated = (publicKey) {
+      _pendingDeliveredRouteRefreshContacts.add(_publicKeyHex(publicKey));
       debugPrint(
         '🔄 [AppProvider] Path updated for contact: ${publicKey.sublist(0, 6).map((b) => b.toRadixString(16).padLeft(2, '0')).join(':')}...',
       );
@@ -1850,28 +1830,18 @@ class AppProvider with ChangeNotifier {
           .getManualSelectionForContact(latestContact);
       final selection =
           manualSelection ??
-          await _pathHistoryService.getSelectionForContact(
-            latestContact,
-            autoRouteRotationEnabled: _autoRouteRotationEnabled,
-          );
+          await _pathHistoryService.getSelectionForContact(latestContact);
       session = _DirectMessageRouteSession(
         currentSelection: selection,
         originalRoute: ContactRouteCodec.fromContact(latestContact),
-        usedManualOverride: manualSelection != null,
         routerFallbackAttempted: false,
       );
     }
 
     if (!session.routerFallbackAttempted) {
-      final currentSignature = session.currentSelection.hasDirectPath
-          ? session.currentSelection.pathBytes
-                .map((byte) => byte.toRadixString(16).padLeft(2, '0'))
-                .join()
-          : null;
       final selection = await _resolveDirectMessageSelectionForRetry(
         latestContact,
         retryAttempt: retryAttempt,
-        currentSignature: currentSignature,
         fallbackSelection: session.currentSelection,
       );
       session = session.copyWith(currentSelection: selection);
@@ -1891,26 +1861,17 @@ class AppProvider with ChangeNotifier {
   Future<PathSelection> _resolveDirectMessageSelectionForRetry(
     Contact contact, {
     required int retryAttempt,
-    required String? currentSignature,
     required PathSelection fallbackSelection,
   }) async {
     if (retryAttempt == 2) {
       return PathSelection.flood();
     }
 
-    if (retryAttempt >= 3) {
-      final historicalSelection = await _pathHistoryService
-          .getLastSuccessfulDirectSelection(
-            contact,
-            excludeSignature: currentSignature,
-            senderLatitude: locationTrackingService.currentPosition?.latitude,
-            senderLongitude: locationTrackingService.currentPosition?.longitude,
-            recipientLatitude: contact.displayLocation?.latitude,
-            recipientLongitude: contact.displayLocation?.longitude,
-          );
-      if (historicalSelection != null) {
-        return historicalSelection;
-      }
+    if (retryAttempt < 2 &&
+        !fallbackSelection.hasDirectPath &&
+        contact.routeHasPath &&
+        contact.routeHopCount > 0) {
+      return _pathHistoryService.getSelectionForContact(contact);
     }
 
     return fallbackSelection;
@@ -2020,31 +1981,18 @@ class AppProvider with ChangeNotifier {
 
     final latestContact =
         contactsProvider.findContactByKey(contact.publicKey) ?? contact;
+    final manualSelection = await _pathHistoryService.getManualSelectionForContact(
+      latestContact,
+    );
     final session =
         _directMessageRouteSessions[messageId] ??
         _DirectMessageRouteSession(
           currentSelection:
-              await _pathHistoryService.getManualSelectionForContact(
-                latestContact,
-              ) ??
-              await _pathHistoryService.getSelectionForContact(
-                latestContact,
-                autoRouteRotationEnabled: _autoRouteRotationEnabled,
-              ),
+              manualSelection ??
+              await _pathHistoryService.getSelectionForContact(latestContact),
           originalRoute: ContactRouteCodec.fromContact(latestContact),
-          usedManualOverride:
-              await _pathHistoryService.getManualSelectionForContact(
-                latestContact,
-              ) !=
-              null,
           routerFallbackAttempted: false,
         );
-
-    await _pathHistoryService.recordPathResult(
-      latestContact.publicKeyHex,
-      session.currentSelection,
-      success: false,
-    );
 
     final repeater = _nearestRouterSelector.select(
       senderPosition: locationTrackingService.currentPosition,
@@ -2089,33 +2037,10 @@ class AppProvider with ChangeNotifier {
       return;
     }
 
-    unawaited(
-      () async {
-        await _pathHistoryService.recordPathResult(
-          contact.publicKeyHex,
-          session.currentSelection,
-          success: true,
-          roundTripTimeMs: roundTripTimeMs,
-          senderLatitude: locationTrackingService.currentPosition?.latitude,
-          senderLongitude: locationTrackingService.currentPosition?.longitude,
-          recipientLatitude: contact.displayLocation?.latitude,
-          recipientLongitude: contact.displayLocation?.longitude,
-        );
-        if (!session.usedManualOverride) {
-          return;
-        }
-        if (session.currentSelection.mode == PathSelectionMode.directCurrent ||
-            session.currentSelection.mode ==
-                PathSelectionMode.directHistorical) {
-          await _pathHistoryService.setManualSelectionFor(
-            contact.publicKeyHex,
-            session.currentSelection,
-          );
-          return;
-        }
-        await _pathHistoryService.clearManualRouteFor(contact.publicKeyHex);
-      }(),
-    );
+    if (session.currentSelection.usesFlood ||
+        session.currentSelection.mode == PathSelectionMode.nearestRouter) {
+      messagesProvider.queueDeliveredMessageRouteRefresh(messageId, contact);
+    }
   }
 
   Future<void> _handleDirectMessageFinalFailure({
@@ -2126,16 +2051,6 @@ class AppProvider with ChangeNotifier {
         contactsProvider.findContactByKey(contact.publicKey) ?? contact;
     final session = _directMessageRouteSessions.remove(messageId);
     if (session != null) {
-      await _pathHistoryService.recordPathResult(
-        latestContact.publicKeyHex,
-        session.currentSelection,
-        success: false,
-      );
-      if (session.usedManualOverride) {
-        await _pathHistoryService.clearManualRouteFor(
-          latestContact.publicKeyHex,
-        );
-      }
       if (session.routerFallbackAttempted) {
         await _restoreRouteOnDevice(latestContact, session.originalRoute);
       }
@@ -2155,6 +2070,12 @@ class AppProvider with ChangeNotifier {
   String _key6(Uint8List publicKey) {
     final bytes = publicKey.sublist(0, math.min(6, publicKey.length));
     return bytes.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join();
+  }
+
+  String _publicKeyHex(Uint8List publicKey) {
+    return publicKey
+        .map((byte) => byte.toRadixString(16).padLeft(2, '0'))
+        .join();
   }
 
   /// Estimate contact location from the received message path.
@@ -2207,22 +2128,6 @@ class AppProvider with ChangeNotifier {
     );
   }
 
-  Future<void> _learnPathFromPublicMessage({
-    required Contact contact,
-    required List<int> pathBytes,
-  }) async {
-    final preferred = await RouteHashPreferences.getHashSize();
-    final inferredHashSize = _inferReceivedPathHashSize(
-      pathBytes,
-      preferredHashSize: preferred,
-    );
-    await _pathHistoryService.recordReceivedBytePath(
-      contact.publicKeyHex,
-      pathBytes,
-      inferredHashSize,
-    );
-  }
-
   Future<void> _retainAdvertRxPath(Uint8List publicKey) async {
     final decoded = _findBestMatchingAdvertRxRoute(publicKey);
     if (decoded == null || decoded.pathBytes.isEmpty) {
@@ -2247,11 +2152,6 @@ class AppProvider with ChangeNotifier {
       signedEncodedPathLen: parsedRoute.signedEncodedPathLen,
       paddedPathBytes: parsedRoute.paddedPathBytes,
       devicePublicKey: connectionProvider.deviceInfo.publicKey,
-    );
-    await _pathHistoryService.recordReceivedBytePath(
-      publicKey.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join(),
-      decoded.pathBytes,
-      decoded.hashSize,
     );
   }
 
@@ -2591,22 +2491,6 @@ class AppProvider with ChangeNotifier {
     } catch (_) {
       return null;
     }
-  }
-
-  int _inferReceivedPathHashSize(
-    List<int> pathBytes, {
-    required int preferredHashSize,
-  }) {
-    final preferred = preferredHashSize;
-    final candidates = {preferred, 3, 2, 1}.toList();
-    for (final candidate in candidates) {
-      if (candidate >= 1 &&
-          candidate <= 3 &&
-          pathBytes.length % candidate == 0) {
-        return candidate;
-      }
-    }
-    return 1;
   }
 
   /// Initialize the app (load contacts, sync time, etc.)

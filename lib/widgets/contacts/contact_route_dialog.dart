@@ -6,11 +6,9 @@ import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/contact.dart';
-import '../../models/path_history.dart';
 import '../../l10n/app_localizations.dart';
 import '../../providers/app_provider.dart';
 import '../../providers/connection_provider.dart';
-import '../../services/path_history_service.dart';
 import '../../services/relay_candidate_sorter.dart';
 import '../../services/route_hash_preferences.dart';
 
@@ -72,7 +70,6 @@ class ContactRouteDialog extends StatefulWidget {
 class _ContactRouteDialogState extends State<ContactRouteDialog> {
   late final TextEditingController _controller;
   late final TextEditingController _relaySearchController;
-  final PathHistoryService _pathHistoryService = PathHistoryService();
   final RelayCandidateSorter _relayCandidateSorter =
       const RelayCandidateSorter();
   int _selectedHashSize = RouteHashPreferences.defaultHashSize;
@@ -80,7 +77,6 @@ class _ContactRouteDialogState extends State<ContactRouteDialog> {
   String? _errorText;
   bool _showRoutingInfo = false;
   List<Contact> _selectedMapHops = const [];
-  ContactPathHistory? _pathHistory;
 
   @override
   void initState() {
@@ -91,7 +87,6 @@ class _ContactRouteDialogState extends State<ContactRouteDialog> {
     _relaySearchController = TextEditingController();
     _controller.addListener(_reparse);
     _loadHashSizePreference();
-    _loadPathHistory();
     _reparse();
   }
 
@@ -182,16 +177,6 @@ class _ContactRouteDialogState extends State<ContactRouteDialog> {
     _reparse();
   }
 
-  Future<void> _loadPathHistory() async {
-    await _pathHistoryService.initialize();
-    if (!mounted) return;
-    setState(() {
-      _pathHistory = _pathHistoryService.historyFor(
-        widget.contact.publicKeyHex,
-      );
-    });
-  }
-
   String _tokenFor(Contact contact, int hashSize) {
     final hex = contact.publicKeyHex.toUpperCase();
     final length = hashSize * 2;
@@ -235,21 +220,6 @@ class _ContactRouteDialogState extends State<ContactRouteDialog> {
       _syncControllerFromSelectedHops();
       _reparse();
     });
-  }
-
-  void _applyHistoryRecord(PathRecord record) {
-    final canonicalText = _canonicalRouteFromBytes(
-      record.pathBytes,
-      hashSize: record.hashSize,
-    );
-    setState(() {
-      _controller.text = canonicalText;
-      _controller.selection = TextSelection.fromPosition(
-        TextPosition(offset: _controller.text.length),
-      );
-      _errorText = null;
-    });
-    _reparse();
   }
 
   LatLng? _resolveLastHopLocation() {
@@ -299,86 +269,6 @@ class _ContactRouteDialogState extends State<ContactRouteDialog> {
     return LatLng(
       lastHopLocation.latitude + latOffset,
       lastHopLocation.longitude + lonOffset,
-    );
-  }
-
-  String _canonicalRouteFromBytes(
-    List<int> pathBytes, {
-    required int hashSize,
-  }) {
-    final hops = <String>[];
-    for (var i = 0; i < pathBytes.length; i += hashSize) {
-      final hop = pathBytes.sublist(i, i + hashSize);
-      hops.add(
-        hop
-            .map((byte) => byte.toRadixString(16).padLeft(2, '0'))
-            .join()
-            .toUpperCase(),
-      );
-    }
-    return hops.join(',');
-  }
-
-  String _historySubtitle(PathRecord record) {
-    final attempts = record.successCount + record.failureCount;
-    final lastSeen = MaterialLocalizations.of(
-      context,
-    ).formatShortDate(record.lastUsedAt);
-    final sourceLabel = switch (record.source) {
-      PathRecordSource.observed => 'Observed on mesh',
-      PathRecordSource.learned => 'Learned route',
-    };
-    final successRate = attempts == 0
-        ? 'No send stats yet'
-        : '${(record.successRate * 100).round()}% success over $attempts send${attempts == 1 ? '' : 's'}';
-    final latency = record.lastRoundTripTimeMs > 0
-        ? ' • ${record.lastRoundTripTimeMs} ms'
-        : '';
-    return '$sourceLabel • $successRate • Last used $lastSeen$latency';
-  }
-
-  Widget _buildHistoryRecordTile(PathRecord record, {String? title}) {
-    final canonicalText = _canonicalRouteFromBytes(
-      record.pathBytes,
-      hashSize: record.hashSize,
-    );
-    return Card(
-      margin: EdgeInsets.zero,
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 10,
-        ),
-        leading: title == null ? null : const Icon(Icons.alt_route),
-        title: title == null
-            ? Text(
-                canonicalText,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(fontFamily: 'monospace'),
-              )
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: Theme.of(context).textTheme.titleSmall),
-                  const SizedBox(height: 6),
-                  Text(
-                    canonicalText,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodyMedium?.copyWith(fontFamily: 'monospace'),
-                  ),
-                ],
-              ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 6),
-          child: Text(_historySubtitle(record)),
-        ),
-        trailing: FilledButton.tonal(
-          onPressed: () => _applyHistoryRecord(record),
-          child: Text(AppLocalizations.of(context)!.use),
-        ),
-      ),
     );
   }
 
@@ -676,84 +566,10 @@ class _ContactRouteDialogState extends State<ContactRouteDialog> {
               _showRoutingInfo = !_showRoutingInfo;
             });
           },
-          autoRouteRotationEnabled: appProvider.autoRouteRotationEnabled,
           nearestRelayFallbackEnabled: appProvider.nearestRelayFallbackEnabled,
           clearPathOnMaxRetry: appProvider.clearPathOnMaxRetry,
         ),
         const SizedBox(height: 24),
-      ],
-    );
-  }
-
-  Widget _buildHistoryTab() {
-    final records = List<PathRecord>.from(_pathHistory?.directPaths ?? const [])
-      ..sort((a, b) => b.lastUsedAt.compareTo(a.lastUsedAt));
-    if (records.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(
-            'No historical paths for this contact yet.',
-            style: Theme.of(context).textTheme.bodyMedium,
-            textAlign: TextAlign.center,
-          ),
-        ),
-      );
-    }
-
-    PathRecord? observedRecord;
-    for (final record in records) {
-      if (record.source == PathRecordSource.observed) {
-        observedRecord = record;
-        break;
-      }
-    }
-    final remainingRecords = observedRecord == null
-        ? records
-        : records
-              .where((record) => !identical(record, observedRecord))
-              .toList();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Align(
-          alignment: Alignment.centerRight,
-          child: TextButton(
-            onPressed: () async {
-              await _pathHistoryService.clearHistoryForContact(widget.contact);
-              if (!mounted) return;
-              setState(() {
-                _pathHistory = _pathHistoryService.historyFor(
-                  widget.contact.publicKeyHex,
-                );
-              });
-            },
-            child: const Text('Clear history'),
-          ),
-        ),
-        const SizedBox(height: 8),
-        if (observedRecord != null) ...[
-          _buildHistoryRecordTile(observedRecord, title: AppLocalizations.of(context)!.observedMeshRoute),
-          const SizedBox(height: 16),
-        ],
-        if (remainingRecords.isEmpty)
-          Text(
-            observedRecord == null
-                ? 'No additional route history yet.'
-                : 'Observed routes you start using will continue to build history here.',
-            style: Theme.of(context).textTheme.bodyMedium,
-          )
-        else
-          ListView.separated(
-            itemCount: remainingRecords.length,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            separatorBuilder: (_, _) => const SizedBox(height: 8),
-            itemBuilder: (context, index) {
-              return _buildHistoryRecordTile(remainingRecords[index]);
-            },
-          ),
       ],
     );
   }
@@ -802,14 +618,13 @@ class _ContactRouteDialogState extends State<ContactRouteDialog> {
     ];
 
     return DefaultTabController(
-      length: 3,
+      length: 2,
       child: Scaffold(
         appBar: AppBar(
           title: Text('Set Path for ${widget.contact.displayName}'),
           bottom: const TabBar(
             tabs: [
               Tab(text: 'Build'),
-              Tab(text: 'History'),
               Tab(text: 'Info'),
             ],
           ),
@@ -824,12 +639,6 @@ class _ContactRouteDialogState extends State<ContactRouteDialog> {
                     _buildBuilderTab(
                       routeCandidates: routeCandidates,
                     ),
-                    const SizedBox(height: 24),
-                  ],
-                ),
-                ListView(
-                  children: [
-                    _buildHistoryTab(),
                     const SizedBox(height: 24),
                   ],
                 ),
@@ -912,14 +721,12 @@ class _RouteMarkerDot extends StatelessWidget {
 class _AutomationRoutingInfo extends StatelessWidget {
   final bool isExpanded;
   final VoidCallback onToggle;
-  final bool autoRouteRotationEnabled;
   final bool nearestRelayFallbackEnabled;
   final bool clearPathOnMaxRetry;
 
   const _AutomationRoutingInfo({
     required this.isExpanded,
     required this.onToggle,
-    required this.autoRouteRotationEnabled,
     required this.nearestRelayFallbackEnabled,
     required this.clearPathOnMaxRetry,
   });
@@ -968,7 +775,7 @@ class _AutomationRoutingInfo extends StatelessWidget {
           if (isExpanded) ...[
             const SizedBox(height: 8),
             Text(
-              'Room/contact sends keep one selected path for the whole send chain, retry up to 5 total attempts with 1s, 2s, 4s, and 8s backoff, then try one final nearest repeater if everything else fails.',
+              'Room/contact sends use the current direct path when one is known, switch to flood on the last normal retry, then try one final nearest repeater if everything else fails.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 8),
@@ -981,12 +788,6 @@ class _AutomationRoutingInfo extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                _InfoChip(
-                  label: autoRouteRotationEnabled
-                      ? 'Auto route rotation on'
-                      : 'Auto route rotation off',
-                  icon: Icons.swap_horiz,
-                ),
                 _InfoChip(
                   label: nearestRelayFallbackEnabled
                       ? 'Nearest repeater fallback on'
@@ -1004,7 +805,7 @@ class _AutomationRoutingInfo extends StatelessWidget {
           ] else ...[
             const SizedBox(height: 6),
             Text(
-              'Shows retry, rotation, and final repeater fallback behavior.',
+              'Shows retry and final repeater fallback behavior.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],

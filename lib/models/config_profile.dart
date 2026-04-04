@@ -116,7 +116,6 @@ class AppSettingsProfileSection {
   final bool? voiceEchoCancellationEnabled;
   final bool? voiceNoiseSuppressionEnabled;
   final double? messageFontScale;
-  final bool? autoRouteRotationEnabled;
   final bool? clearPathOnMaxRetry;
   final bool? nearestRelayFallbackEnabled;
   final int? voiceBitrate;
@@ -142,7 +141,6 @@ class AppSettingsProfileSection {
     this.voiceEchoCancellationEnabled,
     this.voiceNoiseSuppressionEnabled,
     this.messageFontScale,
-    this.autoRouteRotationEnabled,
     this.clearPathOnMaxRetry,
     this.nearestRelayFallbackEnabled,
     this.voiceBitrate,
@@ -169,7 +167,6 @@ class AppSettingsProfileSection {
       voiceEchoCancellationEnabled == null &&
       voiceNoiseSuppressionEnabled == null &&
       messageFontScale == null &&
-      autoRouteRotationEnabled == null &&
       clearPathOnMaxRetry == null &&
       nearestRelayFallbackEnabled == null &&
       voiceBitrate == null &&
@@ -195,7 +192,6 @@ class AppSettingsProfileSection {
     'voiceEchoCancellationEnabled': voiceEchoCancellationEnabled,
     'voiceNoiseSuppressionEnabled': voiceNoiseSuppressionEnabled,
     'messageFontScale': messageFontScale,
-    'autoRouteRotationEnabled': autoRouteRotationEnabled,
     'clearPathOnMaxRetry': clearPathOnMaxRetry,
     'nearestRelayFallbackEnabled': nearestRelayFallbackEnabled,
     'voiceBitrate': voiceBitrate,
@@ -225,7 +221,6 @@ class AppSettingsProfileSection {
       voiceNoiseSuppressionEnabled:
           json['voiceNoiseSuppressionEnabled'] as bool?,
       messageFontScale: (json['messageFontScale'] as num?)?.toDouble(),
-      autoRouteRotationEnabled: json['autoRouteRotationEnabled'] as bool?,
       clearPathOnMaxRetry: json['clearPathOnMaxRetry'] as bool?,
       nearestRelayFallbackEnabled: json['nearestRelayFallbackEnabled'] as bool?,
       voiceBitrate: json['voiceBitrate'] as int?,
