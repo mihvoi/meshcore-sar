@@ -3267,7 +3267,7 @@ abstract class AppLocalizations {
   /// Updated onboarding overview feature 2
   ///
   /// In en, this message translates to:
-  /// **'Share SAR markers, map drawings, voice clips, and images over the mesh.'**
+  /// **'Share live location to a private channel, plus SAR markers, map drawings, voice clips, and images over the mesh.'**
   String get wizardOverviewFeature2;
 
   /// Updated onboarding overview feature 3
@@ -3459,7 +3459,7 @@ abstract class AppLocalizations {
   /// Updated onboarding map feature 1
   ///
   /// In en, this message translates to:
-  /// **'Track your own position, teammate locations, and movement trails on the map.'**
+  /// **'Track your own position, teammate locations, and share live location to a private channel from the channel menu.'**
   String get wizardMapOpsFeature1;
 
   /// Updated onboarding map feature 2

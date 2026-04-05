@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart' as flutter_map;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:meshcore_sar_app/l10n/app_localizations.dart';
 import 'package:meshcore_sar_app/models/message.dart';
 import 'package:meshcore_sar_app/models/message_contact_location.dart';
@@ -14,6 +15,7 @@ import 'package:meshcore_sar_app/providers/drawing_provider.dart';
 import 'package:meshcore_sar_app/providers/image_provider.dart' as ip;
 import 'package:meshcore_sar_app/providers/messages_provider.dart';
 import 'package:meshcore_sar_app/providers/voice_provider.dart';
+import 'package:meshcore_sar_app/services/location_tracking_service.dart';
 import 'package:meshcore_sar_app/services/voice_codec_service.dart';
 import 'package:meshcore_sar_app/services/voice_player_service.dart';
 import 'package:meshcore_sar_app/widgets/messages/message_bubble.dart';
@@ -28,6 +30,7 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+    LocationTrackingService().currentPosition = null;
     launchedUrls.clear();
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
@@ -405,11 +408,60 @@ void main() {
 
       expect(find.byType(flutter_map.FlutterMap), findsOneWidget);
       expect(find.text('46.056900, 14.505800'), findsOneWidget);
-      expect(find.text('advert'), findsOneWidget);
+      expect(find.text('shared advert'), findsOneWidget);
     } finally {
       await _disposeHarness(tester, harness);
     }
   });
+
+  testWidgets(
+    'technical details show a location map for sent channel messages using live position fallback',
+    (tester) async {
+      final harness = await _TestHarness.create();
+      try {
+        LocationTrackingService().currentPosition = Position(
+          latitude: 46.0569,
+          longitude: 14.5058,
+          timestamp: DateTime.fromMillisecondsSinceEpoch(1700000003000),
+          accuracy: 6.0,
+          altitude: 300.0,
+          altitudeAccuracy: 6.0,
+          heading: 0.0,
+          headingAccuracy: 0.0,
+          speed: 0.0,
+          speedAccuracy: 0.0,
+        );
+
+        final message = Message(
+          id: 'channel-live-fallback',
+          messageType: MessageType.channel,
+          senderPublicKeyPrefix: _prefix(81),
+          channelIdx: 0,
+          pathLen: 0,
+          textType: MessageTextType.plain,
+          senderTimestamp: 1700000000,
+          text: 'Channel fallback',
+          receivedAt: DateTime.fromMillisecondsSinceEpoch(1700000000500),
+          deliveryStatus: MessageDeliveryStatus.sent,
+        );
+
+        await tester.pumpWidget(_buildApp(harness, message));
+        await tester.pumpAndSettle();
+
+        await tester.longPress(find.text('Channel fallback'));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Technical details'));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(flutter_map.FlutterMap), findsOneWidget);
+        expect(find.text('46.056900, 14.505800'), findsOneWidget);
+        expect(find.text('shared location'), findsOneWidget);
+      } finally {
+        await _disposeHarness(tester, harness);
+      }
+    },
+  );
 }
 
 Widget _buildApp(_TestHarness harness, Message message) {

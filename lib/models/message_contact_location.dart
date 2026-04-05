@@ -15,10 +15,14 @@ class MessageContactLocation {
 
   String get technicalSourceLabel {
     switch (source) {
+      case 'shared':
+        return 'shared location';
+      case 'gps':
+        return 'shared location';
       case 'telemetry':
-        return 'telemetry';
+        return 'live telemetry';
       case 'advert':
-        return 'advert';
+        return 'shared advert';
       default:
         return source;
     }

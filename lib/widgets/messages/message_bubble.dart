@@ -22,7 +22,9 @@ import '../../providers/image_provider.dart' as ip;
 import '../../providers/app_provider.dart';
 import '../drawing_minimap_preview.dart';
 import '../../models/ble_packet_log.dart';
+import '../../models/message_contact_location.dart';
 import '../../services/sar_template_service.dart';
+import '../../services/location_tracking_service.dart';
 import '../../utils/toast_logger.dart';
 import '../../utils/sar_message_parser.dart';
 import '../../utils/key_comparison.dart';
@@ -421,6 +423,8 @@ class _MessageBubbleState extends State<MessageBubble> {
   }
 
   void _showMessageOptions(BuildContext context) {
+    final parentContext = context;
+    final l10n = AppLocalizations.of(context)!;
     final connectionProvider = context.read<ConnectionProvider>();
     final selfPublicKey = connectionProvider.deviceInfo.publicKey;
     final isOwnMessage =
@@ -433,7 +437,7 @@ class _MessageBubbleState extends State<MessageBubble> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (context) => Padding(
+      builder: (sheetContext) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -441,29 +445,29 @@ class _MessageBubbleState extends State<MessageBubble> {
             if (!isOwnMessage && widget.onReply != null)
               ListTile(
                 leading: Icon(Icons.reply),
-                title: Text(AppLocalizations.of(context)!.reply),
+                title: Text(l10n.reply),
                 onTap: () {
-                  Navigator.pop(context);
+                  Navigator.pop(sheetContext);
                   widget.onReply?.call();
                 },
               ),
             // Copy text option
             ListTile(
               leading: Icon(Icons.copy),
-              title: Text(AppLocalizations.of(context)!.copyText),
+              title: Text(l10n.copyText),
               onTap: () {
                 Clipboard.setData(ClipboardData(text: widget.message.text));
-                Navigator.pop(context);
+                Navigator.pop(sheetContext);
                 ToastLogger.success(
-                  context,
-                  AppLocalizations.of(context)!.textCopiedToClipboard,
+                  parentContext,
+                  l10n.textCopiedToClipboard,
                 );
               },
             ),
             // Save as Template option (only for SAR markers without existing template)
             if (widget.message.isSarMarker)
               Builder(
-                builder: (context) {
+                builder: (_) {
                   // Extract emoji from SAR message
                   final sarInfo = SarMessageParser.parse(widget.message.text);
                   if (sarInfo == null || sarInfo.emoji.isEmpty) {
@@ -482,10 +486,10 @@ class _MessageBubbleState extends State<MessageBubble> {
 
                   return ListTile(
                     leading: Icon(Icons.bookmark_add),
-                    title: Text(AppLocalizations.of(context)!.saveAsTemplate),
+                    title: Text(l10n.saveAsTemplate),
                     onTap: () {
-                      Navigator.pop(context);
-                      _saveAsTemplate(context);
+                      Navigator.pop(sheetContext);
+                      _saveAsTemplate(parentContext);
                     },
                   );
                 },
@@ -495,49 +499,49 @@ class _MessageBubbleState extends State<MessageBubble> {
                 widget.message.sarGpsCoordinates != null)
               ListTile(
                 leading: Icon(Icons.share_location),
-                title: Text(AppLocalizations.of(context)!.shareLocation),
+                title: Text(l10n.shareLocation),
                 onTap: () {
-                  Navigator.pop(context);
-                  _shareLocation(context);
+                  Navigator.pop(sheetContext);
+                  _shareLocation(parentContext);
                 },
               ),
             // Navigate to drawing option (only for drawing messages)
             if (widget.message.isDrawing && widget.message.drawingId != null)
               ListTile(
                 leading: Icon(Icons.map),
-                title: Text(AppLocalizations.of(context)!.navigateToDrawing),
+                title: Text(l10n.navigateToDrawing),
                 onTap: () {
-                  Navigator.pop(context);
-                  _navigateToDrawing(context);
+                  Navigator.pop(sheetContext);
+                  _navigateToDrawing(parentContext);
                 },
               ),
             // Copy coordinates option (only for drawing messages)
             if (widget.message.isDrawing && widget.message.drawingId != null)
               ListTile(
                 leading: Icon(Icons.copy),
-                title: Text(AppLocalizations.of(context)!.copyCoordinates),
+                title: Text(l10n.copyCoordinates),
                 onTap: () {
-                  Navigator.pop(context);
-                  _copyDrawingCoordinates(context);
+                  Navigator.pop(sheetContext);
+                  _copyDrawingCoordinates(parentContext);
                 },
               ),
             // Hide from map option (only for drawing messages)
             if (widget.message.isDrawing && widget.message.drawingId != null)
               ListTile(
                 leading: Icon(Icons.visibility_off),
-                title: Text(AppLocalizations.of(context)!.hideFromMap),
+                title: Text(l10n.hideFromMap),
                 onTap: () {
-                  Navigator.pop(context);
-                  _hideDrawingFromMap(context);
+                  Navigator.pop(sheetContext);
+                  _hideDrawingFromMap(parentContext);
                 },
               ),
             // Technical details option
             ListTile(
               leading: Icon(Icons.data_object),
-              title: Text(AppLocalizations.of(context)!.technicalDetails),
+              title: Text(l10n.technicalDetails),
               onTap: () {
-                Navigator.pop(context);
-                _showTechnicalDetails(context);
+                Navigator.pop(sheetContext);
+                _showTechnicalDetails(parentContext);
               },
             ),
             if (!isOwnMessage &&
@@ -545,22 +549,22 @@ class _MessageBubbleState extends State<MessageBubble> {
                 widget.message.pathLen < 255)
               ListTile(
                 leading: Icon(Icons.route),
-                title: Text(AppLocalizations.of(context)!.trace),
+                title: Text(l10n.trace),
                 onTap: () {
-                  Navigator.pop(context);
-                  _showTraceSheet(context);
+                  Navigator.pop(sheetContext);
+                  _showTraceSheet(parentContext);
                 },
               ),
             // Delete message option
             ListTile(
               leading: Icon(Icons.delete, color: Colors.red),
               title: Text(
-                AppLocalizations.of(context)!.delete,
+                l10n.delete,
                 style: const TextStyle(color: Colors.red),
               ),
               onTap: () {
-                Navigator.pop(context);
-                _showDeleteConfirmation(context);
+                Navigator.pop(sheetContext);
+                _showDeleteConfirmation(parentContext);
               },
             ),
           ],
@@ -582,6 +586,7 @@ class _MessageBubbleState extends State<MessageBubble> {
   }
 
   void _showTechnicalDetails(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final connectionProvider = context.read<ConnectionProvider>();
     final radioBw = connectionProvider.deviceInfo.radioBw;
     final radioSf = connectionProvider.deviceInfo.radioSf;
@@ -596,6 +601,7 @@ class _MessageBubbleState extends State<MessageBubble> {
         widget.message.isFromSelf(selfPublicKey);
 
     String? senderName;
+    Contact? senderContact;
     if (widget.message.senderPublicKeyPrefix != null) {
       final senderKeyHex = widget.message.senderPublicKeyPrefix!
           .sublist(
@@ -606,7 +612,7 @@ class _MessageBubbleState extends State<MessageBubble> {
           )
           .map((b) => b.toRadixString(16).padLeft(2, '0'))
           .join('');
-      final senderContact = contactsProvider.contacts
+      senderContact = contactsProvider.contacts
           .where((c) => c.publicKeyHex.startsWith(senderKeyHex))
           .firstOrNull;
       senderName = senderContact?.advName;
@@ -629,7 +635,7 @@ class _MessageBubbleState extends State<MessageBubble> {
       recipientName = recipientContact?.advName;
     }
 
-    final messageLocationSnapshot = messagesProvider.getMessageContactLocation(
+    final storedLocationSnapshot = messagesProvider.getMessageContactLocation(
       widget.message.id,
     );
     final receptionDetails = messagesProvider.getMessageReceptionDetails(
@@ -710,6 +716,12 @@ class _MessageBubbleState extends State<MessageBubble> {
     final routeMetadata = context
         .read<MessagesProvider>()
         .getMessageRouteMetadata(widget.message.id);
+    final messageLocationSnapshot = _resolveDetailsLocationSnapshot(
+      storedSnapshot: storedLocationSnapshot,
+      senderContact: senderContact,
+      connectionProvider: connectionProvider,
+      isOwnMessage: isOwnMessage,
+    );
 
     final rawLines = <String>[
       'Message ID: ${widget.message.id}',
@@ -834,12 +846,9 @@ class _MessageBubbleState extends State<MessageBubble> {
       }
     }
 
-    void copyField(String value) {
+    void copyField(BuildContext feedbackContext, String value) {
       Clipboard.setData(ClipboardData(text: value));
-      ToastLogger.success(
-        context,
-        AppLocalizations.of(context)!.textCopiedToClipboard,
-      );
+      ToastLogger.success(feedbackContext, l10n.textCopiedToClipboard);
     }
 
     showModalBottomSheet(
@@ -861,14 +870,14 @@ class _MessageBubbleState extends State<MessageBubble> {
                   children: [
                     Expanded(
                       child: Text(
-                        AppLocalizations.of(context)!.messageTechnicalDetails,
+                        l10n.messageTechnicalDetails,
                         style: Theme.of(sheetContext).textTheme.titleLarge,
                       ),
                     ),
                     IconButton(
                       onPressed: () => Navigator.pop(sheetContext),
                       icon: Icon(Icons.close),
-                      tooltip: AppLocalizations.of(context)!.close,
+                      tooltip: l10n.close,
                     ),
                   ],
                 ),
@@ -913,7 +922,7 @@ class _MessageBubbleState extends State<MessageBubble> {
                         _techSection(
                           sheetContext,
                           icon: Icons.location_on,
-                          title: AppLocalizations.of(context)!.location,
+                          title: l10n.location,
                           child: Column(
                             children: [
                               _buildLocationPreviewMap(
@@ -923,29 +932,29 @@ class _MessageBubbleState extends State<MessageBubble> {
                               const SizedBox(height: 12),
                               _detailRow(
                                 sheetContext,
-                                label: AppLocalizations.of(
-                                  context,
-                                )!.coordinates,
+                                label: l10n.coordinates,
                                 value: messageLocationSnapshot
                                     .formattedCoordinates,
                                 onCopy: () => copyField(
+                                  sheetContext,
                                   messageLocationSnapshot.formattedCoordinates,
                                 ),
                               ),
                               _detailRow(
                                 sheetContext,
-                                label: AppLocalizations.of(context)!.source,
+                                label: l10n.source,
                                 value: messageLocationSnapshot
                                     .technicalSourceLabel,
                               ),
                               _detailRow(
                                 sheetContext,
-                                label: AppLocalizations.of(context)!.captured,
+                                label: l10n.captured,
                                 value: _formatRfc3339(
                                   messageLocationSnapshot.sourceTimestamp ??
                                       messageLocationSnapshot.capturedAt,
                                 ),
                                 onCopy: () => copyField(
+                                  sheetContext,
                                   _formatRfc3339(
                                     messageLocationSnapshot.sourceTimestamp ??
                                         messageLocationSnapshot.capturedAt,
@@ -963,13 +972,13 @@ class _MessageBubbleState extends State<MessageBubble> {
                         _techSection(
                           sheetContext,
                           icon: Icons.network_check,
-                          title: AppLocalizations.of(context)!.linkQuality,
+                          title: l10n.linkQuality,
                           child: Column(
                             children: [
                               if (rssiDbm != null)
                                 _signalRow(
                                   sheetContext,
-                                  label: AppLocalizations.of(context)!.rssi,
+                                  label: l10n.rssi,
                                   valueLabel: '$rssiDbm dBm',
                                   normalized:
                                       ((rssiDbm.toDouble() + 120.0) / 70.0)
@@ -984,7 +993,7 @@ class _MessageBubbleState extends State<MessageBubble> {
                                 SizedBox(height: 8),
                                 _signalRow(
                                   sheetContext,
-                                  label: AppLocalizations.of(context)!.snr,
+                                  label: l10n.snr,
                                   valueLabel: '${snrDb.toStringAsFixed(1)} dB',
                                   normalized: ((snrDb + 20.0) / 40.0).clamp(
                                     0.0,
@@ -1005,39 +1014,34 @@ class _MessageBubbleState extends State<MessageBubble> {
                       _techSection(
                         sheetContext,
                         icon: Icons.tune,
-                        title: AppLocalizations.of(context)!.delivery,
+                        title: l10n.delivery,
                         child: Column(
                           children: [
                             _detailRow(
                               sheetContext,
-                              label: AppLocalizations.of(context)!.status,
+                              label: l10n.status,
                               value: widget.message.deliveryStatus.name,
                             ),
                             _detailRow(
                               sheetContext,
-                              label: AppLocalizations.of(
-                                context,
-                              )!.receivedRfc3339,
+                              label: l10n.receivedRfc3339,
                               value: _formatRfc3339(widget.message.receivedAt),
                               onCopy: () => copyField(
+                                sheetContext,
                                 _formatRfc3339(widget.message.receivedAt),
                               ),
                             ),
                             if (widget.message.expectedAckTag != null)
                               _detailRow(
                                 sheetContext,
-                                label: AppLocalizations.of(
-                                  context,
-                                )!.expectedAckTag,
+                                label: l10n.expectedAckTag,
                                 value: widget.message.expectedAckTag!
                                     .toString(),
                               ),
                             if (receptionDetails?.senderToReceiptMs != null)
                               _detailRow(
                                 sheetContext,
-                                label: AppLocalizations.of(
-                                  context,
-                                )!.senderToReceipt,
+                                label: l10n.senderToReceipt,
                                 value: _formatDurationMs(
                                   receptionDetails!.senderToReceiptMs!,
                                 ),
@@ -1045,9 +1049,7 @@ class _MessageBubbleState extends State<MessageBubble> {
                             if (receptionDetails?.estimatedTransmitMs != null)
                               _detailRow(
                                 sheetContext,
-                                label: AppLocalizations.of(
-                                  context,
-                                )!.estimatedTx,
+                                label: l10n.estimatedTx,
                                 value: _formatDurationMs(
                                   receptionDetails!.estimatedTransmitMs!,
                                 ),
@@ -1055,9 +1057,7 @@ class _MessageBubbleState extends State<MessageBubble> {
                             if (receptionDetails?.postTransmitDelayMs != null)
                               _detailRow(
                                 sheetContext,
-                                label: AppLocalizations.of(
-                                  context,
-                                )!.posttxDelay,
+                                label: l10n.posttxDelay,
                                 value: _formatDurationMs(
                                   receptionDetails!.postTransmitDelayMs!,
                                 ),
@@ -1065,87 +1065,80 @@ class _MessageBubbleState extends State<MessageBubble> {
                             if (widget.receivedCopies > 1)
                               _detailRow(
                                 sheetContext,
-                                label: AppLocalizations.of(
-                                  context,
-                                )!.receivedCopies,
+                                label: l10n.receivedCopies,
                                 value: '${widget.receivedCopies}',
                               ),
                             if (widget.message.suggestedTimeoutMs != null)
                               _detailRow(
                                 sheetContext,
-                                label: AppLocalizations.of(context)!.ackTimeout,
+                                label: l10n.ackTimeout,
                                 value:
                                     '${widget.message.suggestedTimeoutMs} ms',
                               ),
                             if (retryCause != null)
                               _detailRow(
                                 sheetContext,
-                                label: AppLocalizations.of(context)!.retryCause,
+                                label: l10n.retryCause,
                                 value: retryCause,
                               ),
                             if (retryMode != null)
                               _detailRow(
                                 sheetContext,
-                                label: AppLocalizations.of(context)!.retryMode,
+                                label: l10n.retryMode,
                                 value: retryMode,
                               ),
                             if (widget.message.roundTripTimeMs != null)
                               _detailRow(
                                 sheetContext,
-                                label: AppLocalizations.of(context)!.roundTrip,
+                                label: l10n.roundTrip,
                                 value: '${widget.message.roundTripTimeMs} ms',
                               ),
                             if (widget.message.retryAttempt > 0)
                               _detailRow(
                                 sheetContext,
-                                label: AppLocalizations.of(
-                                  context,
-                                )!.retryAttempt,
+                                label: l10n.retryAttempt,
                                 value: '${widget.message.retryAttempt}/4',
                               ),
                             if (widget.message.lastRetryAt != null)
                               _detailRow(
                                 sheetContext,
-                                label: AppLocalizations.of(context)!.lastRetry,
+                                label: l10n.lastRetry,
                                 value: _formatRfc3339(
                                   widget.message.lastRetryAt!,
                                 ),
                                 onCopy: () => copyField(
+                                  sheetContext,
                                   _formatRfc3339(widget.message.lastRetryAt!),
                                 ),
                               ),
                             if (widget.message.usedFloodFallback)
                               _detailRow(
                                 sheetContext,
-                                label: AppLocalizations.of(
-                                  context,
-                                )!.floodFallback,
-                                value: AppLocalizations.of(context)!.yes,
+                                label: l10n.floodFallback,
+                                value: l10n.yes,
                               ),
                             if (routeMetadata?.canonicalPath
                                 case final routePath?)
                               _detailRow(
                                 sheetContext,
-                                label: AppLocalizations.of(
-                                  context,
-                                )!.selectedPath,
+                                label: l10n.selectedPath,
                                 value: routePath,
-                                onCopy: () => copyField(routePath),
+                                onCopy: () =>
+                                    copyField(sheetContext, routePath),
                               ),
                             if (retryResult != null)
                               _detailRow(
                                 sheetContext,
-                                label: AppLocalizations.of(
-                                  context,
-                                )!.retryResult,
+                                label: l10n.retryResult,
                                 value: retryResult,
                               ),
                             if (packetPathHex != null)
                               _detailRow(
                                 sheetContext,
-                                label: AppLocalizations.of(context)!.pathBytes,
+                                label: l10n.pathBytes,
                                 value: packetPathHex,
-                                onCopy: () => copyField(packetPathHex),
+                                onCopy: () =>
+                                    copyField(sheetContext, packetPathHex),
                               ),
                           ],
                         ),
@@ -1154,18 +1147,19 @@ class _MessageBubbleState extends State<MessageBubble> {
                       _techSection(
                         sheetContext,
                         icon: Icons.badge,
-                        title: AppLocalizations.of(context)!.identity,
+                        title: l10n.identity,
                         child: Column(
                           children: [
                             _detailRow(
                               sheetContext,
-                              label: AppLocalizations.of(context)!.messageId,
+                              label: l10n.messageId,
                               value: widget.message.id,
-                              onCopy: () => copyField(widget.message.id),
+                              onCopy: () =>
+                                  copyField(sheetContext, widget.message.id),
                             ),
                             _detailRow(
                               sheetContext,
-                              label: AppLocalizations.of(context)!.sender,
+                              label: l10n.sender,
                               value:
                                   senderName ??
                                   widget.message.senderName ??
@@ -1174,24 +1168,26 @@ class _MessageBubbleState extends State<MessageBubble> {
                             if (senderPrefixHex != null)
                               _detailRow(
                                 sheetContext,
-                                label: AppLocalizations.of(context)!.senderKey,
+                                label: l10n.senderKey,
                                 value: senderPrefixHex,
-                                onCopy: () => copyField(senderPrefixHex),
+                                onCopy: () =>
+                                    copyField(sheetContext, senderPrefixHex),
                               ),
                             if (recipientName != null)
                               _detailRow(
                                 sheetContext,
-                                label: AppLocalizations.of(context)!.recipient,
+                                label: l10n.recipient,
                                 value: recipientName,
                               ),
                             if (recipientPrefixHex != null)
                               _detailRow(
                                 sheetContext,
-                                label: AppLocalizations.of(
-                                  context,
-                                )!.recipientKey,
+                                label: l10n.recipientKey,
                                 value: recipientPrefixHex,
-                                onCopy: () => copyField(recipientPrefixHex),
+                                onCopy: () => copyField(
+                                  sheetContext,
+                                  recipientPrefixHex,
+                                ),
                               ),
                           ],
                         ),
@@ -1201,53 +1197,47 @@ class _MessageBubbleState extends State<MessageBubble> {
                         _techSection(
                           sheetContext,
                           icon: Icons.graphic_eq,
-                          title: AppLocalizations.of(context)!.voice,
+                          title: l10n.voice,
                           child: Column(
                             children: [
                               _detailRow(
                                 sheetContext,
-                                label: AppLocalizations.of(context)!.voiceId,
+                                label: l10n.voiceId,
                                 value: widget.message.voiceId ?? '-',
                               ),
                               _detailRow(
                                 sheetContext,
-                                label: AppLocalizations.of(context)!.envelope,
+                                label: l10n.envelope,
                                 value: envelope != null
                                     ? 'VE3 compact'
-                                    : AppLocalizations.of(context)!.unknown,
+                                    : l10n.unknown,
                               ),
                               if (voiceSession != null)
                                 _detailRow(
                                   sheetContext,
-                                  label: AppLocalizations.of(
-                                    context,
-                                  )!.sessionProgress,
+                                  label: l10n.sessionProgress,
                                   value:
                                       '${voiceSession.receivedCount}/${voiceSession.total} segments',
                                 ),
                               if (voiceSession != null)
                                 _detailRow(
                                   sheetContext,
-                                  label: AppLocalizations.of(context)!.complete,
+                                  label: l10n.complete,
                                   value: voiceSession.isComplete
-                                      ? AppLocalizations.of(context)!.yes
-                                      : AppLocalizations.of(context)!.no,
+                                      ? l10n.yes
+                                      : l10n.no,
                                 ),
                               if (transferDetails != null)
                                 _detailRow(
                                   sheetContext,
-                                  label: AppLocalizations.of(
-                                    context,
-                                  )!.transfers,
+                                  label: l10n.transfers,
                                   value: '${transferDetails.totalTransfers}',
                                 ),
                               if (transferDetails != null &&
                                   transferDetails.downloaders.isNotEmpty)
                                 _detailRow(
                                   sheetContext,
-                                  label: AppLocalizations.of(
-                                    context,
-                                  )!.downloadedBy,
+                                  label: l10n.downloadedBy,
                                   value: _formatDownloaderSummary(
                                     transferDetails,
                                   ),
@@ -1255,9 +1245,7 @@ class _MessageBubbleState extends State<MessageBubble> {
                               if (voiceTxEstimate > Duration.zero)
                                 _detailRow(
                                   sheetContext,
-                                  label: AppLocalizations.of(
-                                    context,
-                                  )!.estimatedTx,
+                                  label: l10n.estimatedTx,
                                   value: voiceTxEstimate.inSeconds < 60
                                       ? '~${voiceTxEstimate.inSeconds}s'
                                       : '~${voiceTxEstimate.inMinutes}m ${voiceTxEstimate.inSeconds % 60}s',
@@ -1271,28 +1259,28 @@ class _MessageBubbleState extends State<MessageBubble> {
                         _techSection(
                           sheetContext,
                           icon: Icons.image_outlined,
-                          title: AppLocalizations.of(context)!.image,
+                          title: l10n.image,
                           child: Column(
                             children: [
                               _detailRow(
                                 sheetContext,
-                                label: AppLocalizations.of(context)!.envelope,
+                                label: l10n.envelope,
                                 value: 'IE1',
                               ),
                               _detailRow(
                                 sheetContext,
-                                label: AppLocalizations.of(context)!.format,
+                                label: l10n.format,
                                 value: imageEnvelope.format.label,
                               ),
                               _detailRow(
                                 sheetContext,
-                                label: AppLocalizations.of(context)!.dimensions,
+                                label: l10n.dimensions,
                                 value:
                                     '${imageEnvelope.width}×${imageEnvelope.height}',
                               ),
                               _detailRow(
                                 sheetContext,
-                                label: AppLocalizations.of(context)!.segments,
+                                label: l10n.segments,
                                 value: imageSession != null
                                     ? '${imageSession.receivedCount}/${imageSession.total}'
                                     : '${imageEnvelope.total}',
@@ -1300,26 +1288,22 @@ class _MessageBubbleState extends State<MessageBubble> {
                               if (imageSession != null)
                                 _detailRow(
                                   sheetContext,
-                                  label: AppLocalizations.of(context)!.complete,
+                                  label: l10n.complete,
                                   value: imageSession.isComplete
-                                      ? AppLocalizations.of(context)!.yes
-                                      : AppLocalizations.of(context)!.no,
+                                      ? l10n.yes
+                                      : l10n.no,
                                 ),
                               if (transferDetails != null)
                                 _detailRow(
                                   sheetContext,
-                                  label: AppLocalizations.of(
-                                    context,
-                                  )!.transfers,
+                                  label: l10n.transfers,
                                   value: '${transferDetails.totalTransfers}',
                                 ),
                               if (transferDetails != null &&
                                   transferDetails.downloaders.isNotEmpty)
                                 _detailRow(
                                   sheetContext,
-                                  label: AppLocalizations.of(
-                                    context,
-                                  )!.downloadedBy,
+                                  label: l10n.downloadedBy,
                                   value: _formatDownloaderSummary(
                                     transferDetails,
                                   ),
@@ -1327,9 +1311,7 @@ class _MessageBubbleState extends State<MessageBubble> {
                               if (imageTxEstimate > Duration.zero)
                                 _detailRow(
                                   sheetContext,
-                                  label: AppLocalizations.of(
-                                    context,
-                                  )!.estimatedTx,
+                                  label: l10n.estimatedTx,
                                   value: imageTxEstimate.inSeconds < 60
                                       ? '~${imageTxEstimate.inSeconds}s'
                                       : '~${imageTxEstimate.inMinutes}m ${imageTxEstimate.inSeconds % 60}s',
@@ -1344,7 +1326,7 @@ class _MessageBubbleState extends State<MessageBubble> {
                         dense: true,
                         visualDensity: VisualDensity.compact,
                         title: Text(
-                          AppLocalizations.of(context)!.rawDump,
+                          l10n.rawDump,
                           style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
@@ -1427,6 +1409,61 @@ class _MessageBubbleState extends State<MessageBubble> {
         ),
       ),
     );
+  }
+
+  MessageContactLocation? _resolveDetailsLocationSnapshot({
+    required MessageContactLocation? storedSnapshot,
+    required Contact? senderContact,
+    required ConnectionProvider connectionProvider,
+    required bool isOwnMessage,
+  }) {
+    if (storedSnapshot != null) {
+      return storedSnapshot;
+    }
+
+    if (isOwnMessage) {
+      final advLat = connectionProvider.deviceInfo.advLat;
+      final advLon = connectionProvider.deviceInfo.advLon;
+      if (advLat != null &&
+          advLon != null &&
+          (advLat != 0 || advLon != 0)) {
+        return MessageContactLocation(
+          location: LatLng(advLat / 1e6, advLon / 1e6),
+          source: 'shared',
+          capturedAt: widget.message.sentAt,
+          sourceTimestamp: widget.message.sentAt,
+        );
+      }
+
+      final currentPosition = LocationTrackingService().currentPosition;
+      if (currentPosition != null) {
+        return MessageContactLocation(
+          location: LatLng(
+            currentPosition.latitude,
+            currentPosition.longitude,
+          ),
+          source: 'shared',
+          capturedAt: currentPosition.timestamp,
+          sourceTimestamp: currentPosition.timestamp,
+        );
+      }
+    }
+
+    final contactLocation = senderContact?.displayLocation;
+    if (contactLocation != null) {
+      final source =
+          senderContact?.telemetry?.gpsLocation != null
+              ? 'telemetry'
+              : 'advert';
+      return MessageContactLocation(
+        location: contactLocation,
+        source: source,
+        capturedAt: senderContact?.locationUpdateTime ?? widget.message.receivedAt,
+        sourceTimestamp: senderContact?.locationUpdateTime,
+      );
+    }
+
+    return null;
   }
 
   Widget _techSection(
