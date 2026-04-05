@@ -190,6 +190,13 @@ class _DeviceConfigScreenState extends State<DeviceConfigScreen> {
   bool _repeatEnabled = false;
   bool? _gpsEnabled; // null = not supported by hardware
   bool _gpsLoading = false;
+  bool? _gpsHasFix;
+  int? _gpsSatelliteCount;
+  int? _gpsLatE6;
+  int? _gpsLonE6;
+  int? _gpsLastFixAgeSeconds;
+  DateTime? _gpsStatsLoadedAt;
+  Timer? _gpsStatsTicker;
   bool _isSyncingDeviceTime = false;
   int? _selectedPathHashMode;
   bool _autoAddDiscoveredContactsEnabled = true;
@@ -235,6 +242,10 @@ class _DeviceConfigScreenState extends State<DeviceConfigScreen> {
     super.initState();
     _connectionProvider = context.read<ConnectionProvider>();
     _connectionProvider.addListener(_handleConnectionProviderChanged);
+    _gpsStatsTicker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted || _gpsLastFixAgeSeconds == null) return;
+      setState(() {});
+    });
     final deviceInfo = _connectionProvider.deviceInfo;
 
     _nameController = TextEditingController(
@@ -329,6 +340,7 @@ class _DeviceConfigScreenState extends State<DeviceConfigScreen> {
     _txPowerController.dispose();
     _gpsIntervalController.dispose();
     _autoAddMaxHopsController.dispose();
+    _gpsStatsTicker?.cancel();
     super.dispose();
   }
 
@@ -491,6 +503,66 @@ class _DeviceConfigScreenState extends State<DeviceConfigScreen> {
     _overwriteOldestAutoAddEnabled = deviceInfo.autoAddOverwriteOldest ?? false;
     _autoAddMaxHopsController.text = (deviceInfo.autoAddMaxHops ?? 0)
         .toString();
+  }
+
+  int? _currentGpsLastFixAgeSeconds() {
+    final baseAgeSeconds = _gpsLastFixAgeSeconds;
+    final loadedAt = _gpsStatsLoadedAt;
+    if (baseAgeSeconds == null || loadedAt == null) {
+      return null;
+    }
+    final elapsedSeconds = DateTime.now().difference(loadedAt).inSeconds;
+    if (elapsedSeconds <= 0) {
+      return baseAgeSeconds;
+    }
+    return baseAgeSeconds + elapsedSeconds;
+  }
+
+  String _formatGpsFixValue() {
+    if (_gpsEnabled == false) {
+      return 'Off';
+    }
+    if (_gpsHasFix == true) {
+      return 'Locked';
+    }
+    if (_gpsEnabled == true) {
+      return 'Searching';
+    }
+    return 'Unavailable';
+  }
+
+  String _formatGpsLocationValue() {
+    final latE6 = _gpsLatE6;
+    final lonE6 = _gpsLonE6;
+    if (latE6 == null || lonE6 == null) {
+      return 'No fix yet';
+    }
+    return '${(latE6 / 1000000).toStringAsFixed(6)}, ${(lonE6 / 1000000).toStringAsFixed(6)}';
+  }
+
+  String _formatGpsLastFixValue(AppLocalizations l10n) {
+    final ageSeconds = _currentGpsLastFixAgeSeconds();
+    if (ageSeconds == null) {
+      return 'Never';
+    }
+    if (ageSeconds <= 0) {
+      return l10n.justNow;
+    }
+    if (ageSeconds < 60) {
+      return l10n.secondsAgo(ageSeconds);
+    }
+
+    final ageMinutes = ageSeconds ~/ 60;
+    if (ageMinutes < 60) {
+      return l10n.minutesAgo(ageMinutes);
+    }
+
+    final ageHours = ageMinutes ~/ 60;
+    if (ageHours < 24) {
+      return l10n.hoursAgo(ageHours);
+    }
+
+    return l10n.daysAgo(ageHours ~/ 24);
   }
 
   int _telemetryModesForSave() {
@@ -746,11 +818,22 @@ class _DeviceConfigScreenState extends State<DeviceConfigScreen> {
       if (!mounted) return;
       final gpsValue = vars['gps'];
       final gpsIntervalValue = vars['gps_interval'];
+      final gpsFixValue = vars['gps_fix'];
+      final gpsSatsValue = vars['gps_sats'];
+      final gpsLatValue = vars['gps_lat_e6'];
+      final gpsLonValue = vars['gps_lon_e6'];
+      final gpsLastFixAgeValue = vars['gps_last_fix_age_s'];
       setState(() {
         _gpsEnabled = gpsValue != null ? gpsValue == '1' : null;
         if (gpsIntervalValue != null) {
           _gpsIntervalController.text = gpsIntervalValue;
         }
+        _gpsHasFix = gpsFixValue != null ? gpsFixValue == '1' : null;
+        _gpsSatelliteCount = int.tryParse(gpsSatsValue ?? '');
+        _gpsLatE6 = int.tryParse(gpsLatValue ?? '');
+        _gpsLonE6 = int.tryParse(gpsLonValue ?? '');
+        _gpsLastFixAgeSeconds = int.tryParse(gpsLastFixAgeValue ?? '');
+        _gpsStatsLoadedAt = DateTime.now();
       });
     } catch (_) {
       // Device may not support custom vars (old firmware / no GPS hardware)
@@ -766,6 +849,7 @@ class _DeviceConfigScreenState extends State<DeviceConfigScreen> {
         _gpsEnabled = enabled;
         _gpsLoading = false;
       });
+      unawaited(_loadGpsMode());
     } catch (e) {
       if (!mounted) return;
       setState(() => _gpsLoading = false);
@@ -1662,6 +1746,16 @@ class _DeviceConfigScreenState extends State<DeviceConfigScreen> {
                                 value: _gpsEnabled!,
                                 onChanged: _setGpsMode,
                               ),
+                      ),
+                      const SizedBox(height: 12),
+                      _GpsDiagnosticsCard(
+                        fixValue: _formatGpsFixValue(),
+                        satellitesValue:
+                            _gpsSatelliteCount?.toString() ?? '—',
+                        locationValue: _formatGpsLocationValue(),
+                        lastFixValue: _formatGpsLastFixValue(
+                          AppLocalizations.of(context)!,
+                        ),
                       ),
                     ],
                     const SizedBox(height: 16),
@@ -2856,6 +2950,115 @@ class _SettingHighlightCard extends StatelessWidget {
           trailing,
         ],
       ),
+    );
+  }
+}
+
+class _GpsDiagnosticsCard extends StatelessWidget {
+  final String fixValue;
+  final String satellitesValue;
+  final String locationValue;
+  final String lastFixValue;
+
+  const _GpsDiagnosticsCard({
+    required this.fixValue,
+    required this.satellitesValue,
+    required this.locationValue,
+    required this.lastFixValue,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.location_searching_rounded,
+                color: colorScheme.primary,
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'GPS diagnostics',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _GpsDiagnosticsRow(label: 'Fix', value: fixValue),
+          const SizedBox(height: 8),
+          _GpsDiagnosticsRow(label: 'Satellites', value: satellitesValue),
+          const SizedBox(height: 8),
+          _GpsDiagnosticsRow(label: 'Last fix', value: lastFixValue),
+          const SizedBox(height: 8),
+          _GpsDiagnosticsRow(
+            label: 'Location',
+            value: locationValue,
+            maxLines: 2,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GpsDiagnosticsRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final int maxLines;
+
+  const _GpsDiagnosticsRow({
+    required this.label,
+    required this.value,
+    this.maxLines = 1,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 84,
+          child: Text(
+            label,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            value,
+            maxLines: maxLines,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurface,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
