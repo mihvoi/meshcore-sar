@@ -2163,9 +2163,7 @@ class _MessagesTabState extends State<MessagesTab> {
                 ),
                 alignment: Alignment.center,
                 child: Icon(
-                  sharingMode == ChannelLocationSharingMode.hardware
-                      ? Icons.public_rounded
-                      : Icons.smartphone_rounded,
+                  Icons.location_pin,
                   size: 9,
                   color: Colors.white,
                 ),

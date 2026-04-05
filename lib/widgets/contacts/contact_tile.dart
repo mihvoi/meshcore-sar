@@ -71,7 +71,6 @@ class ContactTile extends StatelessWidget {
     BuildContext context,
     ChannelLocationSharingMode mode,
   ) {
-    final isHardware = mode == ChannelLocationSharingMode.hardware;
     const accent = Color(0xFF16A34A);
 
     return Container(
@@ -82,7 +81,7 @@ class ContactTile extends StatelessWidget {
         border: Border.all(color: Colors.white, width: 2),
       ),
       child: Icon(
-        isHardware ? Icons.public_rounded : Icons.smartphone_rounded,
+        Icons.location_pin,
         size: 11,
         color: Colors.white,
       ),

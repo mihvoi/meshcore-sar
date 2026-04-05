@@ -261,9 +261,11 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
   }
 
   IconData _channelLocationSharingIcon(ChannelLocationSharingMode mode) {
-    return mode == ChannelLocationSharingMode.hardware
-        ? Icons.public_rounded
-        : Icons.smartphone_rounded;
+    switch (mode) {
+      case ChannelLocationSharingMode.hardware:
+      case ChannelLocationSharingMode.appFallback:
+        return Icons.location_pin;
+    }
   }
 
   Color _channelLocationSharingColor(
