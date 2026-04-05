@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../models/contact.dart';
+import '../../providers/app_provider.dart';
 import '../../providers/messages_provider.dart';
 import '../../utils/avatar_label_helper.dart';
 import '../common/contact_avatar.dart';
@@ -259,6 +260,19 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
     return _formatRelativeTime(context, lastActivityAt);
   }
 
+  IconData _channelLocationSharingIcon(ChannelLocationSharingMode mode) {
+    return mode == ChannelLocationSharingMode.hardware
+        ? Icons.public_rounded
+        : Icons.smartphone_rounded;
+  }
+
+  Color _channelLocationSharingColor(
+    BuildContext context,
+    ChannelLocationSharingMode mode,
+  ) {
+    return const Color(0xFF16A34A);
+  }
+
   Widget _buildTextSubtitle(
     BuildContext context,
     Contact contact,
@@ -312,6 +326,9 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
     MessagesProvider? messagesProvider,
   ) {
     final previewData = _channelPreviewData(context, channel, messagesProvider);
+    final sharingMode = context.watch<AppProvider>().channelLocationSharingModeForChannel(
+      channel.publicKey.length > 1 ? channel.publicKey[1] : 0,
+    );
 
     return _buildRecipientCard(
       context: context,
@@ -319,6 +336,7 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
       contact: channel,
       title: channel.getLocalizedDisplayName(context),
       subtitle: _buildChannelSubtitle(context, channel, previewData),
+      avatarMarkerMode: sharingMode,
       unreadCount: _unreadFor(channel),
       isSelected: _isSelected('channel', channel),
       compact: true,
@@ -838,6 +856,7 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
     required Contact contact,
     required String title,
     Widget? subtitle,
+    ChannelLocationSharingMode? avatarMarkerMode,
     required int unreadCount,
     required bool isSelected,
     bool compact = false,
@@ -846,6 +865,12 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
   }) {
     final colorScheme = Theme.of(context).colorScheme;
     final accentColor = _sectionColor(context, type);
+    final markerColor = avatarMarkerMode == null
+        ? accentColor
+        : _channelLocationSharingColor(context, avatarMarkerMode);
+    final markerIcon = avatarMarkerMode == null
+        ? _typeIcon(contact)
+        : _channelLocationSharingIcon(avatarMarkerMode);
 
     return Material(
       color: Colors.transparent,
@@ -886,14 +911,14 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
                           color: colorScheme.surface,
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: accentColor.withValues(alpha: 0.3),
+                            color: markerColor.withValues(alpha: 0.3),
                           ),
                         ),
                         alignment: Alignment.center,
                         child: Icon(
-                          _typeIcon(contact),
+                          markerIcon,
                           size: compact ? 9 : 10,
-                          color: accentColor,
+                          color: markerColor,
                         ),
                       ),
                     ),
@@ -945,7 +970,7 @@ class _RecipientSelectorSheetState extends State<RecipientSelectorSheet> {
                                           ?.copyWith(
                                             color: accentColor,
                                             fontWeight: FontWeight.w800,
-                                          ),
+                                      ),
                                     ),
                                   ),
                                 ],

@@ -1746,7 +1746,85 @@ class _MessagesTabState extends State<MessagesTab> {
     await action();
   }
 
+  int? _selectedPrivateChannelIdx() {
+    if (_destinationType !=
+        MessageDestinationPreferences.destinationTypeChannel) {
+      return null;
+    }
+    final recipient = _selectedRecipient;
+    if (recipient == null ||
+        recipient.isPublicChannel ||
+        recipient.publicKey.length < 2) {
+      return null;
+    }
+    return recipient.publicKey[1];
+  }
+
+  String _locationSharingErrorMessage(Object error) {
+    final message = error.toString();
+    if (message.startsWith('Bad state: ')) {
+      return message.substring('Bad state: '.length);
+    }
+    return message;
+  }
+
+  Future<void> _setSelectedChannelLocationSharing(
+    int channelIdx,
+    bool enabled,
+  ) async {
+    try {
+      final result = await context.read<AppProvider>().setChannelLocationSharingEnabled(
+        channelIdx,
+        enabled,
+      );
+      if (!mounted) return;
+      ToastLogger.success(context, result.message);
+    } catch (error) {
+      if (!mounted) return;
+      ToastLogger.error(context, _locationSharingErrorMessage(error));
+    }
+  }
+
+  Future<void> _handleChannelLocationSharingAction() async {
+    final recipient = _selectedRecipient;
+    if (recipient == null || recipient.isPublicChannel) {
+      if (!mounted) return;
+      ToastLogger.error(
+        context,
+        'Select a private channel to share your location.',
+      );
+      return;
+    }
+
+    final channelIdx = recipient.publicKey.length > 1 ? recipient.publicKey[1] : 0;
+    if (channelIdx <= 0) {
+      if (!mounted) return;
+      ToastLogger.error(
+        context,
+        'Select a private channel to share your location.',
+      );
+      return;
+    }
+
+    try {
+      final sharingState = await context
+          .read<AppProvider>()
+          .getChannelLocationSharingState(channelIdx);
+      if (!mounted) return;
+      await _setSelectedChannelLocationSharing(channelIdx, !sharingState.isSharing);
+    } catch (error) {
+      if (!mounted) return;
+      ToastLogger.error(context, _locationSharingErrorMessage(error));
+    }
+  }
+
   void _showComposerActions() {
+    final privateChannelIdx = _selectedPrivateChannelIdx();
+    final locationSharingStateFuture = privateChannelIdx == null
+        ? null
+        : context
+              .read<AppProvider>()
+              .getChannelLocationSharingState(privateChannelIdx);
     showModalBottomSheet(
       context: context,
       showDragHandle: true,
@@ -1759,114 +1837,142 @@ class _MessagesTabState extends State<MessagesTab> {
           await _runAfterSheetDismissal(sheetContext, action);
         }
 
-        final actions = <Widget>[
-          _ComposerActionTile(
-            icon: Icons.search_rounded,
-            title: l10n.searchMessages,
-            color: const Color(0xFF2B6CB0),
-            onTap: () => runAction(() async {
-              _showFilteredMessageSearch();
-            }),
-          ),
-          _ComposerActionTile(
-            icon: Icons.add_location_alt_rounded,
-            title: l10n.sendSarMarker,
-            color: const Color(0xFFB45309),
-            onTap: () => runAction(() async {
-              _showSarDialog();
-            }),
-          ),
-          if (_voiceSupported)
+        Widget buildActionsSheet(ChannelLocationSharingState? sharingState) {
+          final actions = <Widget>[
             _ComposerActionTile(
-              icon: _isRecording ? Icons.stop_rounded : Icons.mic_rounded,
-              title: _isRecording ? 'Stop recording' : 'Record voice',
-              color: const Color(0xFF7C3AED),
-              enabled: !_isSendingVoice,
-              busy: _isSendingVoice,
-              onTap: !_isSendingVoice
+              icon: Icons.search_rounded,
+              title: l10n.searchMessages,
+              color: const Color(0xFF2B6CB0),
+              onTap: () => runAction(() async {
+                _showFilteredMessageSearch();
+              }),
+            ),
+            _ComposerActionTile(
+              icon: Icons.add_location_alt_rounded,
+              title: l10n.sendSarMarker,
+              color: const Color(0xFFB45309),
+              onTap: () => runAction(() async {
+                _showSarDialog();
+              }),
+            ),
+            if (_destinationType ==
+                MessageDestinationPreferences.destinationTypeChannel)
+              _ComposerActionTile(
+                icon: sharingState?.isSharing == true
+                    ? Icons.location_off_rounded
+                    : Icons.share_location_rounded,
+                title: sharingState?.isSharing == true
+                    ? 'Stop sharing my location'
+                    : 'Share my location',
+                color: const Color(0xFF0F766E),
+                onTap: () => runAction(() async {
+                  await _handleChannelLocationSharingAction();
+                }),
+              ),
+            if (_voiceSupported)
+              _ComposerActionTile(
+                icon: _isRecording ? Icons.stop_rounded : Icons.mic_rounded,
+                title: _isRecording ? 'Stop recording' : 'Record voice',
+                color: const Color(0xFF7C3AED),
+                enabled: !_isSendingVoice,
+                busy: _isSendingVoice,
+                onTap: !_isSendingVoice
+                    ? () => runAction(() async {
+                        if (_isRecording) {
+                          await _stopAndSendVoice();
+                        } else {
+                          await _startVoiceRecording();
+                        }
+                      })
+                    : null,
+              ),
+            _ComposerActionTile(
+              icon: Icons.photo_library_rounded,
+              title: l10n.sendImageFromGallery,
+              color: const Color(0xFF0F766E),
+              enabled: !_isSendingImage,
+              busy: _isSendingImage,
+              onTap: !_isSendingImage
                   ? () => runAction(() async {
-                      if (_isRecording) {
-                        await _stopAndSendVoice();
-                      } else {
-                        await _startVoiceRecording();
-                      }
+                      await _pickAndSendImage(source: ImageSource.gallery);
                     })
                   : null,
             ),
-          _ComposerActionTile(
-            icon: Icons.photo_library_rounded,
-            title: l10n.sendImageFromGallery,
-            color: const Color(0xFF0F766E),
-            enabled: !_isSendingImage,
-            busy: _isSendingImage,
-            onTap: !_isSendingImage
-                ? () => runAction(() async {
-                    await _pickAndSendImage(source: ImageSource.gallery);
-                  })
-                : null,
-          ),
-          _ComposerActionTile(
-            icon: Icons.camera_alt_rounded,
-            title: l10n.takePhoto,
-            color: const Color(0xFF2563EB),
-            enabled: !_isSendingImage,
-            busy: _isSendingImage,
-            onTap: !_isSendingImage
-                ? () => runAction(() async {
-                    await _pickAndSendImage(source: ImageSource.camera);
-                  })
-                : null,
-          ),
-          _ComposerActionTile(
-            icon: Icons.grid_3x3_rounded,
-            title: l10n.startTictactoe,
-            color: const Color(0xFFBE185D),
-            onTap: () => runAction(() async {
-              await _startTicTacToeGame();
-            }),
-          ),
-          if (_destinationType ==
-              MessageDestinationPreferences.destinationTypeChannel)
             _ComposerActionTile(
-              icon: _channelRegionScopeName != null
-                  ? Icons.language_rounded
-                  : Icons.public_rounded,
-              title: _channelRegionScopeName != null
-                  ? '${l10n.regionScope}: $_channelRegionScopeName'
-                  : l10n.setRegionScope,
-              color: const Color(0xFF7C3AED),
+              icon: Icons.camera_alt_rounded,
+              title: l10n.takePhoto,
+              color: const Color(0xFF2563EB),
+              enabled: !_isSendingImage,
+              busy: _isSendingImage,
+              onTap: !_isSendingImage
+                  ? () => runAction(() async {
+                      await _pickAndSendImage(source: ImageSource.camera);
+                    })
+                  : null,
+            ),
+            _ComposerActionTile(
+              icon: Icons.grid_3x3_rounded,
+              title: l10n.startTictactoe,
+              color: const Color(0xFFBE185D),
               onTap: () => runAction(() async {
-                _showRegionScopeSheet();
+                await _startTicTacToeGame();
               }),
             ),
-        ];
+            if (_destinationType ==
+                MessageDestinationPreferences.destinationTypeChannel)
+              _ComposerActionTile(
+                icon: _channelRegionScopeName != null
+                    ? Icons.language_rounded
+                    : Icons.public_rounded,
+                title: _channelRegionScopeName != null
+                    ? '${l10n.regionScope}: $_channelRegionScopeName'
+                    : l10n.setRegionScope,
+                color: const Color(0xFF7C3AED),
+                onTap: () => runAction(() async {
+                  _showRegionScopeSheet();
+                }),
+              ),
+          ];
 
-        return SafeArea(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(sheetContext).size.height * 0.72,
-            ),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'More actions',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
+          return SafeArea(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(sheetContext).size.height * 0.72,
+              ),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'More actions',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  for (var index = 0; index < actions.length; index++) ...[
-                    actions[index],
-                    if (index != actions.length - 1) const SizedBox(height: 8),
+                    const SizedBox(height: 16),
+                    for (var index = 0; index < actions.length; index++) ...[
+                      actions[index],
+                      if (index != actions.length - 1)
+                        const SizedBox(height: 8),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
-          ),
+          );
+        }
+
+        if (locationSharingStateFuture == null) {
+          return buildActionsSheet(null);
+        }
+
+        return FutureBuilder<ChannelLocationSharingState>(
+          future: locationSharingStateFuture,
+          builder: (context, snapshot) {
+            return buildActionsSheet(snapshot.data);
+          },
         );
       },
     );
@@ -2027,10 +2133,45 @@ class _MessagesTabState extends State<MessagesTab> {
   Widget _buildDestinationAvatar(BuildContext context) {
     final recipient = _selectedRecipient;
     if (recipient != null) {
-      return ContactAvatar(
-        contact: recipient,
-        radius: 14,
-        displayName: _getDestinationLabel(),
+      final sharingMode =
+          recipient.isChannel &&
+              !recipient.isPublicChannel &&
+              recipient.publicKey.length > 1
+          ? context.watch<AppProvider>().channelLocationSharingModeForChannel(
+              recipient.publicKey[1],
+            )
+          : null;
+      return Stack(
+        clipBehavior: Clip.none,
+        children: [
+          ContactAvatar(
+            contact: recipient,
+            radius: 14,
+            displayName: _getDestinationLabel(),
+          ),
+          if (sharingMode != null)
+            Positioned(
+              right: -3,
+              bottom: -3,
+              child: Container(
+                width: 14,
+                height: 14,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF16A34A),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 1.5),
+                ),
+                alignment: Alignment.center,
+                child: Icon(
+                  sharingMode == ChannelLocationSharingMode.hardware
+                      ? Icons.public_rounded
+                      : Icons.smartphone_rounded,
+                  size: 9,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+        ],
       );
     }
 

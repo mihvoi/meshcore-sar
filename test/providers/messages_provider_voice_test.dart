@@ -1,9 +1,11 @@
 import 'dart:typed_data';
+import 'package:geolocator/geolocator.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meshcore_sar_app/models/contact.dart';
 import 'package:meshcore_sar_app/models/message.dart';
 import 'package:meshcore_sar_app/models/message_contact_location.dart';
 import 'package:meshcore_sar_app/providers/messages_provider.dart';
+import 'package:meshcore_sar_app/services/location_tracking_service.dart';
 import 'package:meshcore_sar_app/utils/image_message_parser.dart';
 import 'package:meshcore_sar_app/utils/voice_message_parser.dart';
 import 'package:latlong2/latlong.dart';
@@ -39,6 +41,7 @@ void main() {
   group('MessagesProvider voice detection', () {
     setUp(() {
       SharedPreferences.setMockInitialValues({});
+      LocationTrackingService().currentPosition = null;
     });
 
     test('marks VE3 envelope messages as voice', () {
@@ -129,6 +132,50 @@ void main() {
       expect(snapshot!.source, equals('advert'));
       expect(snapshot.location.latitude, closeTo(46.0569, 0.000001));
       expect(snapshot.location.longitude, closeTo(14.5058, 0.000001));
+    });
+
+    test('persists current device location for sent messages', () async {
+      final provider = MessagesProvider();
+      LocationTrackingService().currentPosition = Position(
+        latitude: 46.0569,
+        longitude: 14.5058,
+        timestamp: DateTime.fromMillisecondsSinceEpoch(1700000003000),
+        accuracy: 4.5,
+        altitude: 310.0,
+        altitudeAccuracy: 6.0,
+        heading: 0.0,
+        headingAccuracy: 0.0,
+        speed: 0.0,
+        speedAccuracy: 0.0,
+      );
+
+      provider.addSentMessage(
+        Message(
+          id: 'sent-1',
+          messageType: MessageType.contact,
+          pathLen: 0,
+          textType: MessageTextType.plain,
+          senderTimestamp: 1700000003,
+          text: 'outgoing status',
+          receivedAt: DateTime.now(),
+          senderPublicKeyPrefix: Uint8List.fromList([0, 1, 2, 3, 4, 5]),
+          deliveryStatus: MessageDeliveryStatus.sending,
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      final restoredProvider = MessagesProvider();
+      await restoredProvider.initialize();
+      final snapshot = restoredProvider.getMessageContactLocation('sent-1');
+
+      expect(snapshot, isNotNull);
+      expect(snapshot!.source, equals('gps'));
+      expect(snapshot.location.latitude, closeTo(46.0569, 0.000001));
+      expect(snapshot.location.longitude, closeTo(14.5058, 0.000001));
+      expect(
+        snapshot.sourceTimestamp,
+        DateTime.fromMillisecondsSinceEpoch(1700000003000),
+      );
     });
 
     test('dedupes repeated incoming contact messages with same text', () {

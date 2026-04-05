@@ -1,9 +1,11 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart' as flutter_map;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meshcore_sar_app/l10n/app_localizations.dart';
 import 'package:meshcore_sar_app/models/message.dart';
+import 'package:meshcore_sar_app/models/message_contact_location.dart';
 import 'package:meshcore_sar_app/providers/app_provider.dart';
 import 'package:meshcore_sar_app/providers/channels_provider.dart';
 import 'package:meshcore_sar_app/providers/connection_provider.dart';
@@ -15,6 +17,7 @@ import 'package:meshcore_sar_app/providers/voice_provider.dart';
 import 'package:meshcore_sar_app/services/voice_codec_service.dart';
 import 'package:meshcore_sar_app/services/voice_player_service.dart';
 import 'package:meshcore_sar_app/widgets/messages/message_bubble.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -359,6 +362,50 @@ void main() {
 
       expect(find.text('Import a shared contact advert'), findsOneWidget);
       expect(find.text(advert), findsOneWidget);
+    } finally {
+      await _disposeHarness(tester, harness);
+    }
+  });
+
+  testWidgets('technical details show a location map for stored snapshots', (
+    tester,
+  ) async {
+    final harness = await _TestHarness.create();
+    try {
+      final message = Message(
+        id: 'message-location-details',
+        messageType: MessageType.contact,
+        senderPublicKeyPrefix: _prefix(71),
+        pathLen: 1,
+        textType: MessageTextType.plain,
+        senderTimestamp: 1700000000,
+        text: 'Location details',
+        receivedAt: DateTime.fromMillisecondsSinceEpoch(1700000000500),
+        deliveryStatus: MessageDeliveryStatus.received,
+      );
+
+      harness.messagesProvider.addMessage(
+        message,
+        contactLocationSnapshot: MessageContactLocation(
+          location: const LatLng(46.0569, 14.5058),
+          source: 'advert',
+          capturedAt: DateTime.fromMillisecondsSinceEpoch(1700000000600),
+          sourceTimestamp: DateTime.fromMillisecondsSinceEpoch(1700000000400),
+        ),
+      );
+
+      await tester.pumpWidget(_buildApp(harness, message));
+      await tester.pumpAndSettle();
+
+      await tester.longPress(find.text('Location details'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Technical details'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(flutter_map.FlutterMap), findsOneWidget);
+      expect(find.text('46.056900, 14.505800'), findsOneWidget);
+      expect(find.text('advert'), findsOneWidget);
     } finally {
       await _disposeHarness(tester, harness);
     }

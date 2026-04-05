@@ -118,6 +118,34 @@ enum ContactsTabSection {
   channels,
 }
 
+enum ChannelLocationSharingMode { hardware, appFallback }
+
+class ChannelLocationSharingState {
+  final ChannelLocationSharingMode mode;
+  final bool isSharing;
+  final bool hardwareSupported;
+  final bool isConnected;
+
+  const ChannelLocationSharingState({
+    required this.mode,
+    required this.isSharing,
+    required this.hardwareSupported,
+    required this.isConnected,
+  });
+
+  bool get usesHardware => mode == ChannelLocationSharingMode.hardware;
+}
+
+class ChannelLocationSharingResult {
+  final ChannelLocationSharingState state;
+  final String message;
+
+  const ChannelLocationSharingResult({
+    required this.state,
+    required this.message,
+  });
+}
+
 /// Main App Provider - coordinates all other providers
 class AppProvider with ChangeNotifier {
   static const int _maxDirectPayloadHops = 3;
@@ -219,6 +247,8 @@ class AppProvider with ChangeNotifier {
   final Map<String, int> _voiceMissingRetryAttempts = {};
   final Map<String, Timer> _imageMissingRetryTimers = {};
   final Map<String, int> _imageMissingRetryAttempts = {};
+  bool _hardwareChannelLocationSharingSupported = false;
+  int? _hardwareChannelLocationSharingChannelIdx;
   final FragmentAckWaitRegistry _rawProbeWaiters = FragmentAckWaitRegistry();
   final Map<String, Future<bool>> _pendingRawRouteProbes = {};
   final Map<String, Future<bool>> _pendingMediaSwarmFetches = {};
@@ -2544,6 +2574,7 @@ class AppProvider with ChangeNotifier {
         '📍 [AppProvider] Starting location tracking after successful initialization',
       );
       await _startLocationTracking();
+      await refreshChannelLocationSharingState();
 
       // Sync drawing messages with DrawingProvider
       // This restores any drawings that may be missing from storage
@@ -2587,6 +2618,7 @@ class AppProvider with ChangeNotifier {
       await connectionProvider.syncChannels(
         maxChannels: connectionProvider.deviceInfo.maxChannels,
       );
+      await refreshChannelLocationSharingState();
 
       final messageCount = await connectionProvider.syncAllMessages(
         force: true,
@@ -2742,6 +2774,229 @@ class AppProvider with ChangeNotifier {
       _loadMessagingRouteSettings(),
       locationTrackingService.loadSettings(),
     ]);
+  }
+
+  Future<void> refreshChannelLocationSharingState() async {
+    if (!connectionProvider.deviceInfo.isConnected) {
+      return;
+    }
+
+    final vars = await connectionProvider.getCustomVars();
+    final hardwareSupported = _supportsHardwareChannelLocationSharing(vars);
+    final rawChannelIdx = hardwareSupported
+        ? int.tryParse(vars['fast_gps_channel'] ?? '')
+        : null;
+    final normalizedChannelIdx = rawChannelIdx != null && rawChannelIdx > 0
+        ? rawChannelIdx
+        : null;
+
+    if (_hardwareChannelLocationSharingSupported == hardwareSupported &&
+        _hardwareChannelLocationSharingChannelIdx == normalizedChannelIdx) {
+      return;
+    }
+
+    _hardwareChannelLocationSharingSupported = hardwareSupported;
+    _hardwareChannelLocationSharingChannelIdx = normalizedChannelIdx;
+    notifyListeners();
+  }
+
+  ChannelLocationSharingMode? channelLocationSharingModeForChannel(
+    int channelIdx,
+  ) {
+    if (channelIdx <= 0) {
+      return null;
+    }
+    if (_hardwareChannelLocationSharingChannelIdx == channelIdx) {
+      return ChannelLocationSharingMode.hardware;
+    }
+    if (_isAppFallbackLocationSharingActiveForChannel(channelIdx)) {
+      return ChannelLocationSharingMode.appFallback;
+    }
+    return null;
+  }
+
+  void notifyChannelLocationSharingChanged() {
+    notifyListeners();
+  }
+
+  bool _isAppFallbackLocationSharingActiveForChannel(int channelIdx) {
+    return locationTrackingService.fastLocationUpdatesEnabled &&
+        locationTrackingService.fastLocationChannelIdx == channelIdx;
+  }
+
+  bool _supportsHardwareChannelLocationSharing(Map<String, String> vars) {
+    return vars.containsKey('gps') && vars.containsKey('fast_gps_channel');
+  }
+
+  int? _hardwareChannelLocationSharingIdxFromVars(Map<String, String> vars) {
+    final rawChannelIdx = int.tryParse(vars['fast_gps_channel'] ?? '');
+    return rawChannelIdx != null && rawChannelIdx > 0 ? rawChannelIdx : null;
+  }
+
+  Future<void> _setDeviceCustomVarOrThrow(String key, String value) async {
+    connectionProvider.clearError();
+    await connectionProvider.setCustomVar(key, value);
+    final error = connectionProvider.error;
+    if (error != null) {
+      connectionProvider.clearError();
+      throw StateError(error);
+    }
+  }
+
+  Future<ChannelLocationSharingState> getChannelLocationSharingState(
+    int channelIdx,
+  ) async {
+    if (channelIdx <= 0) {
+      return const ChannelLocationSharingState(
+        mode: ChannelLocationSharingMode.appFallback,
+        isSharing: false,
+        hardwareSupported: false,
+        isConnected: false,
+      );
+    }
+
+    if (connectionProvider.deviceInfo.isConnected) {
+      await refreshChannelLocationSharingState();
+    }
+
+    final sharingMode = channelLocationSharingModeForChannel(channelIdx);
+
+    return ChannelLocationSharingState(
+      mode: sharingMode ??
+          (_hardwareChannelLocationSharingSupported
+              ? ChannelLocationSharingMode.hardware
+              : ChannelLocationSharingMode.appFallback),
+      isSharing: sharingMode != null,
+      hardwareSupported: _hardwareChannelLocationSharingSupported,
+      isConnected: connectionProvider.deviceInfo.isConnected,
+    );
+  }
+
+  Future<ChannelLocationSharingResult> setChannelLocationSharingEnabled(
+    int channelIdx,
+    bool enabled,
+  ) async {
+    if (channelIdx <= 0) {
+      throw ArgumentError.value(
+        channelIdx,
+        'channelIdx',
+        'Location sharing requires a non-public channel',
+      );
+    }
+
+    if (!connectionProvider.deviceInfo.isConnected) {
+      throw StateError('Connect to a device first');
+    }
+
+    final vars = await connectionProvider.getCustomVars();
+    final hardwareSupported = _supportsHardwareChannelLocationSharing(vars);
+    if (enabled) {
+      if (hardwareSupported) {
+        await _setDeviceCustomVarOrThrow('gps', '1');
+        await _setDeviceCustomVarOrThrow(
+          'fast_gps_channel',
+          channelIdx.toString(),
+        );
+        _hardwareChannelLocationSharingSupported = true;
+        _hardwareChannelLocationSharingChannelIdx = channelIdx;
+        await locationTrackingService.updateFastLocationChannelIdx(null);
+        await locationTrackingService.setFastLocationUpdatesEnabled(false);
+        await refreshChannelLocationSharingState();
+        if (_hardwareChannelLocationSharingChannelIdx != channelIdx) {
+          throw StateError('Radio location sharing did not enable for this channel');
+        }
+        notifyListeners();
+        return const ChannelLocationSharingResult(
+          state: ChannelLocationSharingState(
+            mode: ChannelLocationSharingMode.hardware,
+            isSharing: true,
+            hardwareSupported: true,
+            isConnected: true,
+          ),
+          message: 'Sharing location on this channel from the radio.',
+        );
+      }
+
+      _hardwareChannelLocationSharingSupported = false;
+      _hardwareChannelLocationSharingChannelIdx = null;
+      final previousEnabled = locationTrackingService.fastLocationUpdatesEnabled;
+      final previousChannelIdx = locationTrackingService.fastLocationChannelIdx;
+      try {
+        await locationTrackingService.updateFastLocationChannelIdx(channelIdx);
+        await locationTrackingService.setFastLocationUpdatesEnabled(true);
+        if (!locationTrackingService.isTracking) {
+          final started = await locationTrackingService.startTracking();
+          if (!started) {
+            throw StateError('Phone location tracking could not be started');
+          }
+        }
+      } catch (e) {
+        await locationTrackingService.updateFastLocationChannelIdx(
+          previousChannelIdx,
+        );
+        await locationTrackingService.setFastLocationUpdatesEnabled(
+          previousEnabled,
+        );
+        rethrow;
+      }
+      notifyListeners();
+      return const ChannelLocationSharingResult(
+        state: ChannelLocationSharingState(
+          mode: ChannelLocationSharingMode.appFallback,
+          isSharing: true,
+            hardwareSupported: false,
+            isConnected: true,
+          ),
+          message: 'Sharing location on this channel from the phone.',
+        );
+      }
+
+    final activeHardwareChannelIdx = _hardwareChannelLocationSharingIdxFromVars(
+      vars,
+    );
+    final shouldAttemptHardwareStop =
+        hardwareSupported ||
+        _hardwareChannelLocationSharingSupported ||
+        activeHardwareChannelIdx == channelIdx ||
+        _hardwareChannelLocationSharingChannelIdx == channelIdx;
+
+    if (locationTrackingService.fastLocationChannelIdx == channelIdx) {
+      await locationTrackingService.updateFastLocationChannelIdx(null);
+      await locationTrackingService.setFastLocationUpdatesEnabled(false);
+    }
+
+    if (shouldAttemptHardwareStop) {
+      await _setDeviceCustomVarOrThrow('fast_gps_channel', '-1');
+      _hardwareChannelLocationSharingSupported = true;
+      _hardwareChannelLocationSharingChannelIdx = null;
+      await refreshChannelLocationSharingState();
+      if (_hardwareChannelLocationSharingChannelIdx == channelIdx) {
+        throw StateError('Radio location sharing is still enabled for this channel');
+      }
+      notifyListeners();
+      return const ChannelLocationSharingResult(
+        state: ChannelLocationSharingState(
+          mode: ChannelLocationSharingMode.hardware,
+          isSharing: false,
+          hardwareSupported: true,
+          isConnected: true,
+        ),
+        message: 'Stopped sharing location on this channel.',
+      );
+    }
+
+    _hardwareChannelLocationSharingSupported = false;
+    _hardwareChannelLocationSharingChannelIdx = null;
+    notifyListeners();
+    return const ChannelLocationSharingResult(
+      state: ChannelLocationSharingState(
+        mode: ChannelLocationSharingMode.appFallback,
+        isSharing: false,
+        hardwareSupported: false,
+        isConnected: true,
+      ),
+      message: 'Stopped sharing location on this channel.',
+    );
   }
 
   Future<void> _sendFastLocationUpdate(

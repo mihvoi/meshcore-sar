@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import '../../models/contact.dart';
 import '../../models/room_login_state.dart';
+import '../../providers/app_provider.dart';
 import '../../providers/connection_provider.dart';
 import '../../providers/contacts_provider.dart';
 import '../../providers/map_provider.dart';
@@ -66,6 +67,28 @@ class ContactTile extends StatelessWidget {
         .toUpperCase();
   }
 
+  Widget _buildChannelLocationSharingMarker(
+    BuildContext context,
+    ChannelLocationSharingMode mode,
+  ) {
+    final isHardware = mode == ChannelLocationSharingMode.hardware;
+    const accent = Color(0xFF16A34A);
+
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: accent,
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 2),
+      ),
+      child: Icon(
+        isHardware ? Icons.public_rounded : Icons.smartphone_rounded,
+        size: 11,
+        color: Colors.white,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isChannel = contact.type == ContactType.channel;
@@ -90,6 +113,7 @@ class ContactTile extends StatelessWidget {
     // Get room login state if this is a room
     final connectionProvider = context.watch<ConnectionProvider>();
     final messagesProvider = context.watch<MessagesProvider>();
+    final appProvider = context.watch<AppProvider>();
     final isPingInProgress = connectionProvider.isPingInProgress(
       contact.publicKey,
     );
@@ -133,6 +157,10 @@ class ContactTile extends StatelessWidget {
     );
     final lastActivityAt = isRoomOrChannel
         ? messagesProvider.getLastActivityForDestination(contact)
+        : null;
+    final channelLocationSharingMode =
+        isChannel && !contact.isPublicChannel && contact.publicKey.length > 1
+        ? appProvider.channelLocationSharingModeForChannel(contact.publicKey[1])
         : null;
     final timeAgoText = _getLocalizedRelativeTime(
       context,
@@ -237,6 +265,15 @@ class ContactTile extends StatelessWidget {
                                     width: 2,
                                   ),
                                 ),
+                              ),
+                            ),
+                          if (isChannel && channelLocationSharingMode != null)
+                            Positioned(
+                              bottom: -2,
+                              right: -2,
+                              child: _buildChannelLocationSharingMarker(
+                                context,
+                                channelLocationSharingMode,
                               ),
                             ),
                           if (contact.type == ContactType.room &&
@@ -383,6 +420,68 @@ class ContactTile extends StatelessWidget {
     _showContactActionSheet(context, contact);
   }
 
+  String _locationSharingErrorMessage(Object error) {
+    final message = error.toString();
+    if (message.startsWith('Bad state: ')) {
+      return message.substring('Bad state: '.length);
+    }
+    return message;
+  }
+
+  Future<void> _setChannelLocationSharing(
+    BuildContext context,
+    Contact contact,
+    bool enabled,
+  ) async {
+    final channelIdx = contact.publicKey.length > 1 ? contact.publicKey[1] : 0;
+    try {
+      final result = await context.read<AppProvider>().setChannelLocationSharingEnabled(
+        channelIdx,
+        enabled,
+      );
+      if (!context.mounted) return;
+      ToastLogger.success(context, result.message);
+    } catch (error) {
+      if (!context.mounted) return;
+      ToastLogger.error(context, _locationSharingErrorMessage(error));
+    }
+  }
+
+  Future<void> _handleChannelLocationSharingAction(
+    BuildContext context,
+    Contact contact,
+  ) async {
+    if (contact.isPublicChannel) {
+      if (!context.mounted) return;
+      ToastLogger.error(
+        context,
+        'Select a private channel to share your location.',
+      );
+      return;
+    }
+
+    final channelIdx = contact.publicKey.length > 1 ? contact.publicKey[1] : 0;
+    if (channelIdx <= 0) {
+      if (!context.mounted) return;
+      ToastLogger.error(
+        context,
+        'Select a private channel to share your location.',
+      );
+      return;
+    }
+
+    try {
+      final sharingState = await context
+          .read<AppProvider>()
+          .getChannelLocationSharingState(channelIdx);
+      if (!context.mounted) return;
+      await _setChannelLocationSharing(context, contact, !sharingState.isSharing);
+    } catch (error) {
+      if (!context.mounted) return;
+      ToastLogger.error(context, _locationSharingErrorMessage(error));
+    }
+  }
+
   void _showContactActionSheet(BuildContext context, Contact contact) {
     final l10n = AppLocalizations.of(context)!;
     final canToggleFavourite = !contact.isChannel;
@@ -402,179 +501,220 @@ class ContactTile extends StatelessWidget {
     final canPreviewSensor = contact.isSensor;
     final sensorsProvider = context.read<SensorsProvider>();
     final isInSensors = sensorsProvider.isWatched(contact.publicKeyHex);
-
-    final primaryActions = <_ContactSheetAction>[
-      if (canMessage)
-        _ContactSheetAction(
-          icon: Icons.message_outlined,
-          label: l10n.messages,
-          onTap: () async {
-            Navigator.pop(context);
-            await _openMessagesForContact(context, contact);
-          },
-        ),
-      if (!contact.isChannel)
-        _ContactSheetAction(
-          icon: Icons.share_outlined,
-          label: l10n.share,
-          onTap: () async {
-            Navigator.pop(context);
-            final connectionProvider = context.read<ConnectionProvider>();
-            final url = await connectionProvider.exportContactUrl(
-              contact.publicKey,
-            );
-            if (url != null && context.mounted) {
-              await Clipboard.setData(ClipboardData(text: url));
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(l10n.contactLinkCopiedToClipboard)),
-                );
-              }
-            } else if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(l10n.failedToExportContact)),
-              );
-            }
-          },
-        ),
-      if (canSetPath)
-        _ContactSheetAction(
-          icon: Icons.alt_route,
-          label: l10n.contactSetPath,
-          onTap: () async {
-            Navigator.pop(context);
-            await _showSetRouteDialog(context, contact);
-          },
-        ),
-      if (!contact.isPublicChannel)
-        _ContactSheetAction(
-          icon: Icons.delete_outline_rounded,
-          label: l10n.delete,
-          destructive: true,
-          onTap: () async {
-            Navigator.pop(context);
-            await Future<void>.delayed(Duration.zero);
-            if (!context.mounted) return;
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (!context.mounted) return;
-              if (contact.isChannel) {
-                _showDeleteChannelDialog(context, contact);
-              } else {
-                _showDeleteConfirmation(context, contact);
-              }
-            });
-          },
-        ),
-    ];
-
-    final secondaryActions = <_ContactSheetAction>[
-      if (contact.displayLocation != null)
-        _ContactSheetAction(
-          icon: Icons.map_outlined,
-          label: l10n.viewOnMap,
-          onTap: () async {
-            Navigator.pop(context);
-            _showContactOnMap(context, contact);
-          },
-        ),
-      if (contact.type == ContactType.room && !contact.isPublicChannel)
-        _ContactSheetAction(
-          icon: Icons.login,
-          label:
-              context
-                      .read<ConnectionProvider>()
-                      .getRoomLoginState(contact.publicKeyPrefix)
-                      ?.isLoggedIn ==
-                  true
-              ? l10n.reLoginToRoom
-              : l10n.loginToRoom,
-          onTap: () async {
-            Navigator.pop(context);
-            _showRoomLoginDialog(context, contact);
-          },
-        ),
-      if (canPreviewSensor)
-        _ContactSheetAction(
-          icon: Icons.visibility_outlined,
-          label: l10n.preview,
-          onTap: () async {
-            Navigator.pop(context);
-            await Future<void>.delayed(Duration.zero);
-            if (!context.mounted) return;
-            await _showSensorPreviewView(context, contact);
-          },
-        ),
-      if (canAddToSensors)
-        _ContactSheetAction(
-          icon: isInSensors ? Icons.sensors : Icons.sensors_outlined,
-          label: isInSensors ? l10n.contactInSensors : l10n.contactAddToSensors,
-          enabled: !isInSensors,
-          onTap: () async {
-            Navigator.pop(context);
-            await _addContactToSensors(context, contact);
-          },
-        ),
-      if (!contact.isChannel)
-        _ContactSheetAction(
-          icon: Icons.route,
-          label: l10n.trace,
-          onTap: () async {
-            Navigator.pop(context);
-            _showTraceSheet(context, contact);
-          },
-        ),
-      if (contact.type == ContactType.repeater)
-        _ContactSheetAction(
-          icon: Icons.hub_outlined,
-          label: 'View Neighbours',
-          onTap: () async {
-            Navigator.pop(context);
-            _showNeighbours(context, contact);
-          },
-        ),
-      if (contact.type == ContactType.repeater ||
-          contact.type == ContactType.room)
-        _ContactSheetAction(
-          icon: Icons.network_ping,
-          label: 'Ping',
-          onTap: () async {
-            Navigator.pop(context);
-            _pingRelay(context, contact);
-          },
-        ),
-      if (!contact.isPublicChannel)
-        _ContactSheetAction(
-          icon: Icons.edit_outlined,
-          label: l10n.editName,
-          onTap: () async {
-            Navigator.pop(context);
-            _showNameOverrideDialog(context, contact);
-          },
-        ),
-    ];
+    final channelLocationSharingFuture =
+        contact.type == ContactType.channel &&
+            !contact.isPublicChannel &&
+            contact.publicKey.length > 1
+        ? context
+              .read<AppProvider>()
+              .getChannelLocationSharingState(contact.publicKey[1])
+        : null;
 
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (sheetContext) => _ContactActionSheet(
-        contact: contact,
-        primaryActions: primaryActions,
-        secondaryActions: secondaryActions,
-        showFavouriteButton: canToggleFavourite,
-        initialFavourite: contact.isFavourite,
-        onClose: () => Navigator.pop(sheetContext),
-        onToggleFavourite: !canToggleFavourite
-            ? null
-            : () async {
-                final toggled = contact.toggleFavourite();
-                final connectionProvider = context.read<ConnectionProvider>();
-                await connectionProvider.addOrUpdateContact(toggled);
-                if (context.mounted) {
-                  await connectionProvider.getContact(contact.publicKey);
-                }
-              },
-      ),
+      builder: (sheetContext) {
+        Widget buildSheet(ChannelLocationSharingState? sharingState) {
+          final primaryActions = <_ContactSheetAction>[
+            if (canMessage)
+              _ContactSheetAction(
+                icon: Icons.message_outlined,
+                label: l10n.messages,
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _openMessagesForContact(context, contact);
+                },
+              ),
+            if (contact.type == ContactType.channel)
+              _ContactSheetAction(
+                icon: sharingState?.isSharing == true
+                    ? Icons.location_off_rounded
+                    : Icons.share_location_rounded,
+                label: sharingState?.isSharing == true
+                    ? 'Stop sharing my location'
+                    : 'Share my location',
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _handleChannelLocationSharingAction(context, contact);
+                },
+              ),
+            if (!contact.isChannel)
+              _ContactSheetAction(
+                icon: Icons.share_outlined,
+                label: l10n.share,
+                onTap: () async {
+                  Navigator.pop(context);
+                  final connectionProvider = context.read<ConnectionProvider>();
+                  final url = await connectionProvider.exportContactUrl(
+                    contact.publicKey,
+                  );
+                  if (url != null && context.mounted) {
+                    await Clipboard.setData(ClipboardData(text: url));
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(l10n.contactLinkCopiedToClipboard),
+                        ),
+                      );
+                    }
+                  } else if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(l10n.failedToExportContact)),
+                    );
+                  }
+                },
+              ),
+            if (canSetPath)
+              _ContactSheetAction(
+                icon: Icons.alt_route,
+                label: l10n.contactSetPath,
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _showSetRouteDialog(context, contact);
+                },
+              ),
+            if (!contact.isPublicChannel)
+              _ContactSheetAction(
+                icon: Icons.delete_outline_rounded,
+                label: l10n.delete,
+                destructive: true,
+                onTap: () async {
+                  Navigator.pop(context);
+                  await Future<void>.delayed(Duration.zero);
+                  if (!context.mounted) return;
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!context.mounted) return;
+                    if (contact.isChannel) {
+                      _showDeleteChannelDialog(context, contact);
+                    } else {
+                      _showDeleteConfirmation(context, contact);
+                    }
+                  });
+                },
+              ),
+          ];
+
+          final secondaryActions = <_ContactSheetAction>[
+            if (contact.displayLocation != null)
+              _ContactSheetAction(
+                icon: Icons.map_outlined,
+                label: l10n.viewOnMap,
+                onTap: () async {
+                  Navigator.pop(context);
+                  _showContactOnMap(context, contact);
+                },
+              ),
+            if (contact.type == ContactType.room && !contact.isPublicChannel)
+              _ContactSheetAction(
+                icon: Icons.login,
+                label:
+                    context
+                            .read<ConnectionProvider>()
+                            .getRoomLoginState(contact.publicKeyPrefix)
+                            ?.isLoggedIn ==
+                        true
+                    ? l10n.reLoginToRoom
+                    : l10n.loginToRoom,
+                onTap: () async {
+                  Navigator.pop(context);
+                  _showRoomLoginDialog(context, contact);
+                },
+              ),
+            if (canPreviewSensor)
+              _ContactSheetAction(
+                icon: Icons.visibility_outlined,
+                label: l10n.preview,
+                onTap: () async {
+                  Navigator.pop(context);
+                  await Future<void>.delayed(Duration.zero);
+                  if (!context.mounted) return;
+                  await _showSensorPreviewView(context, contact);
+                },
+              ),
+            if (canAddToSensors)
+              _ContactSheetAction(
+                icon: isInSensors ? Icons.sensors : Icons.sensors_outlined,
+                label: isInSensors
+                    ? l10n.contactInSensors
+                    : l10n.contactAddToSensors,
+                enabled: !isInSensors,
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _addContactToSensors(context, contact);
+                },
+              ),
+            if (!contact.isChannel)
+              _ContactSheetAction(
+                icon: Icons.route,
+                label: l10n.trace,
+                onTap: () async {
+                  Navigator.pop(context);
+                  _showTraceSheet(context, contact);
+                },
+              ),
+            if (contact.type == ContactType.repeater)
+              _ContactSheetAction(
+                icon: Icons.hub_outlined,
+                label: 'View Neighbours',
+                onTap: () async {
+                  Navigator.pop(context);
+                  _showNeighbours(context, contact);
+                },
+              ),
+            if (contact.type == ContactType.repeater ||
+                contact.type == ContactType.room)
+              _ContactSheetAction(
+                icon: Icons.network_ping,
+                label: 'Ping',
+                onTap: () async {
+                  Navigator.pop(context);
+                  _pingRelay(context, contact);
+                },
+              ),
+            if (!contact.isPublicChannel)
+              _ContactSheetAction(
+                icon: Icons.edit_outlined,
+                label: l10n.editName,
+                onTap: () async {
+                  Navigator.pop(context);
+                  _showNameOverrideDialog(context, contact);
+                },
+              ),
+          ];
+
+          return _ContactActionSheet(
+            contact: contact,
+            primaryActions: primaryActions,
+            secondaryActions: secondaryActions,
+            showFavouriteButton: canToggleFavourite,
+            initialFavourite: contact.isFavourite,
+            onClose: () => Navigator.pop(sheetContext),
+            onToggleFavourite: !canToggleFavourite
+                ? null
+                : () async {
+                    final toggled = contact.toggleFavourite();
+                    final connectionProvider =
+                        context.read<ConnectionProvider>();
+                    await connectionProvider.addOrUpdateContact(toggled);
+                    if (context.mounted) {
+                      await connectionProvider.getContact(contact.publicKey);
+                    }
+                  },
+          );
+        }
+
+        if (channelLocationSharingFuture == null) {
+          return buildSheet(null);
+        }
+
+        return FutureBuilder<ChannelLocationSharingState>(
+          future: channelLocationSharingFuture,
+          builder: (context, snapshot) {
+            return buildSheet(snapshot.data);
+          },
+        );
+      },
     );
   }
 

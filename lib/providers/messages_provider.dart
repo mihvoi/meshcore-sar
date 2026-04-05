@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:latlong2/latlong.dart';
 import '../models/message.dart';
 import '../models/contact.dart';
 import '../models/message_contact_location.dart';
@@ -10,6 +11,7 @@ import '../models/path_selection.dart';
 import '../models/sar_marker.dart';
 import '../models/map_drawing.dart';
 import '../services/message_storage_service.dart';
+import '../services/location_tracking_service.dart';
 import '../services/notification_service.dart';
 import '../utils/sar_message_parser.dart';
 import '../utils/drawing_message_parser.dart';
@@ -1808,12 +1810,17 @@ class MessagesProvider with ChangeNotifier {
       }
     }
     enhancedMessage = _resolveSenderNameIfNeeded(enhancedMessage);
+    final senderLocationSnapshot = _buildSentMessageLocationSnapshot();
 
     // Check for duplicates (shouldn't happen for sent messages, but be safe)
     if (_findDuplicateMessageIndex(enhancedMessage) != -1) {
       debugPrint(
         '⚠️ [MessagesProvider] Duplicate sent message detected, skipping: ${enhancedMessage.id}',
       );
+      if (senderLocationSnapshot != null) {
+        _messageContactLocations[enhancedMessage.id] = senderLocationSnapshot;
+        _persistMessages();
+      }
       return;
     }
 
@@ -1823,6 +1830,9 @@ class MessagesProvider with ChangeNotifier {
       isRead: true, // Sent messages are always marked as read
     );
     _messages.add(sendingMessage);
+    if (senderLocationSnapshot != null) {
+      _messageContactLocations[sendingMessage.id] = senderLocationSnapshot;
+    }
     debugPrint('  ✅ Message added to list at index ${_messages.length - 1}');
     debugPrint('  Total messages in list: ${_messages.length}');
 
@@ -1848,6 +1858,20 @@ class MessagesProvider with ChangeNotifier {
     _persistMessages();
     notifyListeners();
     debugPrint('  ✅ notifyListeners() called - UI should update');
+  }
+
+  MessageContactLocation? _buildSentMessageLocationSnapshot() {
+    final position = LocationTrackingService().currentPosition;
+    if (position == null) {
+      return null;
+    }
+
+    return MessageContactLocation(
+      location: LatLng(position.latitude, position.longitude),
+      source: 'gps',
+      capturedAt: DateTime.now(),
+      sourceTimestamp: position.timestamp,
+    );
   }
 
   /// Register an individual message ID as part of a grouped message

@@ -420,6 +420,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _setFastLocationUpdatesEnabled(bool enabled) async {
     await _locationService.setFastLocationUpdatesEnabled(enabled);
     if (!mounted) return;
+    context.read<AppProvider>().notifyChannelLocationSharingChanged();
     setState(() {
       _fastLocationUpdatesEnabled = _locationService.fastLocationUpdatesEnabled;
     });
@@ -593,6 +594,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       selected < 0 ? null : selected,
     );
     if (!mounted) return;
+    context.read<AppProvider>().notifyChannelLocationSharingChanged();
     setState(() {
       _fastLocationChannelIdx = _locationService.fastLocationChannelIdx;
     });

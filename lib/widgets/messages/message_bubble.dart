@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter_map/flutter_map.dart' as flutter_map;
 import 'package:latlong2/latlong.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:provider/provider.dart';
@@ -628,7 +629,7 @@ class _MessageBubbleState extends State<MessageBubble> {
       recipientName = recipientContact?.advName;
     }
 
-    final senderLocationSnapshot = messagesProvider.getMessageContactLocation(
+    final messageLocationSnapshot = messagesProvider.getMessageContactLocation(
       widget.message.id,
     );
     final receptionDetails = messagesProvider.getMessageReceptionDetails(
@@ -742,9 +743,9 @@ class _MessageBubbleState extends State<MessageBubble> {
       'Retry result: ${retryResult ?? '-'}',
       'Sender key prefix: ${senderPrefixHex ?? '-'}',
       'Sender name: ${senderName ?? widget.message.senderName ?? '-'}',
-      'Sender location at receipt: ${senderLocationSnapshot?.formattedCoordinates ?? '-'}',
-      'Sender location source: ${senderLocationSnapshot?.technicalSourceLabel ?? '-'}',
-      'Sender location timestamp: ${senderLocationSnapshot?.sourceTimestamp?.toIso8601String() ?? '-'}',
+      '${widget.message.isSentMessage ? "Sent from location" : "Sender location at receipt"}: ${messageLocationSnapshot?.formattedCoordinates ?? '-'}',
+      '${widget.message.isSentMessage ? "Sent from source" : "Sender location source"}: ${messageLocationSnapshot?.technicalSourceLabel ?? '-'}',
+      '${widget.message.isSentMessage ? "Sent from timestamp" : "Sender location timestamp"}: ${messageLocationSnapshot?.sourceTimestamp?.toIso8601String() ?? '-'}',
       'Recipient key prefix: ${recipientPrefixHex ?? '-'}',
       'Recipient name: ${recipientName ?? '-'}',
       'Drawing flag: ${widget.message.isDrawing}',
@@ -907,6 +908,54 @@ class _MessageBubbleState extends State<MessageBubble> {
                             ),
                         ],
                       ),
+                      if (messageLocationSnapshot != null) ...[
+                        const SizedBox(height: 12),
+                        _techSection(
+                          sheetContext,
+                          icon: Icons.location_on,
+                          title: AppLocalizations.of(context)!.location,
+                          child: Column(
+                            children: [
+                              _buildLocationPreviewMap(
+                                sheetContext,
+                                messageLocationSnapshot.location,
+                              ),
+                              const SizedBox(height: 12),
+                              _detailRow(
+                                sheetContext,
+                                label: AppLocalizations.of(
+                                  context,
+                                )!.coordinates,
+                                value: messageLocationSnapshot
+                                    .formattedCoordinates,
+                                onCopy: () => copyField(
+                                  messageLocationSnapshot.formattedCoordinates,
+                                ),
+                              ),
+                              _detailRow(
+                                sheetContext,
+                                label: AppLocalizations.of(context)!.source,
+                                value: messageLocationSnapshot
+                                    .technicalSourceLabel,
+                              ),
+                              _detailRow(
+                                sheetContext,
+                                label: AppLocalizations.of(context)!.captured,
+                                value: _formatRfc3339(
+                                  messageLocationSnapshot.sourceTimestamp ??
+                                      messageLocationSnapshot.capturedAt,
+                                ),
+                                onCopy: () => copyField(
+                                  _formatRfc3339(
+                                    messageLocationSnapshot.sourceTimestamp ??
+                                        messageLocationSnapshot.capturedAt,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       if (widget.message.lastEchoRssiDbm != null ||
                           snrDb != null ||
                           rssiDbm != null) ...[
@@ -1325,6 +1374,53 @@ class _MessageBubbleState extends State<MessageBubble> {
                     ],
                   ),
                 ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLocationPreviewMap(BuildContext context, LatLng location) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: SizedBox(
+        height: 180,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
+          ),
+          child: flutter_map.FlutterMap(
+            options: flutter_map.MapOptions(
+              initialCenter: location,
+              initialZoom: 15,
+              interactionOptions: const flutter_map.InteractionOptions(
+                flags: flutter_map.InteractiveFlag.none,
+              ),
+            ),
+            children: [
+              flutter_map.TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.meshcore.sar',
+              ),
+              flutter_map.MarkerLayer(
+                markers: [
+                  flutter_map.Marker(
+                    point: location,
+                    width: 40,
+                    height: 40,
+                    child: Icon(
+                      widget.message.isSentMessage
+                          ? Icons.near_me
+                          : Icons.location_on,
+                      color: Theme.of(context).colorScheme.primary,
+                      size: 32,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

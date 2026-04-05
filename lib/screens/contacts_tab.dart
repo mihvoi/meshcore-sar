@@ -516,73 +516,174 @@ class _ContactsTabState extends State<ContactsTab> {
     messenger.showSnackBar(SnackBar(content: Text(copiedMessage)));
   }
 
+  String _locationSharingErrorMessage(Object error) {
+    final message = error.toString();
+    if (message.startsWith('Bad state: ')) {
+      return message.substring('Bad state: '.length);
+    }
+    return message;
+  }
+
+  Future<void> _setChannelLocationSharing(
+    BuildContext context,
+    Contact channel,
+    bool enabled,
+  ) async {
+    final channelIdx = channel.publicKey.length > 1 ? channel.publicKey[1] : 0;
+    try {
+      final result = await context.read<AppProvider>().setChannelLocationSharingEnabled(
+        channelIdx,
+        enabled,
+      );
+      if (!context.mounted) return;
+      ToastLogger.success(context, result.message);
+    } catch (error) {
+      if (!context.mounted) return;
+      ToastLogger.error(context, _locationSharingErrorMessage(error));
+    }
+  }
+
+  Future<void> _handleChannelLocationSharingAction(
+    BuildContext context,
+    Contact channel,
+  ) async {
+    if (channel.isPublicChannel) {
+      if (!context.mounted) return;
+      ToastLogger.error(
+        context,
+        'Select a private channel to share your location.',
+      );
+      return;
+    }
+
+    final channelIdx = channel.publicKey.length > 1 ? channel.publicKey[1] : 0;
+    if (channelIdx <= 0) {
+      if (!context.mounted) return;
+      ToastLogger.error(
+        context,
+        'Select a private channel to share your location.',
+      );
+      return;
+    }
+
+    try {
+      final sharingState = await context
+          .read<AppProvider>()
+          .getChannelLocationSharingState(channelIdx);
+      if (!context.mounted) return;
+      await _setChannelLocationSharing(context, channel, !sharingState.isSharing);
+    } catch (error) {
+      if (!context.mounted) return;
+      ToastLogger.error(context, _locationSharingErrorMessage(error));
+    }
+  }
+
   void _showChannelActionSheet(BuildContext context, Contact channel) {
     final l10n = AppLocalizations.of(context)!;
     final canExportHashChannelPsk = Channel.isHashChannelName(
       channel.advName.trim(),
     );
-    final actions = <_ChannelSheetAction>[
-      _ChannelSheetAction(
-        icon: Icons.message_outlined,
-        label: l10n.messages,
-        onTap: () async {
-          Navigator.pop(context);
-          await _openMessagesForChannel(context, channel);
-        },
-      ),
-      if (channel.displayLocation != null)
-        _ChannelSheetAction(
-          icon: Icons.map_outlined,
-          label: l10n.viewOnMap,
-          onTap: () async {
-            Navigator.pop(context);
-            _showChannelOnMap(context, channel);
-          },
-        ),
-      if (canExportHashChannelPsk)
-        _ChannelSheetAction(
-          icon: Icons.key_outlined,
-          label: '${l10n.exportToClipboard} psk_base64',
-          onTap: () async {
-            Navigator.pop(context);
-            await _exportHashChannelPskBase64(context, channel);
-          },
-        ),
-      _ChannelSheetAction(
-        icon: Icons.language_rounded,
-        label: l10n.setRegionScope,
-        onTap: () async {
-          Navigator.pop(context);
-          if (!context.mounted) return;
-          _showRegionScopeForChannel(context, channel);
-        },
-      ),
-      if (!channel.isPublicChannel)
-        _ChannelSheetAction(
-          icon: Icons.delete_outline_rounded,
-          label: l10n.deleteChannel,
-          destructive: true,
-          onTap: () async {
-            Navigator.pop(context);
-            await Future<void>.delayed(Duration.zero);
-            if (!context.mounted) return;
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (!context.mounted) return;
-              _showDeleteChannelDialog(context, channel);
-            });
-          },
-        ),
-    ];
+    final channelLocationSharingFuture =
+        !channel.isPublicChannel && channel.publicKey.length > 1
+        ? context
+              .read<AppProvider>()
+              .getChannelLocationSharingState(channel.publicKey[1])
+        : null;
 
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (sheetContext) => _ChannelActionSheet(
-        channel: channel,
-        actions: actions,
-        onClose: () => Navigator.pop(sheetContext),
-      ),
+      builder: (sheetContext) {
+        List<_ChannelSheetAction> buildActions(
+          ChannelLocationSharingState? sharingState,
+        ) {
+          return <_ChannelSheetAction>[
+            _ChannelSheetAction(
+              icon: Icons.message_outlined,
+              label: l10n.messages,
+              onTap: () async {
+                Navigator.pop(context);
+                await _openMessagesForChannel(context, channel);
+              },
+            ),
+            if (!channel.isPublicChannel)
+              _ChannelSheetAction(
+                icon: sharingState?.isSharing == true
+                    ? Icons.location_off_rounded
+                    : Icons.share_location_rounded,
+                label: sharingState?.isSharing == true
+                    ? 'Stop sharing my location'
+                    : 'Share my location',
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _handleChannelLocationSharingAction(context, channel);
+                },
+              ),
+            if (channel.displayLocation != null)
+              _ChannelSheetAction(
+                icon: Icons.map_outlined,
+                label: l10n.viewOnMap,
+                onTap: () async {
+                  Navigator.pop(context);
+                  _showChannelOnMap(context, channel);
+                },
+              ),
+            if (canExportHashChannelPsk)
+              _ChannelSheetAction(
+                icon: Icons.key_outlined,
+                label: '${l10n.exportToClipboard} psk_base64',
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _exportHashChannelPskBase64(context, channel);
+                },
+              ),
+            _ChannelSheetAction(
+              icon: Icons.language_rounded,
+              label: l10n.setRegionScope,
+              onTap: () async {
+                Navigator.pop(context);
+                if (!context.mounted) return;
+                _showRegionScopeForChannel(context, channel);
+              },
+            ),
+            if (!channel.isPublicChannel)
+              _ChannelSheetAction(
+                icon: Icons.delete_outline_rounded,
+                label: l10n.deleteChannel,
+                destructive: true,
+                onTap: () async {
+                  Navigator.pop(context);
+                  await Future<void>.delayed(Duration.zero);
+                  if (!context.mounted) return;
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!context.mounted) return;
+                    _showDeleteChannelDialog(context, channel);
+                  });
+                },
+              ),
+          ];
+        }
+
+        Widget buildSheet(ChannelLocationSharingState? sharingState) {
+          return _ChannelActionSheet(
+            channel: channel,
+            actions: buildActions(sharingState),
+            onClose: () => Navigator.pop(sheetContext),
+          );
+        }
+
+        if (channelLocationSharingFuture == null) {
+          return buildSheet(null);
+        }
+
+        return FutureBuilder<ChannelLocationSharingState>(
+          future: channelLocationSharingFuture,
+          builder: (context, snapshot) {
+            return buildSheet(snapshot.data);
+          },
+        );
+      },
     );
   }
 
@@ -1820,6 +1921,28 @@ class _ChannelActivityCard extends StatelessWidget {
     return l10n.daysAgo(diff.inDays);
   }
 
+  Widget _buildChannelLocationSharingMarker(
+    BuildContext context,
+    ChannelLocationSharingMode mode,
+  ) {
+    final isHardware = mode == ChannelLocationSharingMode.hardware;
+    const accent = Color(0xFF16A34A);
+
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: accent,
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 2),
+      ),
+      child: Icon(
+        isHardware ? Icons.public_rounded : Icons.smartphone_rounded,
+        size: 11,
+        color: Colors.white,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -1828,6 +1951,9 @@ class _ChannelActivityCard extends StatelessWidget {
       letterSpacing: -0.3,
     );
     final channelIdx = channel.publicKey.length > 1 ? channel.publicKey[1] : 0;
+    final channelLocationSharingMode = context
+        .watch<AppProvider>()
+        .channelLocationSharingModeForChannel(channelIdx);
     final channelMessages = messagesProvider.getMessagesForChannel(channelIdx)
       ..sort((a, b) => b.sentAt.compareTo(a.sentAt));
     final lastActivityAt = messagesProvider.getLastActivityForDestination(
@@ -1870,7 +1996,21 @@ class _ChannelActivityCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                ContactAvatar(contact: channel, radius: 24),
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    ContactAvatar(contact: channel, radius: 24),
+                    if (channelLocationSharingMode != null)
+                      Positioned(
+                        right: -2,
+                        bottom: -2,
+                        child: _buildChannelLocationSharingMarker(
+                          context,
+                          channelLocationSharingMode,
+                        ),
+                      ),
+                  ],
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
