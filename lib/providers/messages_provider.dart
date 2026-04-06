@@ -459,23 +459,12 @@ class MessagesProvider with ChangeNotifier {
           .loadMessageRouteMetadata(namespace: _storageNamespace);
       final storedRemovedSarMarkerIds = await _storageService
           .loadRemovedSarMarkerIds(namespace: _storageNamespace);
-      _messageContactLocations
-        ..clear()
-        ..addAll(storedContactLocations);
-      _messageReceptionDetails
-        ..clear()
-        ..addAll(storedReceptionDetails);
-      _messageTransferDetails
-        ..clear()
-        ..addAll(storedTransferDetails);
-      _messageRouteMetadata
-        ..clear()
-        ..addAll(storedRouteMetadata);
       _removedSarMarkerIds
         ..clear()
         ..addAll(storedRemovedSarMarkerIds);
 
-      // Add stored messages with enhancement to ensure SAR detection
+      // Rebuild the in-memory list through the normal duplicate rules so
+      // stale duplicate rows already persisted on-device are collapsed.
       for (final message in storedMessages) {
         // Re-enhance each message to ensure SAR markers are properly detected
         // This handles cases where messages were stored before enhancement logic
@@ -516,7 +505,66 @@ class MessagesProvider with ChangeNotifier {
           }
         }
 
+        enhancedMessage = _resolveSenderNameIfNeeded(enhancedMessage);
+
+        final duplicateIndex = _findDuplicateMessageIndex(enhancedMessage);
+        if (duplicateIndex != -1) {
+          final existingId = _messages[duplicateIndex].id;
+          final incomingReceptionDetails = storedReceptionDetails[message.id];
+          final existingMessage = _messages[duplicateIndex];
+          final duplicatePathBytes = incomingReceptionDetails?.pathBytes;
+
+          final storedLocation = storedContactLocations[message.id];
+          if (storedLocation != null &&
+              !_messageContactLocations.containsKey(existingId)) {
+            _messageContactLocations[existingId] = storedLocation;
+          }
+
+          _messageReceptionDetails[existingId] =
+              MessageReceptionDetails.mergeDuplicate(
+                existing: _messageReceptionDetails[existingId],
+                incoming: incomingReceptionDetails,
+              );
+
+          final storedTransferDetailsForMessage = storedTransferDetails[message.id];
+          if (storedTransferDetailsForMessage != null &&
+              !_messageTransferDetails.containsKey(existingId)) {
+            _messageTransferDetails[existingId] = storedTransferDetailsForMessage;
+          }
+
+          final storedRouteMetadataForMessage = storedRouteMetadata[message.id];
+          if (storedRouteMetadataForMessage != null &&
+              !_messageRouteMetadata.containsKey(existingId)) {
+            _messageRouteMetadata[existingId] = storedRouteMetadataForMessage;
+          }
+
+          if (existingMessage.pathBytes == null &&
+              duplicatePathBytes != null &&
+              duplicatePathBytes.isNotEmpty) {
+            _messages[duplicateIndex] = existingMessage.copyWith(
+              pathBytes: Uint8List.fromList(duplicatePathBytes),
+            );
+          }
+          continue;
+        }
+
         _messages.add(enhancedMessage);
+        final storedLocation = storedContactLocations[message.id];
+        if (storedLocation != null) {
+          _messageContactLocations[message.id] = storedLocation;
+        }
+        final storedReception = storedReceptionDetails[message.id];
+        if (storedReception != null) {
+          _messageReceptionDetails[message.id] = storedReception;
+        }
+        final storedTransfer = storedTransferDetails[message.id];
+        if (storedTransfer != null) {
+          _messageTransferDetails[message.id] = storedTransfer;
+        }
+        final storedRoute = storedRouteMetadata[message.id];
+        if (storedRoute != null) {
+          _messageRouteMetadata[message.id] = storedRoute;
+        }
 
         // Extract SAR markers
         if (enhancedMessage.isSarMarker) {
@@ -830,11 +878,12 @@ class MessagesProvider with ChangeNotifier {
   }
 
   int _findExactDuplicateMessageIndex(Message message) {
+    final normalizedIncomingText = _normalizedDuplicateText(message.text);
     for (int index = 0; index < _messages.length; index++) {
       final existing = _messages[index];
       if (existing.isSentMessage ||
           !_matchesExactDuplicateScope(existing, message) ||
-          existing.text != message.text) {
+          _normalizedDuplicateText(existing.text) != normalizedIncomingText) {
         continue;
       }
       if (message.isChannelMessage) {
@@ -851,21 +900,25 @@ class MessagesProvider with ChangeNotifier {
   }
 
   int _findLastConversationDuplicateMessageIndex(Message message) {
+    final normalizedIncomingText = _normalizedDuplicateText(message.text);
     for (int index = _messages.length - 1; index >= 0; index--) {
       final existing = _messages[index];
       if (!_isSameConversation(existing, message)) {
         continue;
       }
-      if (existing.isSentMessage ||
-          existing.isSystemMessage ||
-          existing.text != message.text) {
-        return -1;
-      }
       final receivedDelta = existing.receivedAt.difference(message.receivedAt).abs();
       if (receivedDelta > _receivedDuplicateWindow) {
-        return -1;
+        continue;
       }
-      return _matchesDuplicateSenderIdentity(existing, message) ? index : -1;
+      if (existing.isSentMessage || existing.isSystemMessage) {
+        continue;
+      }
+      if (_normalizedDuplicateText(existing.text) != normalizedIncomingText) {
+        continue;
+      }
+      if (_matchesDuplicateSenderIdentity(existing, message)) {
+        return index;
+      }
     }
 
     return -1;
@@ -944,11 +997,12 @@ class MessagesProvider with ChangeNotifier {
       return -1;
     }
 
+    final normalizedIncomingText = _normalizedDuplicateText(message.text);
     for (int index = 0; index < _messages.length; index++) {
       final existing = _messages[index];
       if (!existing.isSentMessage ||
           !existing.isChannelMessage ||
-          existing.text != message.text) {
+          _normalizedDuplicateText(existing.text) != normalizedIncomingText) {
         continue;
       }
 
@@ -1089,6 +1143,10 @@ class MessagesProvider with ChangeNotifier {
       message.senderPublicKeyPrefix,
     );
     return _normalizeSenderName(resolved);
+  }
+
+  String _normalizedDuplicateText(String value) {
+    return value.replaceAll('\r\n', '\n').trim();
   }
 
   void _scheduleChannelEchoWarning(String messageId) {
@@ -1398,9 +1456,12 @@ class MessagesProvider with ChangeNotifier {
       return false;
     }
 
-    return existing.text == message.text &&
+    final receivedDelta = existing.receivedAt.difference(message.receivedAt).abs();
+    return _normalizedDuplicateText(existing.text) ==
+            _normalizedDuplicateText(message.text) &&
         (_matchesExactDuplicateScope(existing, message) ||
-            (_isSameConversation(existing, message) &&
+            (receivedDelta <= _receivedDuplicateWindow &&
+                _isSameConversation(existing, message) &&
                 _matchesDuplicateSenderIdentity(existing, message)));
   }
 

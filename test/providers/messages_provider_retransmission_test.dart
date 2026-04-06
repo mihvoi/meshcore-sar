@@ -8,6 +8,7 @@ import 'package:meshcore_sar_app/models/message_reception_details.dart';
 import 'package:meshcore_sar_app/models/path_selection.dart';
 import 'package:meshcore_sar_app/providers/helpers/message_retry_manager.dart';
 import 'package:meshcore_sar_app/providers/messages_provider.dart';
+import 'package:meshcore_sar_app/services/message_storage_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 Contact _buildContact({
@@ -462,7 +463,7 @@ void main() {
       expect(provider.messages.single.id, equals('handle-1'));
     });
 
-    test('channel duplicates only dedupe against the latest channel message', () {
+    test('channel duplicates dedupe across recent interleaved channel traffic', () {
       final provider = MessagesProvider();
       final sender = Uint8List.fromList([9, 8, 7, 6, 5, 4]);
 
@@ -509,8 +510,9 @@ void main() {
         ),
       );
 
-      expect(provider.messages, hasLength(3));
-      expect(provider.messages.last.id, equals('channel-repeat'));
+      expect(provider.messages, hasLength(2));
+      expect(provider.messages.first.id, equals('channel-first'));
+      expect(provider.messages.last.id, equals('channel-middle'));
     });
 
     test('adjacent channel duplicates still dedupe within 5 seconds', () {
@@ -549,6 +551,62 @@ void main() {
 
       expect(provider.messages, hasLength(1));
       expect(provider.messages.single.id, equals('adjacent-1'));
+    });
+
+    test('channel duplicates still dedupe when traffic lands between them', () {
+      final provider = MessagesProvider();
+      final sender = Uint8List.fromList([4, 5, 6, 7, 8, 9]);
+      final baseTime = DateTime.fromMillisecondsSinceEpoch(1700000840000);
+
+      provider.addMessage(
+        Message(
+          id: 'interleaved-1',
+          messageType: MessageType.channel,
+          channelIdx: 3,
+          pathLen: 4,
+          textType: MessageTextType.plain,
+          senderTimestamp: 1700000840,
+          text: 'Tudi vsm',
+          senderName: 'Tady (SI)',
+          receivedAt: baseTime,
+          senderPublicKeyPrefix: sender,
+        ),
+      );
+      provider.addMessage(
+        Message(
+          id: 'interleaved-other',
+          messageType: MessageType.channel,
+          channelIdx: 3,
+          pathLen: 1,
+          textType: MessageTextType.plain,
+          senderTimestamp: 1700000841,
+          text: 'Different payload',
+          senderName: 'MHQ-1 [SI]',
+          receivedAt: baseTime.add(const Duration(seconds: 1)),
+          senderPublicKeyPrefix: Uint8List.fromList([1, 2, 3, 4, 5, 6]),
+        ),
+      );
+      provider.addMessage(
+        Message(
+          id: 'interleaved-2',
+          messageType: MessageType.channel,
+          channelIdx: 3,
+          pathLen: 4,
+          textType: MessageTextType.plain,
+          senderTimestamp: 1700000842,
+          text: 'Tudi vsm',
+          senderName: 'Tady (SI)',
+          receivedAt: baseTime.add(const Duration(seconds: 2)),
+          senderPublicKeyPrefix: sender,
+        ),
+      );
+
+      expect(provider.messages, hasLength(2));
+      expect(provider.messages.first.id, equals('interleaved-1'));
+      expect(
+        provider.getMessageReceptionDetails('interleaved-1')?.receivedCopies,
+        equals(2),
+      );
     });
 
     test('channel duplicates outside 5 second window are kept', () {
@@ -651,6 +709,57 @@ void main() {
 
       expect(display, hasLength(1));
       expect(display.single.message.id, equals('display-sent'));
+    });
+
+    test('initialize collapses persisted duplicates from storage', () async {
+      final storage = MessageStorageService();
+      final sender = Uint8List.fromList([5, 5, 5, 5, 5, 5]);
+      final firstReceivedAt = DateTime.fromMillisecondsSinceEpoch(1700001000000);
+
+      await storage.saveMessages(
+        [
+          Message(
+            id: 'persist-a',
+            messageType: MessageType.channel,
+            channelIdx: 3,
+            pathLen: 4,
+            textType: MessageTextType.plain,
+            senderTimestamp: 1700001000,
+            text: 'Tudi vsm',
+            senderName: 'Tady (SI)',
+            receivedAt: firstReceivedAt,
+            senderPublicKeyPrefix: sender,
+          ),
+          Message(
+            id: 'persist-b',
+            messageType: MessageType.channel,
+            channelIdx: 3,
+            pathLen: 4,
+            textType: MessageTextType.plain,
+            senderTimestamp: 1700001001,
+            text: 'Tudi vsm',
+            senderName: 'Tady (SI)',
+            receivedAt: firstReceivedAt.add(const Duration(seconds: 2)),
+            senderPublicKeyPrefix: sender,
+          ),
+        ],
+        messageReceptionDetails: {
+          'persist-a': MessageReceptionDetails(capturedAt: firstReceivedAt),
+          'persist-b': MessageReceptionDetails(
+            capturedAt: firstReceivedAt.add(const Duration(seconds: 2)),
+          ),
+        },
+      );
+
+      final provider = MessagesProvider();
+      await provider.initialize();
+
+      expect(provider.messages, hasLength(1));
+      expect(provider.messages.single.id, equals('persist-a'));
+      expect(
+        provider.getMessageReceptionDetails('persist-a')?.receivedCopies,
+        equals(2),
+      );
     });
 
     test('missing ACK schedules a delayed retransmission', () {
