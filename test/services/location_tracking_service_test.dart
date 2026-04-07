@@ -15,7 +15,7 @@ void main() {
     );
     service.fastLocationUpdatesEnabled = false;
     service.fastLocationMovementThresholdMeters = 10.0;
-    service.fastLocationActiveCadenceSeconds = 10;
+    service.fastLocationActiveCadenceSeconds = 60;
     service.fastLocationChannelIdx = null;
   });
 
@@ -23,7 +23,7 @@ void main() {
     await service.loadSettings();
 
     expect(service.fastLocationMovementThresholdMeters, 10.0);
-    expect(service.fastLocationActiveCadenceSeconds, 10);
+    expect(service.fastLocationActiveCadenceSeconds, 60);
   });
 
   test('persists and restores fast location channel idx', () async {
@@ -50,6 +50,6 @@ void main() {
     await service.updateFastLocationActiveCadenceSeconds(45);
 
     expect(service.fastLocationMovementThresholdMeters, 10.0);
-    expect(service.fastLocationActiveCadenceSeconds, 31);
+    expect(service.fastLocationActiveCadenceSeconds, 60);
   });
 }

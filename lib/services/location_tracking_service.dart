@@ -22,12 +22,18 @@ import 'profiles_feature_service.dart';
 class LocationTrackingService {
   static const double _defaultFastLocationMovementThresholdMeters = 10.0;
   static const double _minFastLocationMovementThresholdMeters = 10.0;
-  static const int _defaultFastLocationActiveCadenceSeconds = 10;
-  static const int _minFastLocationActiveCadenceSeconds = 10;
-  static const int _maxFastLocationActiveCadenceSeconds = 31;
-  static const Duration _fastLocationMinimumUpdateInterval = Duration(
-    seconds: 31,
+  static const int _defaultFastLocationActiveCadenceSeconds = 60;
+  static const int _minFastLocationActiveCadenceSeconds = 60;
+  static const int _maxFastLocationActiveCadenceSeconds = 60;
+  static const Duration _fastLocationSlowInterval = Duration(
+    seconds: 60,
   );
+  static const Duration _fastLocationWalkingInterval = Duration(seconds: 30);
+  static const Duration _fastLocationFastInterval = Duration(seconds: 15);
+  static const Duration _fastLocationVeryFastInterval = Duration(seconds: 5);
+  static const double _fastLocationIdleSpeedMaxMetersPerSecond = 0.75;
+  static const double _fastLocationWalkingSpeedMaxMetersPerSecond = 1.8;
+  static const double _fastLocationFastSpeedMaxMetersPerSecond = 4.0;
   // ============================================================================
   // Singleton Pattern
   // ============================================================================
@@ -599,11 +605,6 @@ class LocationTrackingService {
     final now = DateTime.now();
     final previous = _lastFastLocationSentPosition;
     final previousTime = _lastFastLocationSentAt;
-    if (previousTime != null &&
-        now.difference(previousTime) < _fastLocationMinimumUpdateInterval) {
-      return;
-    }
-
     if (previous != null && previousTime != null) {
       final distance = Geolocator.distanceBetween(
         previous.latitude,
@@ -612,14 +613,44 @@ class LocationTrackingService {
         position.longitude,
       );
       final elapsedMs = now.difference(previousTime).inMilliseconds;
+      final minimumInterval = _fastLocationMinimumIntervalFor(
+        distanceMeters: distance,
+        elapsedMs: elapsedMs,
+      );
+      if (elapsedMs < minimumInterval.inMilliseconds) {
+        return;
+      }
       if (distance < 1.0 && elapsedMs < 3000) {
         return;
       }
+    } else if (previousTime != null &&
+        now.difference(previousTime) < _fastLocationSlowInterval) {
+      return;
     }
 
     _lastFastLocationSentPosition = position;
     _lastFastLocationSentAt = now;
     onFastLocationUpdate?.call(position, reason);
+  }
+
+  Duration _fastLocationMinimumIntervalFor({
+    required double distanceMeters,
+    required int elapsedMs,
+  }) {
+    if (elapsedMs <= 0) {
+      return _fastLocationSlowInterval;
+    }
+    final speedMetersPerSecond = distanceMeters / (elapsedMs / 1000.0);
+    if (speedMetersPerSecond < _fastLocationIdleSpeedMaxMetersPerSecond) {
+      return _fastLocationSlowInterval;
+    }
+    if (speedMetersPerSecond < _fastLocationWalkingSpeedMaxMetersPerSecond) {
+      return _fastLocationWalkingInterval;
+    }
+    if (speedMetersPerSecond < _fastLocationFastSpeedMaxMetersPerSecond) {
+      return _fastLocationFastInterval;
+    }
+    return _fastLocationVeryFastInterval;
   }
 
   // ============================================================================

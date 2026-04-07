@@ -480,7 +480,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           keyboardType: TextInputType.number,
           decoration: const InputDecoration(
             labelText: 'Seconds',
-            helperText: 'Valid range: 10 to 31 seconds',
+            helperText: 'Fixed at 60 seconds',
           ),
         ),
         actions: [
@@ -492,7 +492,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () {
               final parsed = int.tryParse(controller.text.trim());
               if (parsed == null) return;
-              Navigator.pop(context, parsed.clamp(10, 31));
+              Navigator.pop(context, parsed.clamp(60, 60));
             },
             child: const Text('Save'),
           ),
