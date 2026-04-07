@@ -298,7 +298,7 @@ class _FakeConnectionProvider extends ConnectionProvider {
        ),
        _customVars = customVars ?? <String, String>{};
 
-  Map<String, String> _customVars;
+  final Map<String, String> _customVars;
 
   @override
   DeviceInfo get deviceInfo => _deviceInfo;
