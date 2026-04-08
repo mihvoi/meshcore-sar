@@ -26,6 +26,7 @@ class _DeviceConfigScreenState extends State<DeviceConfigScreen> {
   static const Duration _bulkDeleteBatchDelay = Duration(milliseconds: 700);
   static const Duration _bulkDeleteFinalSyncDelay = Duration(milliseconds: 900);
   static const int _autoAddFilterModeFlag = 1;
+  static const int _fixedHardwareGpsIntervalSeconds = 5;
   static const List<_RadioPreset> _radioPresets = [
     _RadioPreset(
       id: 'australia',
@@ -178,7 +179,6 @@ class _DeviceConfigScreenState extends State<DeviceConfigScreen> {
   late TextEditingController _lonController;
   late TextEditingController _freqController;
   late TextEditingController _txPowerController;
-  int? _gpsIntervalSeconds;
   late TextEditingController _autoAddMaxHopsController;
   late final ConnectionProvider _connectionProvider;
 
@@ -276,7 +276,6 @@ class _DeviceConfigScreenState extends State<DeviceConfigScreen> {
     _txPowerController = TextEditingController(
       text: deviceInfo.txPower?.toString() ?? '20',
     );
-    // _gpsIntervalSeconds loaded via _loadGpsMode()
     _autoAddMaxHopsController = TextEditingController(
       text: (deviceInfo.autoAddMaxHops ?? 0).toString(),
     );
@@ -345,7 +344,6 @@ class _DeviceConfigScreenState extends State<DeviceConfigScreen> {
     _lonController.dispose();
     _freqController.dispose();
     _txPowerController.dispose();
-    // _gpsIntervalSeconds is plain state, no dispose needed
     _autoAddMaxHopsController.dispose();
     _gpsStatsTicker?.cancel();
     _gpsRefreshTimer?.cancel();
@@ -603,13 +601,6 @@ class _DeviceConfigScreenState extends State<DeviceConfigScreen> {
         await connectionProvider.setAdvertName(_nameController.text);
       }
 
-      if (_gpsIntervalSeconds != null) {
-        await connectionProvider.setCustomVar(
-          'gps_interval',
-          _gpsIntervalSeconds.toString(),
-        );
-      }
-
       // Save stored coordinates only when the firmware advert policy uses prefs.
       if (_advertLocationPolicy == 2) {
         // Parse and validate coordinates
@@ -816,7 +807,6 @@ class _DeviceConfigScreenState extends State<DeviceConfigScreen> {
       final vars = await _connectionProvider.getCustomVars();
       if (!mounted) return;
       final gpsValue = vars['gps'];
-      final gpsIntervalValue = vars['gps_interval'];
       final gpsFixValue = vars['gps_fix'];
       final gpsSatsValue = vars['gps_sats'];
       final gpsLatValue = vars['gps_lat_e6'];
@@ -826,8 +816,6 @@ class _DeviceConfigScreenState extends State<DeviceConfigScreen> {
       setState(() {
         _gpsEnabled = gpsValue != null ? gpsValue == '1' : null;
         _buzzerEnabled = buzzerValue != null ? buzzerValue == '1' : null;
-        _gpsIntervalSeconds = int.tryParse(gpsIntervalValue ?? '') ??
-            _gpsIntervalSeconds;
         _gpsHasFix = gpsFixValue != null ? gpsFixValue == '1' : null;
         _gpsSatelliteCount = int.tryParse(gpsSatsValue ?? '');
         _gpsLatE6 = int.tryParse(gpsLatValue ?? '');
@@ -1628,40 +1616,31 @@ class _DeviceConfigScreenState extends State<DeviceConfigScreen> {
                       ),
                     ],
                     const SizedBox(height: 10),
-                    DropdownButtonFormField<int?>(
-                      key: ValueKey('gps-interval-$_gpsIntervalSeconds'),
-                      initialValue: _gpsIntervalSeconds,
-                      decoration: InputDecoration(
-                        labelText: 'GPS interval',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        filled: true,
-                        isDense: true,
-                        fillColor: colorScheme.surfaceContainerLowest,
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: colorScheme.outlineVariant),
                       ),
-                      isExpanded: true,
-                      items: [
-                        DropdownMenuItem(value: null, child: Text(AppLocalizations.of(context)!.notSet)),
-                        DropdownMenuItem(value: 0, child: Text(AppLocalizations.of(context)!.offZeroSeconds)),
-                        DropdownMenuItem(value: 5, child: Text(AppLocalizations.of(context)!.fiveSeconds)),
-                        DropdownMenuItem(value: 10, child: Text(AppLocalizations.of(context)!.tenSeconds)),
-                        DropdownMenuItem(value: 15, child: Text(AppLocalizations.of(context)!.fifteenSeconds)),
-                        DropdownMenuItem(value: 30, child: Text(AppLocalizations.of(context)!.thirtySeconds)),
-                        DropdownMenuItem(value: 60, child: Text(AppLocalizations.of(context)!.oneMinute)),
-                        DropdownMenuItem(value: 120, child: Text(AppLocalizations.of(context)!.twoMinutes)),
-                        DropdownMenuItem(value: 300, child: Text(AppLocalizations.of(context)!.fiveMinutes)),
-                        DropdownMenuItem(value: 600, child: Text(AppLocalizations.of(context)!.tenMinutes)),
-                        DropdownMenuItem(value: 900, child: Text(AppLocalizations.of(context)!.fifteenMinutes)),
-                        DropdownMenuItem(value: 1800, child: Text(AppLocalizations.of(context)!.thirtyMinutes)),
-                        DropdownMenuItem(value: 3600, child: Text(AppLocalizations.of(context)!.oneHour)),
-                      ],
-                      onChanged: (value) {
-                        setState(() {
-                          _gpsIntervalSeconds = value;
-                          _markPublicInfoDirty();
-                        });
-                      },
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.timer_outlined,
+                            size: 18,
+                            color: colorScheme.primary,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'GPS polling is fixed at $_fixedHardwareGpsIntervalSeconds seconds on companion radios.',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     if (_advertLocationPolicy == 2) ...[
                       const SizedBox(height: 10),
